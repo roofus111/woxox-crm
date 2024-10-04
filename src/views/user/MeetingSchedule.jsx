@@ -1,0 +1,211 @@
+'use client'
+import { useEffect, useState, useCallback } from 'react'
+import Grid from '@mui/material/Grid'
+import axios from 'axios'
+import Card from '@mui/material/Card'
+import CardHeader from '@mui/material/CardHeader'
+import CardContent from '@mui/material/CardContent'
+import Typography from '@mui/material/Typography'
+import Chip from '@mui/material/Chip'
+import OptionMenu from '@core/components/option-menu'
+import dynamic from 'next/dynamic'
+import CustomAvatar from '@core/components/mui/Avatar'
+import Button from '@mui/material/Button'
+import Dialog from '@mui/material/Dialog'
+import TextField from '@mui/material/TextField'
+import DialogTitle from '@mui/material/DialogTitle'
+import DialogContent from '@mui/material/DialogContent'
+import DialogActions from '@mui/material/DialogActions'
+import DialogContentText from '@mui/material/DialogContentText'
+import UserLeftOverview from '@views/apps/leadView/view/user-left-overview'
+import UserRight from '@views/apps/leadView/view/user-right'
+import { DataProvider } from '@/contexts/DataContext'
+import { Box } from '@mui/material'
+import debounce from 'lodash.debounce'
+const OverViewTab = dynamic(() => import('@views/apps/leadView/view/user-right/overview'))
+const SecurityTab = dynamic(() => import('@views/apps/leadView/view/user-right/security'))
+const BillingPlans = dynamic(() => import('@views/apps/leadView/view/user-right/billing-plans'))
+const NotificationsTab = dynamic(() => import('@views/apps/leadView/view/user-right/notifications'))
+const ConnectionsTab = dynamic(() => import('@views/apps/leadView/view/user-right/connections'))
+
+const Transactions = () => {
+  const [open, setOpen] = useState(false)
+  const [viewItem, setViewItem] = useState({})
+
+  const handleClickOpen = item => {
+    setOpen(true)
+    setViewItem(item)
+  }
+
+  const tabContentList = data => ({
+    overview: <OverViewTab props={data} />,
+    security: <SecurityTab props={data} />,
+    // 'billing-plans': <BillingPlans data={data} />,
+    notifications: <NotificationsTab />,
+    connections: <ConnectionsTab />
+  })
+
+  const handleClose = () => setOpen(false)
+
+  const [data, setData] = useState([])
+  const [error, setError] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  const [page, setPage] = useState(1)
+
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      setError('No authorization token found.')
+      setLoading(false)
+      return
+    }
+
+    const fetchData = () => {
+      setLoading(true)
+      axios
+        .get(`http://localhost:8000/api/leads?page=${page}&limit=10`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        .then(response => {
+          setData(prevData => [...prevData, ...response.data.leads])
+          setHasMore(response.data.leads.length > 0)
+          setLoading(false)
+        })
+        .catch(error => {
+          console.error('Failed to fetch data:', error)
+          setError('Failed to fetch data.')
+          setLoading(false)
+        })
+    }
+
+    fetchData()
+  }, [page])
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.innerHeight + document.documentElement.scrollTop !== document.documentElement.offsetHeight || loading)
+        return
+      setPage(prevPage => prevPage + 1)
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [loading])
+  const [inputValue, setInputValue] = useState('')
+
+  const fetchLeads = async () => {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      setError('No authorization token found.')
+
+      return
+    }
+    try {
+      const response = await fetch(`http://localhost:8000/api/leads/search?searchQuery=${inputValue}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await response.json()
+      setData(data.leads)
+      console.log(data.leads)
+    } catch (error) {
+      console.error('Failed to fetch leads:', error)
+      setError('Failed to fetch leads')
+    }
+  }
+
+  const handleChange = event => {
+    setInputValue(event.target.value)
+  }
+  return (
+    <>
+      <Card>
+        <Grid container spacing={6} marginLeft={3} marginTop={3} marginRight={3}>
+          <Grid xs={12} item md={4}>
+            <h2>All Leads</h2>
+          </Grid>
+          <Grid item xs={10} md={4}>
+            <TextField fullWidth label='Search' variant='standard' value={inputValue} onChange={handleChange} />{' '}
+            <button onClick={fetchLeads} disabled={!inputValue.trim()}>
+              Search Leads
+            </button>
+            <button
+              onClick={() => {
+                fetchData, setPage(1)
+              }}
+            >
+              Reset
+            </button>
+          </Grid>
+        </Grid>
+        <CardContent className='flex flex-col gap-3'>
+          {data &&
+            data.map((item, index) => (
+              <Box
+                key={index}
+                className='flex items-center gap-4'
+                onClick={() => handleClickOpen(item)}
+                sx={{
+                  transition: 'padding 0.3s linear, backgroundColor 0.3s linear',
+                  '&:hover': {
+                    padding: '9px',
+                    backgroundColor: '#f7f7f7', // Darken background on hover
+                    transitionTimingFunction: 'linear',
+                    transitionDuration: '0.3s', // Corrected property name and value format
+                    cursor: 'pointer' // Indicates a clickable element
+                  }
+                }}
+              >
+                <CustomAvatar variant='rounded' src={item.avatarSrc} size={38} />
+                <div className='flex justify-between items-center is-full flex-wrap gap-x-4 gap-y-2'>
+                  <div className='flex flex-col gap-0.5'>
+                    <Typography color='text.primary' className='font-medium'>
+                      {item.name}
+                    </Typography>
+                    <div className='flex items-center gap-2'>
+                      <i className='ri-flag-line text-base text-textSecondary' />
+                      <Typography variant='body2'>{item.campaign}</Typography>
+                    </div>
+                  </div>
+                  <Chip label={item.status} color={item.chipColor} size='small' variant='tonal' />
+                </div>
+              </Box>
+            ))}
+        </CardContent>
+      </Card>
+      <Dialog fullScreen open={open} onClose={handleClose} aria-labelledby='form-dialog-title'>
+        <DialogTitle id='form-dialog-title'>Lead Details</DialogTitle>
+        <DialogContent>
+          {/* <Box>
+            <h4>Name : {viewItem.name} </h4>
+            <h4>Email : {viewItem.email} </h4>
+            <h4>Email : {viewItem.phone} </h4>
+            <h4>Email : {viewItem.createdAt} </h4>
+          </Box>
+          <TextField id='email' autoFocus fullWidth type='email' label='Email Address' /> */}
+
+          <Grid container spacing={6}>
+            <DataProvider>
+              <Grid item xs={12} lg={4} md={5}>
+                <UserLeftOverview data={viewItem} />
+              </Grid>
+              <Grid item xs={12} lg={8} md={7}>
+                <UserRight tabContentList={tabContentList({ viewItem })} />
+              </Grid>
+            </DataProvider>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClose} variant='outlined' color='secondary'>
+            Cancel
+          </Button>
+          <Button onClick={handleClose} variant='contained' color='primary'>
+            Subscribe
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  )
+}
+
+export default Transactions

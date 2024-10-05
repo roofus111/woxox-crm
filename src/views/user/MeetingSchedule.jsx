@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import Grid from '@mui/material/Grid'
 import axios from 'axios'
 import Card from '@mui/material/Card'
@@ -52,71 +52,149 @@ const Transactions = () => {
   const [loading, setLoading] = useState(false)
   const [hasMore, setHasMore] = useState(true)
   const [page, setPage] = useState(1)
+  const [items, setItems] = useState([])
+  const [searchTerm, setSearchTerm] = useState('')
+  const loader = useRef(null)
+  const inputRef = useRef(null)
 
   useEffect(() => {
+    fetchItems(page, searchTerm)
+  }, [page])
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(handleObserver, {
+      root: null,
+      rootMargin: '20px',
+      threshold: 1.0
+    })
+
+    if (loader.current) {
+      observer.observe(loader.current)
+    }
+
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      console.log('triggered')
+      setPage(1) // Reset to page 1 to handle new search terms correctly
+      fetchItems(1, searchTerm)
+    }, 300) // 300ms debounce time
+
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
+  const handleObserver = entities => {
+    const target = entities[0]
+    if (target.isIntersecting) {
+      setPage(prev => prev + 1)
+    }
+  }
+
+  const handleSearchChange = e => {
+    setSearchTerm(e.target.value)
+  }
+
+  const resetSearch = () => {
+    setSearchTerm('')
+    inputRef.current.value = '' // Clear the input field
+    setPage(1)
+    fetchItems(1, '') // Fetch without any search term
+  }
+
+  const fetchItems = async (page, searchTerm = '') => {
+    setLoading(true)
     const token = localStorage.getItem('token')
     if (!token) {
       setError('No authorization token found.')
       setLoading(false)
       return
     }
-
-    const fetchData = () => {
-      setLoading(true)
-      axios
-        .get(`http://localhost:8000/api/leads?page=${page}&limit=10`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        .then(response => {
-          setData(prevData => [...prevData, ...response.data.leads])
-          setHasMore(response.data.leads.length > 0)
-          setLoading(false)
-        })
-        .catch(error => {
-          console.error('Failed to fetch data:', error)
-          setError('Failed to fetch data.')
-          setLoading(false)
-        })
-    }
-
-    fetchData()
-  }, [page])
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.innerHeight + document.documentElement.scrollTop !== document.documentElement.offsetHeight || loading)
-        return
-      setPage(prevPage => prevPage + 1)
-    }
-
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [loading])
-  const [inputValue, setInputValue] = useState('')
-
-  const fetchLeads = async () => {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      setError('No authorization token found.')
-
-      return
-    }
-    try {
-      const response = await fetch(`http://localhost:8000/api/leads/search?searchQuery=${inputValue}`, {
+    const response = await fetch(
+      `http://localhost:8000/api/leads/search?page=${page}&search=${encodeURIComponent(searchTerm)}`,
+      {
         headers: { Authorization: `Bearer ${token}` }
-      })
-      const data = await response.json()
-      setData(data.leads)
-      console.log(data.leads)
-    } catch (error) {
-      console.error('Failed to fetch leads:', error)
-      setError('Failed to fetch leads')
+      }
+    )
+    const newData = await response.json()
+    console.log(newData.leads)
+
+    if (page === 1) {
+      setLoading(false)
+      setItems(newData.leads) // Reset items if it's a new search or reset
+    } else {
+      setLoading(false)
+      setItems(prev => [...prev, ...newData.leads]) // Append items if it's just lazy loading more
     }
   }
 
-  const handleChange = event => {
-    setInputValue(event.target.value)
-  }
+  /////////////////////////////
+
+  // useEffect(() => {
+  //   const token = localStorage.getItem('token')
+  //   if (!token) {
+  //     setError('No authorization token found.')
+  //     setLoading(false)
+  //     return
+  //   }
+
+  //   const fetchData = () => {
+  //     setLoading(true)
+  //     axios
+  //       .get(`http://localhost:8000/api/leads?page=${page}&limit=10`, {
+  //         headers: { Authorization: `Bearer ${token}` }
+  //       })
+  //       .then(response => {
+  //         setData(prevData => [...prevData, ...response.data.leads])
+  //         setHasMore(response.data.leads.length > 0)
+  //         setLoading(false)
+  //       })
+  //       .catch(error => {
+  //         console.error('Failed to fetch data:', error)
+  //         setError('Failed to fetch data.')
+  //         setLoading(false)
+  //       })
+  //   }
+
+  //   fetchData()
+  // }, [page])
+
+  // useEffect(() => {
+  //   const handleScroll = () => {
+  //     if (window.innerHeight + document.documentElement.scrollTop !== document.documentElement.offsetHeight || loading)
+  //       return
+  //     setPage(prevPage => prevPage + 1)
+  //   }
+
+  //   window.addEventListener('scroll', handleScroll)
+  //   return () => window.removeEventListener('scroll', handleScroll)
+  // }, [loading])
+  // const [inputValue, setInputValue] = useState('')
+
+  // const fetchLeads = async () => {
+  //   const token = localStorage.getItem('token')
+  //   if (!token) {
+  //     setError('No authorization token found.')
+
+  //     return
+  //   }
+  //   try {
+  //     const response = await fetch(`http://localhost:8000/api/leads/search?searchQuery=${inputValue}`, {
+  //       headers: { Authorization: `Bearer ${token}` }
+  //     })
+  //     const data = await response.json()
+  //     setData(data.leads)
+  //     console.log(data.leads)
+  //   } catch (error) {
+  //     console.error('Failed to fetch leads:', error)
+  //     setError('Failed to fetch leads')
+  //   }
+  // }
+
+  // const handleChange = event => {
+  //   setInputValue(event.target.value)
+  // }
   return (
     <>
       <Card>
@@ -125,22 +203,24 @@ const Transactions = () => {
             <h2>All Leads</h2>
           </Grid>
           <Grid item xs={10} md={4}>
-            <TextField fullWidth label='Search' variant='standard' value={inputValue} onChange={handleChange} />{' '}
-            <button onClick={fetchLeads} disabled={!inputValue.trim()}>
-              Search Leads
-            </button>
-            <button
-              onClick={() => {
-                fetchData, setPage(1)
-              }}
-            >
-              Reset
-            </button>
+            <Box display={'flex'}>
+              <TextField
+                fullWidth
+                label='Search'
+                variant='standard'
+                type='text'
+                ref={inputRef}
+                onChange={handleSearchChange}
+              />
+              <Button onClick={resetSearch} color='primary' variant='standard'>
+                Reset
+              </Button>{' '}
+            </Box>
           </Grid>
         </Grid>
         <CardContent className='flex flex-col gap-3'>
-          {data &&
-            data.map((item, index) => (
+          {items &&
+            items.map((item, index) => (
               <Box
                 key={index}
                 className='flex items-center gap-4'
@@ -171,6 +251,10 @@ const Transactions = () => {
                 </div>
               </Box>
             ))}
+
+          <div ref={loader} style={{ height: '50px' }}>
+            {loading ? <p> Loading more... </p> : null}
+          </div>
         </CardContent>
       </Card>
       <Dialog fullScreen open={open} onClose={handleClose} aria-labelledby='form-dialog-title'>

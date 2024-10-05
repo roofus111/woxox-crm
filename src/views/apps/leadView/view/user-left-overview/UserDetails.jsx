@@ -31,7 +31,7 @@ import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContentText from '@mui/material/DialogContentText'
-import { Box, Checkbox, FormControlLabel } from '@mui/material'
+import { Box, CardMedia, Checkbox, FormControlLabel } from '@mui/material'
 
 import Accordion from '@mui/material/Accordion'
 import AccordionSummary from '@mui/material/AccordionSummary'
@@ -498,6 +498,96 @@ const UserDetails = props => {
         </DialogActions>
       </Dialog>
 
+      <Card>
+        <CardMedia image={data?.coverImg} className='bs-[250px] bg-primary' />
+        <CardContent className='flex justify-center flex-col items-center gap-6 md:items-end md:flex-row !pt-0 md:justify-start'>
+          <div className='flex rounded-bs-xl mbs-[-30px] mli-[-5px] border-[5px] border-be-0 border-backgroundPaper bg-backgroundPaper'>
+            <img height={120} width={120} src='/images/avatars/1.png' className='rounded' alt='Profile Background' />
+          </div>
+          <div className='flex is-full flex-wrap justify-start flex-col items-center sm:flex-row sm:justify-between sm:items-end gap-5'>
+            <div className='flex flex-col items-center sm:items-start gap-2'>
+              <Typography variant='h4'>{userData?.firstName}</Typography>
+              <div className='flex flex-wrap gap-6 gap-y-3 justify-center sm:justify-normal min-bs-[38px]'>
+                <div className='flex items-center gap-2'>
+                  <Chip label={userData.campaign} variant='tonal' color='error' size='small' />
+                </div>
+                <div className='flex items-center gap-2'>
+                  <Chip label={userData.source} variant='tonal' color='error' size='small' />
+                </div>
+              </div>
+            </div>
+            <Button variant='contained' className='flex gap-2'>
+              <i className='ri-user-follow-line text-base'></i>
+              <span>{userData.status}</span>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <br />
+      <Grid container spacing={6}>
+        <Grid item xs={12}>
+          <Card>
+            <CardContent className='flex flex-col gap-6'>
+              <div className='flex flex-col gap-4'>
+                <Typography className='uppercase' variant='body2' color='text.disabled'>
+                  CONTACTS
+                </Typography>
+                <div className='flex items-center gap-2'>
+                  <i className='ri-user-follow-line text-base'></i>
+                  <div className='flex items-center flex-wrap gap-2'>
+                    <Typography className='font-medium'>Phone</Typography>
+                    <Typography>{userData?.phone}</Typography>
+                  </div>
+                </div>
+                <div className='flex items-center gap-2'>
+                  <i className='ri-user-follow-line text-base'></i>
+                  <div className='flex items-center flex-wrap gap-2'>
+                    <Typography className='font-medium'>E-mail</Typography>
+                    <Typography>{userData?.email}</Typography>
+                  </div>
+                </div>
+              </div>
+              <div className='flex flex-col gap-4'>
+                <Typography className='uppercase' variant='body2' color='text.disabled'>
+                  ABOUT
+                </Typography>
+                {data?.contacts && renderList(data?.contacts)}
+              </div>
+              <div className='flex flex-col gap-4'>
+                <Typography className='uppercase' variant='body2' color='text.disabled'>
+                  EDUCATION
+                </Typography>
+                {data?.teams && renderTeams(data?.teams)}
+              </div>
+            </CardContent>
+          </Card>
+        </Grid>
+        <br />
+        <Grid item xs={12}>
+          <Card>
+            <CardContent>
+              <div className='flex flex-col gap-4'>
+                <Typography className='uppercase' variant='body2' color='text.disabled'>
+                  Overview
+                </Typography>
+                <Button variant='contained' className='flex gap-2'>
+                  <i className='ri-user-follow-line text-base'></i>
+                  <span>Connected</span>
+                </Button>
+                <Button variant='contained' className='flex gap-2'>
+                  <i className='ri-user-follow-line text-base'></i>
+                  <span>Connected</span>
+                </Button>
+                <Button variant='contained' className='flex gap-2'>
+                  <i className='ri-user-follow-line text-base'></i>
+                  <span>Connected</span>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
       <Card>
         <CardContent className='flex flex-col pbs-12 gap-6'>
           <div className='flex flex-col gap-6'>

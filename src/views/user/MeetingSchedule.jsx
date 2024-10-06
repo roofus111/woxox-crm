@@ -283,8 +283,8 @@ const Transactions = () => {
           <Button onClick={handleClose} variant='outlined' color='secondary'>
             Cancel
           </Button>
-          <Button onClick={handleClose} variant='contained' color='primary'>
-            Subscribe
+          <Button onClick={handleClose} variant='contained' color='success'>
+            Call
           </Button>
         </DialogActions>
       </Dialog>

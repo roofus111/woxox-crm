@@ -528,6 +528,31 @@ const UserDetails = props => {
       <Grid container spacing={6}>
         <Grid item xs={12}>
           <Card>
+            <CardContent>
+              <div className='flex flex-col gap-4'>
+                <Typography className='uppercase' variant='body2' color='text.disabled'>
+                  Action
+                </Typography>  <Button variant='contained' className='flex gap-2'>
+                  <i className='ri-phone-line text-base'></i>
+                  <span>Call</span>
+                </Button>
+                <Button variant='contained' className='flex gap-2'>
+                  <i className='ri-calendar-line text-base'></i>
+                  <span>Add Follow up</span>
+                </Button>
+                <Button variant='contained' className='flex gap-2'>
+                  <i className='ri-file-line text-base'></i>
+                  <span>Add Documents</span>
+                </Button>
+
+              </div>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <br />
+        <Grid item xs={12}>
+          <Card>
             <CardContent className='flex flex-col gap-6'>
               <div className='flex flex-col gap-4'>
                 <Typography className='uppercase' variant='body2' color='text.disabled'>
@@ -559,30 +584,6 @@ const UserDetails = props => {
                   EDUCATION
                 </Typography>
                 {data?.teams && renderTeams(data?.teams)}
-              </div>
-            </CardContent>
-          </Card>
-        </Grid>
-        <br />
-        <Grid item xs={12}>
-          <Card>
-            <CardContent>
-              <div className='flex flex-col gap-4'>
-                <Typography className='uppercase' variant='body2' color='text.disabled'>
-                  Overview
-                </Typography>
-                <Button variant='contained' className='flex gap-2'>
-                  <i className='ri-user-follow-line text-base'></i>
-                  <span>Connected</span>
-                </Button>
-                <Button variant='contained' className='flex gap-2'>
-                  <i className='ri-user-follow-line text-base'></i>
-                  <span>Connected</span>
-                </Button>
-                <Button variant='contained' className='flex gap-2'>
-                  <i className='ri-user-follow-line text-base'></i>
-                  <span>Connected</span>
-                </Button>
               </div>
             </CardContent>
           </Card>

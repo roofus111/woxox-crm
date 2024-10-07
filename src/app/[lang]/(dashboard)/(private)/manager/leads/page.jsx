@@ -57,19 +57,6 @@ const Leads = () => {
       })
   }, [])
 
-  const names = [
-    'Oliver Hansen',
-    'Van Henry',
-    'April Tucker',
-    'Ralph Hubbard',
-    'Omar Alexander',
-    'Carlos Abbott',
-    'Miriam Wagner',
-    'Bradley Wilkerson',
-    'Virginia Andrews',
-    'Kelly Snyder'
-  ]
-
   // States
   const [personName, setPersonName] = useState([])
   const [personNameNative, setPersonNameNative] = useState([])
@@ -113,7 +100,7 @@ const Leads = () => {
         <Button onClick={handleClickOpen}>Assign Leads</Button>
       </Box>
 
-      <MeetingSchedule />
+      <MeetingSchedule user={data} />
 
       <Dialog open={open} onClose={handleClose} aria-labelledby='form-dialog-title'>
         <DialogTitle id='form-dialog-title'>Assign leads</DialogTitle>

@@ -31,7 +31,7 @@ import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContentText from '@mui/material/DialogContentText'
-import { Box, CardMedia, Checkbox, FormControlLabel } from '@mui/material'
+import { Box, CardMedia, Checkbox, FormControlLabel, Menu } from '@mui/material'
 
 import Accordion from '@mui/material/Accordion'
 import AccordionSummary from '@mui/material/AccordionSummary'
@@ -293,6 +293,74 @@ const UserDetails = props => {
     setIsVisible(event.target.checked)
   }
 
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [status, setStatus] = useState(userData.status);
+  const openstatus = Boolean(anchorEl);
+
+  const leadStatuses = [
+    'Interested',
+    'Not Interested',
+    'Converted',
+    'Lost',
+  ];
+
+  const handleClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleStatusClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleStatusChange = async (newStatus) => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        setError('No authorization token found.')
+
+        return
+      }
+      const response = await fetch(`http://localhost:8000/api/leads/${userData.leadId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        toast.error("Something goes wrong")
+      }
+
+      const data = await response.json();
+      toast.success(`Lead Status changes to ${data.lead.status}`)
+      setStatus(data.lead.status)
+      handleClose();
+    } catch (error) {
+      console.error('Failed to update lead status:', error);
+      throw error; // Rethrow error to handle in the UI
+    }
+    // setStatus(newStatus);
+
+  };
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'New':
+        return 'primary'; // Blue
+      case 'Contacted':
+        return 'info'; // Light Blue
+      case 'In Progress':
+        return 'warning'; // Orange
+      case 'Converted':
+        return 'success'; // Green
+      case 'Lost':
+        return 'error'; // Red
+      // default:
+      //   return 'default'; // Grey (for default state)
+    }
+  };
+
   return (
     <>
       <Dialog fullScreen open={open} onClose={handleClose} aria-labelledby='form-dialog-title'>
@@ -516,10 +584,39 @@ const UserDetails = props => {
                 </div>
               </div>
             </div>
-            <Button variant='contained' className='flex gap-2'>
+            {/* <Button variant='contained' className='flex gap-2'>
               <i className='ri-user-follow-line text-base'></i>
               <span>{userData.status}</span>
-            </Button>
+            </Button> */}
+
+            <div>
+              <Button
+                aria-controls={openstatus ? 'lead-status-menu' : undefined}
+                aria-haspopup="true"
+                aria-expanded={openstatus ? 'true' : undefined}
+                onClick={handleClick}
+                variant="contained"
+                color={getStatusColor(status)} // Dynamic color based on status
+                sx={{ width: 128, height: 30 }} // Fixed width and height for button
+              >
+                {status}
+              </Button>
+              <Menu
+                id="lead-status-menu"
+                anchorEl={anchorEl}
+                open={openstatus}
+                onClose={handleStatusClose}
+              >
+                {leadStatuses.map((leadStatus) => (
+                  <MenuItem
+                    key={leadStatus}
+                    onClick={() => handleStatusChange(leadStatus)}
+                  >
+                    {leadStatus}
+                  </MenuItem>
+                ))}
+              </Menu>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -532,15 +629,15 @@ const UserDetails = props => {
               <div className='flex flex-col gap-4'>
                 <Typography className='uppercase' variant='body2' color='text.disabled'>
                   Action
-                </Typography>  <Button variant='contained' className='flex gap-2'>
+                </Typography>  <Button onClick={handleClickOpen} variant='contained' className='flex gap-2'>
                   <i className='ri-phone-line text-base'></i>
                   <span>Call</span>
                 </Button>
-                <Button variant='contained' className='flex gap-2'>
+                <Button onClick={handleClickOpen2} variant='contained' className='flex gap-2'>
                   <i className='ri-calendar-line text-base'></i>
                   <span>Add Follow up</span>
                 </Button>
-                <Button variant='contained' className='flex gap-2'>
+                <Button onClick={handleClickOpen3} variant='contained' className='flex gap-2'>
                   <i className='ri-file-line text-base'></i>
                   <span>Add Documents</span>
                 </Button>
@@ -589,7 +686,7 @@ const UserDetails = props => {
           </Card>
         </Grid>
       </Grid>
-      <Card>
+      {/* <Card>
         <CardContent className='flex flex-col pbs-12 gap-6'>
           <div className='flex flex-col gap-6'>
             <div className='flex flex-col items-center justify-center gap-4'>
@@ -664,7 +761,7 @@ const UserDetails = props => {
             />
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
     </>
   )
 }

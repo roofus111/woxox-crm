@@ -20,7 +20,7 @@ import DialogContentText from '@mui/material/DialogContentText'
 import UserLeftOverview from '@views/apps/leadView/view/user-left-overview'
 import UserRight from '@views/apps/leadView/view/user-right'
 import { DataProvider } from '@/contexts/DataContext'
-import { Box } from '@mui/material'
+import { Box, Menu, MenuItem, FormControl, InputLabel, Select } from '@mui/material'
 import debounce from 'lodash.debounce'
 const OverViewTab = dynamic(() => import('@views/apps/leadView/view/user-right/overview'))
 const SecurityTab = dynamic(() => import('@views/apps/leadView/view/user-right/security'))
@@ -28,7 +28,7 @@ const BillingPlans = dynamic(() => import('@views/apps/leadView/view/user-right/
 const NotificationsTab = dynamic(() => import('@views/apps/leadView/view/user-right/notifications'))
 const ConnectionsTab = dynamic(() => import('@views/apps/leadView/view/user-right/connections'))
 
-const Transactions = () => {
+const Transactions = (props) => {
   const [open, setOpen] = useState(false)
   const [viewItem, setViewItem] = useState({})
 
@@ -45,7 +45,10 @@ const Transactions = () => {
     connections: <ConnectionsTab />
   })
 
-  const handleClose = () => setOpen(false)
+  const handleClose = () => {
+    setOpen(false)
+    fetchItems(1, searchTerm)
+  }
 
   const [data, setData] = useState([])
   const [error, setError] = useState(null)
@@ -103,7 +106,7 @@ const Transactions = () => {
     fetchItems(1, '') // Fetch without any search term
   }
 
-  const fetchItems = async (page, searchTerm = '') => {
+  const fetchItems = async (page, searchTerm = '',) => {
     setLoading(true)
     const token = localStorage.getItem('token')
     if (!token) {
@@ -112,7 +115,7 @@ const Transactions = () => {
       return
     }
     const response = await fetch(
-      `http://localhost:8000/api/leads/search?page=${page}&search=${encodeURIComponent(searchTerm)}`,
+      `http://localhost:8000/api/leads/search?page=${page}&search=${encodeURIComponent(searchTerm)}&status=${encodeURIComponent(status)}&assignedTo=${encodeURIComponent(assignee)}`,
       {
         headers: { Authorization: `Bearer ${token}` }
       }
@@ -129,72 +132,27 @@ const Transactions = () => {
     }
   }
 
-  /////////////////////////////
 
-  // useEffect(() => {
-  //   const token = localStorage.getItem('token')
-  //   if (!token) {
-  //     setError('No authorization token found.')
-  //     setLoading(false)
-  //     return
-  //   }
+  const callHandler = (x) => {
+    console.log('triggeresd', x)
+  }
 
-  //   const fetchData = () => {
-  //     setLoading(true)
-  //     axios
-  //       .get(`http://localhost:8000/api/leads?page=${page}&limit=10`, {
-  //         headers: { Authorization: `Bearer ${token}` }
-  //       })
-  //       .then(response => {
-  //         setData(prevData => [...prevData, ...response.data.leads])
-  //         setHasMore(response.data.leads.length > 0)
-  //         setLoading(false)
-  //       })
-  //       .catch(error => {
-  //         console.error('Failed to fetch data:', error)
-  //         setError('Failed to fetch data.')
-  //         setLoading(false)
-  //       })
-  //   }
+  const [open2, setOpen2] = useState(false)
 
-  //   fetchData()
-  // }, [page])
+  const handleClickOpen2 = () => {
+    setOpen2(true)
+  }
 
-  // useEffect(() => {
-  //   const handleScroll = () => {
-  //     if (window.innerHeight + document.documentElement.scrollTop !== document.documentElement.offsetHeight || loading)
-  //       return
-  //     setPage(prevPage => prevPage + 1)
-  //   }
+  const handleClose2 = () => {
+    setOpen2(false)
+  }
+  const handleFilter = () => {
+    setPage(1)
+    fetchItems(page, searchTerm)
+  }
 
-  //   window.addEventListener('scroll', handleScroll)
-  //   return () => window.removeEventListener('scroll', handleScroll)
-  // }, [loading])
-  // const [inputValue, setInputValue] = useState('')
-
-  // const fetchLeads = async () => {
-  //   const token = localStorage.getItem('token')
-  //   if (!token) {
-  //     setError('No authorization token found.')
-
-  //     return
-  //   }
-  //   try {
-  //     const response = await fetch(`http://localhost:8000/api/leads/search?searchQuery=${inputValue}`, {
-  //       headers: { Authorization: `Bearer ${token}` }
-  //     })
-  //     const data = await response.json()
-  //     setData(data.leads)
-  //     console.log(data.leads)
-  //   } catch (error) {
-  //     console.error('Failed to fetch leads:', error)
-  //     setError('Failed to fetch leads')
-  //   }
-  // }
-
-  // const handleChange = event => {
-  //   setInputValue(event.target.value)
-  // }
+  const [assignee, setAssignee] = useState('')
+  const [status, setStatus] = useState('')
   return (
     <>
       <Card>
@@ -216,6 +174,9 @@ const Transactions = () => {
                 Reset
               </Button>{' '}
             </Box>
+          </Grid>
+          <Grid xs={12} item md={4}>
+            <Button onClick={handleClickOpen2}> Filter</Button>
           </Grid>
         </Grid>
         <CardContent className='flex flex-col gap-3'>
@@ -257,16 +218,63 @@ const Transactions = () => {
           </div>
         </CardContent>
       </Card>
-      <Dialog fullScreen open={open} onClose={handleClose} aria-labelledby='form-dialog-title'>
-        <DialogTitle id='form-dialog-title'>Lead Details</DialogTitle>
-        <DialogContent>
-          {/* <Box>
-            <h4>Name : {viewItem.name} </h4>
-            <h4>Email : {viewItem.email} </h4>
-            <h4>Email : {viewItem.phone} </h4>
-            <h4>Email : {viewItem.createdAt} </h4>
+      {/* Filter Modal */}
+      <Dialog maxWidth='xs' fullWidth open={open2} onClose={handleClose2}>
+        <DialogTitle>Filter the Leads</DialogTitle>
+        <DialogContent className='!pbs-2'>
+          <Box component='form' className='flex gap-4'>
+            <FormControl className='mie-4 mbe-4' fullWidth>
+              <InputLabel id='demo-dialog-select-label'>Assigned</InputLabel>
+              <Select
+                label='Assigned'
+                labelId='demo-dialog-select-label'
+                id='demo-dialog-select'
+                value={assignee}
+                onChange={(e) => setAssignee(e.target.value)}
+              >
+                <MenuItem value=''>
+                  <em>None</em>
+                </MenuItem>
+                {props.user.map((item) => (
+                  <MenuItem key={item._id} value={item._id}>
+                    {item.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl fullWidth>
+              <InputLabel htmlFor='outlined-age-native-basic'>Status</InputLabel>
+              <Select label='Status' labelId='demo-dialog-select-label' id='demo-dialog-select' value={status} onChange={(e) => setStatus(e.target.value)}>
+                <MenuItem value=''>
+                  <em>None</em>
+                </MenuItem>
+                <MenuItem value={'New'}>New</MenuItem>
+                <MenuItem value={'Contacted'}>Contacted</MenuItem>
+                <MenuItem value={'Interested'}>Interested</MenuItem>
+                <MenuItem value={"Not Interested"}>Not Interested</MenuItem>
+                <MenuItem value={"Converted"}>Converted</MenuItem>
+                <MenuItem value={"Pending"}>Pending</MenuItem>
+                <MenuItem value={"In Progress"}>In Progress</MenuItem>
+                <MenuItem value={"Won"}>Won</MenuItem>
+                <MenuItem value={"Lost"}>Lost</MenuItem>
+              </Select>
+            </FormControl>
           </Box>
-          <TextField id='email' autoFocus fullWidth type='email' label='Email Address' /> */}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClose2} variant='outlined' color='secondary'>
+            Cancel
+          </Button>
+          <Button onClick={handleFilter} variant='contained'>
+            Ok
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {/* Lead Details */}
+      <Dialog fullScreen open={open} onClose={handleClose} aria-labelledby='form-dialog-title'>
+        <DialogTitle id='form-dialog-title'><Button onClick={handleClose}><i className="ri-arrow-left-s-line" /> </Button>Lead Details</DialogTitle>
+        <DialogContent>
+
 
           <Grid container spacing={6}>
             <DataProvider>
@@ -279,15 +287,15 @@ const Transactions = () => {
             </DataProvider>
           </Grid>
         </DialogContent>
-        <DialogActions>
+        {/* <DialogActions className='p-3'>
           <Button onClick={handleClose} variant='outlined' color='secondary'>
             Cancel
           </Button>
-          <Button onClick={handleClose} variant='contained' color='success'>
+          <Button onClick={() => callHandler(viewItem)} variant='contained' color='success'>
             Call
           </Button>
-        </DialogActions>
-      </Dialog>
+        </DialogActions> */}
+      </Dialog >
     </>
   )
 }

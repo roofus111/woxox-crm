@@ -1,6 +1,7 @@
 // React Imports
 'use client'
 import { useState, useEffect } from 'react'
+import './style.css';
 import axios from 'axios'
 import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
@@ -31,7 +32,7 @@ import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContentText from '@mui/material/DialogContentText'
-import { Box, CardMedia, Checkbox, FormControlLabel, Menu } from '@mui/material'
+import { AvatarGroup, Box, CardMedia, Checkbox, FormControlLabel, IconButton, List, ListItem, ListItemAvatar, ListItemButton, ListItemText, Menu, Tooltip } from '@mui/material'
 
 import Accordion from '@mui/material/Accordion'
 import AccordionSummary from '@mui/material/AccordionSummary'
@@ -40,7 +41,7 @@ import { toast } from 'react-toastify'
 import { useData } from '@/contexts/DataContext'
 import AppReactDatepicker from '@/libs/styles/AppReactDatepicker'
 import CustomInput from './CustomInput'
-
+import Fab from '@mui/material/Fab';
 import Select from '@mui/material/Select'
 import MenuItem from '@mui/material/MenuItem'
 import InputLabel from '@mui/material/InputLabel'
@@ -71,7 +72,10 @@ const UserDetails = props => {
     language: ['English'],
     country: 'France',
     useAsBillingAddress: true,
-    leadId: props.data._id
+    leadId: props.data._id,
+    createdAt: props.data.createdAt,
+    modify: props.data.updatedAt,
+    assigned: props.data.assignedTo
   }
   const [open, setOpen] = useState(false)
 
@@ -361,6 +365,57 @@ const UserDetails = props => {
     }
   };
 
+  const [openAssign, setOpenAssign] = useState(false)
+  const [selectedValue, setSelectedValue] = useState(userData?.assigned)
+  const [update, setupdate] = useState("")
+  const handleClickOpenAssign = () => setOpenAssign(true)
+
+  const handleDialogCloseAssign = () => setOpenAssign(false)
+
+  const handleCloseAssign = async value => {
+    setSelectedValue(value)
+
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        setError('No authorization token found.')
+
+        return
+      }
+      const response = await fetch(`http://localhost:8000/api/leads/assignlead/${userData.leadId}/${value}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        toast.error("Something goes wrong")
+      }
+
+      const data = await response.json();
+      toast.success(`Assigned Sucessfully`)
+      setIsOpen(!isOpen)
+      setupdate(data)
+      setOpenAssign(false)
+    } catch (error) {
+      console.error('Failed to update lead status:', error);
+      throw error; // Rethrow error to handle in the UI
+    }
+    // setStatus(newStatus);
+  }
+  const [isOpen, setIsOpen] = useState(false);
+
+  const toggleBox = () => {
+    setIsOpen(!isOpen);
+  };
+
+  const getTooltipTitle = () => {
+    if (update) return update?.assignedTo?.firstName;  // If update is true, show "Updated"
+    return userData?.assigned?.firstName;  // Otherwise, show the assigned user's first name
+  };
+
   return (
     <>
       <Dialog fullScreen open={open} onClose={handleClose} aria-labelledby='form-dialog-title'>
@@ -566,10 +621,52 @@ const UserDetails = props => {
         </DialogActions>
       </Dialog>
 
+
+      <Dialog onClose={handleDialogCloseAssign} aria-labelledby='simple-dialog-title' open={openAssign}>
+        <DialogTitle id='simple-dialog-title'>Assign Lead to</DialogTitle>
+        <List className='pt-0 px-0'>
+          {data.map((item, index) => (
+            <ListItem key={index} disablePadding onClick={() => handleCloseAssign(item._id)}>
+              <ListItemButton>
+                <ListItemAvatar>
+                  <CustomAvatar color='primary' skin='light'>
+                    <i className='ri-user-3-line' />
+                  </CustomAvatar>
+                </ListItemAvatar>
+                <ListItemText primary={item.firstName} />
+              </ListItemButton>
+            </ListItem>
+          ))}
+        </List>
+      </Dialog>
+
+
       <Card>
-        <CardMedia image={data?.coverImg} className='bs-[250px] bg-primary' />
+
+        <CardMedia image={data?.coverImg} className='bs-[150px] bg-primary'>
+          <Box display={'flex'} justifyContent={'flex-end'} height={'100%'} alignItems={'flex-end'} width={'100%'}>
+            {userData.assigned || update ?
+              <AvatarGroup className='pull-up m-3' max={3} >
+                <Tooltip title={getTooltipTitle()}>
+                  <Box display={'flex'}>
+                    <Avatar onClick={toggleBox} src='/images/avatars/4.png' />
+                    {isOpen && (
+                      <IconButton onClick={handleClickOpenAssign} aria-label='capture screenshot' style={{ color: 'white' }} size='small'>
+                        <i className='ri-user-search-fill text-xl' />
+                      </IconButton>
+                    )}
+                  </Box>
+                </Tooltip>
+                {/* <Tooltip title='Howard Lloyd'>
+                <Avatar src='/images/avatars/5.png' alt='Howard Lloyd' />
+              </Tooltip> */}
+              </AvatarGroup> : <Fab onClick={handleClickOpenAssign} className='m-2' aria-label='edit' size='small'>
+                <i className='ri-user-add-line' />
+              </Fab>}
+          </Box>
+        </CardMedia>
         <CardContent className='flex justify-center flex-col items-center gap-6 md:items-end md:flex-row !pt-0 md:justify-start'>
-          <div className='flex rounded-bs-xl mbs-[-30px] mli-[-5px] border-[5px] border-be-0 border-backgroundPaper bg-backgroundPaper'>
+          <div className='flex rounded-bs-xl mbs-[-30px] mli-[-5px] border-[5px] border-be-0 border-backgroundPaper bg-backgroundPaper '>
             <img height={120} width={120} src='/images/avatars/1.png' className='rounded' alt='Profile Background' />
           </div>
           <div className='flex is-full flex-wrap justify-start flex-col items-center sm:flex-row sm:justify-between sm:items-end gap-5'>
@@ -589,7 +686,7 @@ const UserDetails = props => {
               <span>{userData.status}</span>
             </Button> */}
 
-            <div>
+            <div >
               <Button
                 aria-controls={openstatus ? 'lead-status-menu' : undefined}
                 aria-haspopup="true"
@@ -681,6 +778,19 @@ const UserDetails = props => {
                   EDUCATION
                 </Typography>
                 {data?.teams && renderTeams(data?.teams)}
+              </div>
+              <div className='flex flex-col gap-4'>
+                <Typography className='uppercase' variant='body2' color='text.disabled'>
+                  OTHERS
+                </Typography>
+                <div className='flex items-center flex-wrap gap-2'>
+                  <Typography className='font-medium'>Created At</Typography>
+                  <Typography>{userData?.createdAt}</Typography>
+                </div>
+                <div className='flex items-center flex-wrap gap-2'>
+                  <Typography className='font-medium'>Last Update</Typography>
+                  <Typography>{userData?.modify}</Typography>
+                </div>
               </div>
             </CardContent>
           </Card>

@@ -1,0 +1,31 @@
+.container {
+  position: relative;
+  display: inline-block;
+}
+
+.avatar {
+  width: 50px;
+  height: 50px;
+  cursor: pointer;
+}
+
+.infoBox {
+  /* position: absolute; */
+  display: inline;
+  top: 0;
+  right: -100px; /* Start from outside the screen */
+  background-color: white;
+  border: 1px solid black;
+  padding: 10px;
+  width: 100px;
+  animation: slideIn 0.5s forwards;
+}
+
+@keyframes slideIn {
+  from {
+    right: -100px;
+  }
+  to {
+    right: 60px;
+  } /* Adjust this value based on desired final position */
+}

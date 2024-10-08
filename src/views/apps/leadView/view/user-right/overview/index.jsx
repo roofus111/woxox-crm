@@ -5,6 +5,7 @@ import Grid from '@mui/material/Grid'
 // Component Imports
 import ProjectListTable from './ProjectListTable'
 import UserActivityTimeLine from './UserActivityTimeline'
+import Progress from './Progress'
 import InvoiceListTable from './InvoiceListTable'
 
 // Data Imports
@@ -30,6 +31,9 @@ const OverViewTab = ({ props }) => {
 
   return (
     <Grid container spacing={6}>
+      <Grid item xs={12}>
+        <Progress id={props.viewItem._id} />
+      </Grid>
       <Grid item xs={12}>
         <ProjectListTable id={props.viewItem._id} />
       </Grid>

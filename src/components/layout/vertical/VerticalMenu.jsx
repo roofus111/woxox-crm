@@ -45,13 +45,13 @@ const VerticalMenu = ({ dictionary, scrollMenu }) => {
     <ScrollWrapper
       {...(isBreakpointReached
         ? {
-            className: 'bs-full overflow-y-auto overflow-x-hidden',
-            onScroll: container => scrollMenu(container, false)
-          }
+          className: 'bs-full overflow-y-auto overflow-x-hidden',
+          onScroll: container => scrollMenu(container, false)
+        }
         : {
-            options: { wheelPropagation: false, suppressScrollX: true },
-            onScrollY: container => scrollMenu(container, true)
-          })}
+          options: { wheelPropagation: false, suppressScrollX: true },
+          onScrollY: container => scrollMenu(container, true)
+        })}
     >
       {/* Incase you also want to scroll NavHeader to scroll with Vertical Menu, remove NavHeader from above and paste it below this comment */}
       {/* Vertical Menu */}
@@ -65,7 +65,7 @@ const VerticalMenu = ({ dictionary, scrollMenu }) => {
         <SubMenu
           label={'Leads'}
           icon={<i className='ri-home-smile-line' />}
-          // suffix={<Chip label='5' size='small' color='error' />}
+        // suffix={<Chip label='5' size='small' color='error' />}
         >
           <MenuItem href={`/${locale}/manager/leads`}>Leads</MenuItem>
           <MenuItem href={`/${locale}/manager/addleads`}>Add Leads</MenuItem>
@@ -74,9 +74,16 @@ const VerticalMenu = ({ dictionary, scrollMenu }) => {
         <SubMenu
           label={'Team'}
           icon={<i className='ri-home-smile-line' />}
-          // suffix={<Chip label='5' size='small' color='error' />}
+        // suffix={<Chip label='5' size='small' color='error' />}
         >
           <MenuItem href={`/${locale}/manager/team`}>Members</MenuItem>
+        </SubMenu>
+        <SubMenu
+          label={'Documentation'}
+          icon={<i className='ri-home-smile-line' />}
+        // suffix={<Chip label='5' size='small' color='error' />}
+        >
+          <MenuItem href={`/${locale}/manager/documentation`}>Tasks</MenuItem>
         </SubMenu>
         <SubMenu
           label={dictionary['navigation'].dashboards}

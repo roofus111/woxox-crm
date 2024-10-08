@@ -33,14 +33,14 @@ const UserRight = ({ tabContentList }) => {
                 value='billing-plans'
                 label='Billing & Plans'
                 iconPosition='start'
-              />
+              /> */}
               <Tab
                 icon={<i className='ri-notification-4-line' />}
                 value='notifications'
-                label='Notifications'
+                label='Billings'
                 iconPosition='start'
               />
-              <Tab icon={<i className='ri-link-m' />} value='connections' label='Connections' iconPosition='start' /> */}
+              {/* <Tab icon={<i className='ri-link-m' />} value='connections' label='Connections' iconPosition='start' /> */}
             </CustomTabList>
           </Grid>
           <Grid item xs={12}>

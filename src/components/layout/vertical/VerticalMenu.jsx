@@ -86,6 +86,13 @@ const VerticalMenu = ({ dictionary, scrollMenu }) => {
           <MenuItem href={`/${locale}/manager/documentation`}>Tasks</MenuItem>
         </SubMenu>
         <SubMenu
+          label={'Finance'}
+          icon={<i className='ri-home-smile-line' />}
+        // suffix={<Chip label='5' size='small' color='error' />}
+        >
+          <MenuItem href={`/${locale}/manager/saleRequest`}>Sales</MenuItem>
+        </SubMenu>
+        <SubMenu
           label={dictionary['navigation'].dashboards}
           icon={<i className='ri-home-smile-line' />}
           suffix={<Chip label='5' size='small' color='error' />}

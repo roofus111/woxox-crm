@@ -4,75 +4,9 @@ import { createSlice } from '@reduxjs/toolkit'
 // Data Imports
 import { db } from '@/fake-db/apps/kanban'
 
-const init = {
-  columns: [
-    {
-      id: 1,
-      title: 'Pending',
-      taskIds: []
-    },
-    {
-      id: 2,
-      title: 'In Review',
-      taskIds: []
-    },
-    {
-      id: 3,
-      title: 'Pending Documents',
-      taskIds: []
-    },
-    {
-      id: 4,
-      title: 'Documents Collected',
-      taskIds: []
-    },
-    {
-      id: 5,
-      title: 'Application Submitted',
-      taskIds: []
-    },
-    {
-      id: 6,
-      title: 'Interview Scheduled',
-      taskIds: []
-    },
-    {
-      id: 7,
-      title: 'Offer Letter Received',
-      taskIds: []
-    },
-    {
-      id: 8,
-      title: 'Offer letter Rejected',
-      taskIds: []
-    },
-    {
-      id: 9,
-      title: 'Visa Documentation',
-      taskIds: []
-    },
-    {
-      id: 10,
-      title: 'Visa Application Submitted',
-      taskIds: []
-    },
-    {
-      id: 11,
-      title: 'Visa Approved',
-      taskIds: []
-    },
-    {
-      id: 12,
-      title: 'Visa Rejected',
-      taskIds: []
-    }
-  ],
-  tasks: []
-}
-
 export const kanbanSlice = createSlice({
   name: 'kanban',
-  initialState: init,
+  initialState: db,
   reducers: {
     addColumn: (state, action) => {
       const maxId = Math.max(...state.columns.map(column => column.id))

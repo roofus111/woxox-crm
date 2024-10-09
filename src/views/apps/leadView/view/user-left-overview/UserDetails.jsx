@@ -47,6 +47,7 @@ import MenuItem from '@mui/material/MenuItem'
 import InputLabel from '@mui/material/InputLabel'
 import FormControl from '@mui/material/FormControl'
 import FormHelperText from '@mui/material/FormHelperText'
+import FormLayoutsCollapsible from '@/app/[lang]/(dashboard)/(private)/manager/leads/FormLayoutsCollapsible';
 // import Checkbox from '@mui/material'
 
 const UserDetails = props => {
@@ -416,6 +417,14 @@ const UserDetails = props => {
     return userData?.assigned?.firstName;  // Otherwise, show the assigned user's first name
   };
 
+  // States
+  const [open4, setOpen4] = useState(false)
+
+  const handleClickOpen4 = () => setOpen4(true)
+
+  const handleClose4 = () => setOpen4(false)
+
+
   return (
     <>
       <Dialog fullScreen open={open} onClose={handleClose} aria-labelledby='form-dialog-title'>
@@ -640,6 +649,23 @@ const UserDetails = props => {
         </List>
       </Dialog>
 
+      <Dialog open={open4} onClose={handleClose4} aria-labelledby='form-dialog-title'>
+        <DialogTitle id='form-dialog-title'>Complete Profile</DialogTitle>
+        <DialogContent>
+          <FormLayoutsCollapsible props={props.data} />
+        </DialogContent>
+        {/* <DialogActions>
+          <Button onClick={handleClose4} variant='outlined' color='secondary'>
+            Disagree
+          </Button>
+          <Button onClick={handleClose4} variant='contained'>
+            Agree
+          </Button>
+        </DialogActions> */}
+      </Dialog>
+
+
+
 
       <Card>
 
@@ -729,6 +755,10 @@ const UserDetails = props => {
                 </Typography>  <Button onClick={handleClickOpen} variant='contained' className='flex gap-2'>
                   <i className='ri-phone-line text-base'></i>
                   <span>Call</span>
+                </Button>
+                <Button onClick={handleClickOpen4} variant='contained' className='flex gap-2'>
+                  <i className='ri-user-add-line text-base'></i>
+                  <span>Complete Profile</span>
                 </Button>
                 <Button onClick={handleClickOpen2} variant='contained' className='flex gap-2'>
                   <i className='ri-calendar-line text-base'></i>

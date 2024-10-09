@@ -57,8 +57,7 @@ const FormLayoutsCollapsible = (props) => {
 
   // States
   const [expanded, setExpanded] = useState('panel1')
-  const [paymentMethod, setPaymentMethod] = useState('credit')
-  const [selectedOption, setSelectedOption] = useState(initialSelectedOption)
+
 
   const [cardData, setCardData] = useState({
     fullName: props.props.name || '', // Prefill fullName if provided
@@ -136,10 +135,10 @@ const FormLayoutsCollapsible = (props) => {
       })
 
       const data = await response.json()
+      setCardData(data);
 
       if (response.ok) {
         toast.success('Lead Updated successfully!')
-        // handleReset() // Reset form after successful submission
       } else {
         toast.error(data.message || 'An error occurred. Please try again.')
       }
@@ -151,7 +150,7 @@ const FormLayoutsCollapsible = (props) => {
   return (
 
     <>
-      <Accordion expanded={expanded === 'panel6'} onChange={handleExpandChange('panel6')}>
+      <Accordion expanded={expanded === 'panel1'} onChange={handleExpandChange('panel1')}>
         <AccordionSummary>
           <Typography>Personal Details</Typography>
         </AccordionSummary>
@@ -196,7 +195,7 @@ const FormLayoutsCollapsible = (props) => {
       </Accordion>
 
       {/* Address Section */}
-      <Accordion expanded={expanded === 'panel1'} onChange={handleExpandChange('panel1')}>
+      <Accordion expanded={expanded === 'panel2'} onChange={handleExpandChange('panel2')}>
         <AccordionSummary>
           <Typography>Address</Typography>
         </AccordionSummary>
@@ -258,7 +257,7 @@ const FormLayoutsCollapsible = (props) => {
       </Accordion>
 
       {/* Education Section */}
-      <Accordion expanded={expanded === 'panel2'} onChange={handleExpandChange('panel2')}>
+      <Accordion expanded={expanded === 'panel3'} onChange={handleExpandChange('panel3')}>
         <AccordionSummary>
           <Typography>Education</Typography>
         </AccordionSummary>
@@ -465,7 +464,7 @@ const FormLayoutsCollapsible = (props) => {
       </Accordion>
 
       {/* Admission Details Section */}
-      <Accordion expanded={expanded === 'panel3'} onChange={handleExpandChange('panel3')}>
+      <Accordion expanded={expanded === 'panel6'} onChange={handleExpandChange('panel6')}>
         <AccordionSummary>
           <Typography>Admission Details</Typography>
         </AccordionSummary>

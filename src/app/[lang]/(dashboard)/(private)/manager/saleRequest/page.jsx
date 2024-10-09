@@ -4,7 +4,7 @@
 // React Imports
 import { useEffect, useState } from 'react'
 import axios from 'axios'
-
+import Button from '@mui/material/Button'
 // MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
@@ -15,38 +15,6 @@ import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from '
 // Style Imports
 import styles from '@core/styles/table.module.css'
 
-// Data Imports
-import defaultData from './data'
-
-// Column Definitions
-const columnHelper = createColumnHelper()
-
-const columns = [
-    columnHelper.accessor('name', {
-        cell: info => info.getValue(),
-        header: 'Full Name'
-    }),
-    columnHelper.accessor('fullName', {
-        cell: info => info.getValue(),
-        header: 'Full Name'
-    }),
-    columnHelper.accessor('email', {
-        cell: info => info.getValue(),
-        header: 'Email'
-    }),
-    columnHelper.accessor('start_date', {
-        cell: info => info.getValue(),
-        header: 'Date'
-    }),
-    columnHelper.accessor('experience', {
-        cell: info => info.getValue(),
-        header: 'Experience'
-    }),
-    columnHelper.accessor('age', {
-        cell: info => info.getValue(),
-        header: 'Age'
-    })
-]
 
 const salesRequest = () => {
     // const [data, setData] = useState(null)
@@ -55,6 +23,50 @@ const salesRequest = () => {
     const [data, setData] = useState([])
 
     // Hooks
+
+
+    const columnHelper = createColumnHelper()
+
+    const columns = [
+        columnHelper.accessor('name', {
+            cell: info => info.getValue(),
+            header: 'Full Name'
+        }),
+        columnHelper.accessor('phone', {
+            cell: info => info.getValue(),
+            header: 'Phone'
+        }),
+        columnHelper.accessor('email', {
+            cell: info => info.getValue(),
+            header: 'Email'
+        }),
+        columnHelper.accessor('profile.countryOfInterest', {
+            cell: info => info.getValue(),
+            header: 'Country'
+        }),
+        columnHelper.accessor('profile.programOfInterest', {
+            cell: info => info.getValue(),
+            header: 'Course'
+        }),
+        columnHelper.accessor('', {
+            header: 'Actions',
+            cell: (info) => {
+                const rowData = info.row.original; // Access the original row data
+                return (
+                    <div>
+                        <Button><i className="ri-eye-fill"></i></Button>
+                        {rowData.status === 'Converted' ? (
+                            <>
+                                <Button color="success">Approve</Button>
+                                <Button color="error"><i className="ri-close-large-line"></i></Button>
+                            </>
+                        ) : null}
+                    </div>
+                );
+            }
+        })
+    ]
+
     const table = useReactTable({
         data,
         columns,
@@ -63,7 +75,6 @@ const salesRequest = () => {
             fuzzy: () => false
         }
     })
-
     useEffect(() => {
         let isMounted = true // Flag to check if component is still mounted
 
@@ -101,7 +112,7 @@ const salesRequest = () => {
     }, [])
     return (
         <Card>
-            <CardHeader title='Basic Table' />
+            <CardHeader title='Sales Request' />
             <div className='overflow-x-auto'>
                 <table className={styles.table}>
                     <thead>

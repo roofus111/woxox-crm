@@ -12,7 +12,7 @@ import { commonLayoutClasses } from '@layouts/utils/layoutClasses'
 import styles from '@views/apps/kanban/styles.module.css'
 
 // Slice Imports
-import { addColumn, updateColumns } from '@/redux-store/slices/kanban'
+import { addColumn, updateColumns, fetchInitialData } from '@/redux-store/slices/kanban'
 
 // Component Imports
 import KanbanList from './KanbanList'
@@ -20,13 +20,16 @@ import NewColumn from './NewColumn'
 import KanbanDrawer from './KanbanDrawer'
 
 const Documentation = () => {
+    const dispatch = useDispatch()
+    useEffect(() => {
+        dispatch(fetchInitialData());
+    }, [dispatch]);
 
-    // State
     const [drawerOpen, setDrawerOpen] = useState(false)
 
     // Hooks
     const kanbanStore = useSelector(state => state.kanbanReducer)
-    const dispatch = useDispatch()
+
 
     const [boardRef, columns, setColumns] = useDragAndDrop(kanbanStore.columns, {
         plugins: [animations()],
@@ -42,7 +45,8 @@ const Documentation = () => {
     }
 
     // To get the current task for the drawer
-    const currentTask = kanbanStore.tasks.find(task => task.id === kanbanStore.currentTaskId)
+    const currentTask = kanbanStore.lead.find(task => task._id === kanbanStore.currentTaskId)
+    console.log(kanbanStore.lead);
 
     // Update Columns on Drag and Drop
     useEffect(() => {
@@ -69,7 +73,7 @@ const Documentation = () => {
                             columns={columns}
                             setColumns={setColumns}
                             currentTask={currentTask}
-                            tasks={column.taskIds.map(taskId => kanbanStore.tasks.find(task => task.id === taskId))} />
+                            tasks={column.taskIds.map(taskId => kanbanStore.lead.find(task => task._id === taskId))} />
                     ))}
                 </div>
                 <NewColumn addNewColumn={addNewColumn} />

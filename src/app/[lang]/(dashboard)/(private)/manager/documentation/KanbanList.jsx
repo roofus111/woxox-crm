@@ -25,6 +25,7 @@ import styles from './styles.module.css'
 const KanbanList = props => {
   // Props
   const { column, tasks, dispatch, store, setDrawerOpen, columns, setColumns, currentTask } = props
+  console.log(props);
 
   // States
   const [editDisplay, setEditDisplay] = useState(false)
@@ -119,6 +120,8 @@ const KanbanList = props => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columns])
 
+  // console.log(tasksList);
+
   return (
     <div ref={tasksListRef} className='flex flex-col is-[16.5rem]'>
       {editDisplay ? (
@@ -176,17 +179,19 @@ const KanbanList = props => {
       {tasksList.map(
         task =>
           task && (
-            <TaskCard
-              key={task.id}
-              task={task}
-              dispatch={dispatch}
-              column={column}
-              setColumns={setColumns}
-              columns={columns}
-              setDrawerOpen={setDrawerOpen}
-              tasksList={tasksList}
-              setTasksList={setTasksList}
-            />
+
+            <p>tasks</p>
+            // <TaskCard
+            //   key={task.id}
+            //   task={task}
+            //   dispatch={dispatch}
+            //   column={column}
+            //   setColumns={setColumns}
+            //   columns={columns}
+            //   setDrawerOpen={setDrawerOpen}
+            //   tasksList={tasksList}
+            //   setTasksList={setTasksList}
+            // />
           )
       )}
       <NewTask addTask={addNewTask} />

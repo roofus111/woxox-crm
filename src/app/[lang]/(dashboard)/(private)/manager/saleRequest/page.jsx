@@ -14,6 +14,8 @@ import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from '
 
 // Style Imports
 import styles from '@core/styles/table.module.css'
+import { IconButton } from '@mui/material'
+import { toast } from 'react-toastify'
 
 
 const salesRequest = () => {
@@ -28,23 +30,27 @@ const salesRequest = () => {
     const columnHelper = createColumnHelper()
 
     const columns = [
-        columnHelper.accessor('name', {
+        columnHelper.accessor('SalesId', {
+            cell: info => `ID ${info.getValue()}`,
+            header: 'Ref. ID'
+        }),
+        columnHelper.accessor('LeadId.name', {
             cell: info => info.getValue(),
             header: 'Full Name'
         }),
-        columnHelper.accessor('phone', {
+        columnHelper.accessor('LeadId.phone', {
             cell: info => info.getValue(),
             header: 'Phone'
         }),
-        columnHelper.accessor('email', {
+        columnHelper.accessor('LeadId.email', {
             cell: info => info.getValue(),
             header: 'Email'
         }),
-        columnHelper.accessor('profile.countryOfInterest', {
+        columnHelper.accessor('LeadId.profile.countryOfInterest', {
             cell: info => info.getValue(),
             header: 'Country'
         }),
-        columnHelper.accessor('profile.programOfInterest', {
+        columnHelper.accessor('LeadId.profile.programOfInterest', {
             cell: info => info.getValue(),
             header: 'Course'
         }),
@@ -54,19 +60,51 @@ const salesRequest = () => {
                 const rowData = info.row.original; // Access the original row data
                 return (
                     <div>
-                        <Button><i className="ri-eye-fill"></i></Button>
-                        {rowData.status === 'Converted' ? (
+                        <IconButton color='primary' size='small'>
+                            <i className='ri-eye-fill ' />
+                        </IconButton>
+                        {rowData.LeadId.status === 'Converted' ? (
                             <>
-                                <Button color="success">Approve</Button>
-                                <Button color="error"><i className="ri-close-large-line"></i></Button>
+                                <Button onClick={() => handleApprove(rowData.LeadId._id)} color="success">Approve</Button>
+                                <IconButton color='error' size='small'>
+                                    <i className='ri-close-fill ' />
+                                </IconButton>
                             </>
-                        ) : null}
+                        ) : <IconButton color='primary' size='small'>
+                            <i className='ri-bill-fill ' />
+                        </IconButton>}
                     </div>
                 );
             }
         })
     ]
 
+    const handleApprove = async (id) => {
+        try {
+            const token = localStorage.getItem('token')
+            if (!token) {
+                toast.error('No authorization token found.')
+
+                return
+            }
+            const response = await fetch(`http://localhost:8000/api/leads/${id}/status`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ status: "Pending" }),
+            });
+            if (!response.ok) {
+                toast.error("Something goes wrong")
+            }
+            const data = await response.json();
+            toast.success(`Lead Status changes to ${data.lead.status}`)
+        } catch (error) {
+            console.error('Failed to update lead status:', error);
+            throw error; // Rethrow error to handle in the UI
+        }
+    }
     const table = useReactTable({
         data,
         columns,
@@ -87,15 +125,15 @@ const salesRequest = () => {
         }
 
         axios
-            .get('http://localhost:8000/api/leads/search?status=Converted', {
+            .get('http://localhost:8000/api/sales/', {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }
             })
             .then(response => {
                 if (isMounted) {
-                    setData(response.data.leads) // Update data if component is still mounted
-                    console.log(response.data.leads)
+                    setData(response.data.salesData) // Update data if component is still mounted
+                    console.log(response.data.salesData)
                     setLoading(false)
                 }
             })
@@ -129,7 +167,7 @@ const salesRequest = () => {
                     <tbody>
                         {table
                             .getRowModel()
-                            .rows.slice(0, 10)
+                            .rows.slice(0, 25)
                             .map(row => (
                                 <tr key={row.id}>
                                     {row.getVisibleCells().map(cell => (

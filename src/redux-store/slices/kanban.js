@@ -1,8 +1,18 @@
-// Third-party Imports
-import { createSlice } from '@reduxjs/toolkit'
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 
-// Data Imports
-import { db } from '@/fake-db/apps/kanban'
+// Define the async thunk for fetching tasks
+export const fetchInitialData = createAsyncThunk('kanban/fetchInitialData', async () => {
+  const token = localStorage.getItem('token')
+  const response = await fetch(`http://localhost:8000/api/leads/getleadsfordoc`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  })
+  const data = await response.json()
+  console.log('DOC-', data)
+
+  return data.leads
+})
 
 const init = {
   columns: [
@@ -67,7 +77,8 @@ const init = {
       taskIds: []
     }
   ],
-  tasks: []
+  tasks: [],
+  lead: []
 }
 
 export const kanbanSlice = createSlice({
@@ -159,6 +170,31 @@ export const kanbanSlice = createSlice({
     getCurrentTask: (state, action) => {
       state.currentTaskId = action.payload
     }
+  },
+  extraReducers: builder => {
+    builder
+      .addCase(fetchInitialData.pending, state => {
+        state.loading = true
+      })
+      .addCase(fetchInitialData.fulfilled, (state, action) => {
+        state.loading = false
+        const tasks = action.payload
+        console.log(action.payload)
+
+        // Populate the columns and tasks based on the fetched data
+        // Example: Assign tasks to columns based on some property of the tasks
+        tasks.forEach(task => {
+          const column = state.columns.find(c => c.title === task.status)
+          if (column) {
+            column.taskIds.push(task._id)
+          }
+        })
+        state.lead = tasks
+      })
+      .addCase(fetchInitialData.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.error.message
+      })
   }
 })
 export const {

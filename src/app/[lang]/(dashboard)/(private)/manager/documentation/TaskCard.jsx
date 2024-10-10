@@ -78,7 +78,8 @@ const TaskCard = props => {
 
   return (
     <>
-      <Card
+      <p>Task</p>
+      {/* <Card
         className={classnames(
           'item-draggable is-[16.5rem] cursor-grab active:cursor-grabbing overflow-visible mbe-4',
           styles.card
@@ -173,7 +174,7 @@ const TaskCard = props => {
             </div>
           ) : null}
         </CardContent>
-      </Card>
+      </Card> */}
     </>
   )
 }

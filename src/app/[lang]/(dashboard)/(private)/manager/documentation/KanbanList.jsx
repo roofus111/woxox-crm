@@ -25,7 +25,7 @@ import styles from './styles.module.css'
 const KanbanList = props => {
   // Props
   const { column, tasks, dispatch, store, setDrawerOpen, columns, setColumns, currentTask } = props
-  // console.log(column, tasks, store);
+  console.log(columns);
 
   // States
   const [editDisplay, setEditDisplay] = useState(false)
@@ -109,16 +109,22 @@ const KanbanList = props => {
 
   // To update the tasksList when columns are updated
   useEffect(() => {
-    let taskIds = []
+    // Collect all task IDs from all columns in a more efficient way
+    const taskIds = new Set(); // Use a Set for O(1) complexity on lookups
+    store.columns.forEach(col => {
+      col.taskIds.forEach(id => taskIds.add(id));
+    });
 
-    columns.map(col => {
-      taskIds = [...taskIds, ...col.taskIds]
-    })
-    const newTasksList = tasksList.filter(task => task && taskIds.includes(task.id))
+    // Create a new task list based on these IDs
+    const newTasksList = tasksList.filter(task => task && taskIds.has(task.id));
 
-    setTasksList(newTasksList)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columns])
+    // Only update the state if there are changes
+    if (newTasksList.length !== tasksList.length) {
+      setTasksList(newTasksList);
+    }
+  }, [columns, store.columns, tasksList, setTasksList]);
+
+  // console.log(tasksList);
 
   return (
     <div ref={tasksListRef} className='flex flex-col is-[16.5rem]'>

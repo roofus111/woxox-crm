@@ -1,5 +1,42 @@
 // Third-party Imports
 import { createSlice } from '@reduxjs/toolkit'
+import { createAsyncThunk } from '@reduxjs/toolkit';
+
+export const fetchTasks = createAsyncThunk(
+    'kanban/fetchTasks',
+    async (_, { rejectWithValue }) => {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                console.error("Authentication token is missing");
+                return; // Exit if no token is available
+            }
+            const response = await fetch(`http://localhost:8000/api/leads/getleadsfordoc`, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            const data = await response.json();
+            return data.leads;
+        } catch (error) {
+            return rejectWithValue(error.message);
+        }
+    }
+);
+function createTask(taskData, lastId) {
+    return {
+        id: taskData._id || lastId + 1,
+        title: taskData._id || 'No Title Provided',
+        badgeText: taskData.badgeText || ['UX'],
+        attachments: taskData.attachments || 0,
+        comments: taskData.comments || 0,
+        assigned: taskData.assigned || [],
+        dueDate: taskData.dueDate || new Date(new Date().getFullYear(), 11, 30)
+    };
+}
 
 // Data Imports
 import { db } from '@/fake-db/apps/kanban'
@@ -11,7 +48,7 @@ export const kanbanSlice = createSlice({
             {
                 id: 1,
                 title: 'Pending',
-                taskIds: [1]
+                taskIds: []
             },
             {
                 id: 2,
@@ -69,19 +106,7 @@ export const kanbanSlice = createSlice({
                 taskIds: []
             }
         ],
-        tasks: [{
-            id: 1,
-            title: 'Research FAQ page UX',
-            badgeText: ['UX'],
-            attachments: 4,
-            comments: 12,
-            assigned: [
-                { src: '/images/avatars/1.png', name: 'John Doe' },
-                { src: '/images/avatars/2.png', name: 'Jane Smith' },
-                { src: '/images/avatars/3.png', name: 'Robert Johnson' }
-            ],
-            dueDate: new Date(new Date().getFullYear(), 11, 30)
-        }],
+        tasks: [],
     },
     reducers: {
         addColumn: (state, action) => {
@@ -130,10 +155,12 @@ export const kanbanSlice = createSlice({
         addTask: (state, action) => {
             const { columnId, title } = action.payload
             // console.log(columnId, title);
-
+            let id = state.tasks.length > 0 && state.tasks[state.tasks.length - 1].id
+                ? state.tasks[state.tasks.length - 1].id + 1
+                : 1;
             const newTask = {
-                id: state.tasks[state.tasks.length - 1].id + 1,
-                title: 'Research FAQ page UX',
+                id: id,
+                title: title,
                 badgeText: ['UX'],
                 attachments: 4,
                 comments: 12,
@@ -144,18 +171,8 @@ export const kanbanSlice = createSlice({
                 ],
                 dueDate: new Date(new Date().getFullYear(), 11, 30)
             }
-            console.log(newTask);
-
-            const column = state.columns.find(column => column.id === columnId)
-
-
-            if (column) {
-                console.log("column");
-                column.taskIds.push(newTask.id)
-            }
-
+            state.columns[columnId - 1].taskIds.push(id)
             state.tasks.push(newTask)
-
             return state
         },
         editTask: (state, action) => {
@@ -182,6 +199,33 @@ export const kanbanSlice = createSlice({
         getCurrentTask: (state, action) => {
             state.currentTaskId = action.payload
         }
+    },
+    extraReducers: (builder) => {
+        builder
+            .addCase(fetchTasks.pending, (state) => {
+                state.loading = true;
+            })
+            .addCase(fetchTasks.fulfilled, (state, action) => {
+                state.loading = false;
+                state.error = null;
+                action.payload.forEach(task => {
+                    // Check if the task ID already exists in the state to avoid duplicates
+                    if (!state.tasks.find(t => t.id === task._id)) {
+                        const newTask = createTask(task, state.taskCounter);
+                        state.tasks.push(newTask);
+                        const columnId = task.columnId || 1; // Use dynamic value or default
+                        const column = state.columns.find(column => column.id === columnId);
+                        if (column) {
+                            column.taskIds.push(newTask.id);
+                        }
+                        state.taskCounter = newTask.id; // Update the taskCounter to the latest task ID
+                    }
+                });
+            })
+            .addCase(fetchTasks.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
+            });
     }
 })
 export const {

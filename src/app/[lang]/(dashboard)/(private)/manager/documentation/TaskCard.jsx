@@ -78,8 +78,7 @@ const TaskCard = props => {
 
   return (
     <>
-      <p>Task</p>
-      {/* <Card
+      <Card
         className={classnames(
           'item-draggable is-[16.5rem] cursor-grab active:cursor-grabbing overflow-visible mbe-4',
           styles.card
@@ -136,11 +135,11 @@ const TaskCard = props => {
             {task.title}
           </Typography>
           {(task.attachments !== undefined && task.attachments > 0) ||
-          (task.comments !== undefined && task.comments > 0) ||
-          (task.assigned !== undefined && task.assigned.length > 0) ? (
+            (task.comments !== undefined && task.comments > 0) ||
+            (task.assigned !== undefined && task.assigned.length > 0) ? (
             <div className='flex justify-between items-center gap-4 is-full'>
               {(task.attachments !== undefined && task.attachments > 0) ||
-              (task.comments !== undefined && task.comments > 0) ? (
+                (task.comments !== undefined && task.comments > 0) ? (
                 <div className='flex gap-4'>
                   {task.attachments !== undefined && task.attachments > 0 && (
                     <div className='flex items-center gap-1'>
@@ -174,7 +173,7 @@ const TaskCard = props => {
             </div>
           ) : null}
         </CardContent>
-      </Card> */}
+      </Card>
     </>
   )
 }

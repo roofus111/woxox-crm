@@ -7,7 +7,7 @@ import { animations } from '@formkit/drag-and-drop'
 import { useDispatch, useSelector } from 'react-redux'
 
 // Slice Imports
-import { addColumn, addTask, updateColumns } from '@/redux-store/slices/kanban'
+import { addColumn, addTask, updateColumns, fetchTasks } from '@/redux-store/slices/kanban'
 
 // Component Imports
 import KanbanList from './KanbanList'
@@ -16,27 +16,55 @@ import KanbanDrawer from './KanbanDrawer'
 
 const KanbanBoard = () => {
 
-    const dispatch = useDispatch()
-    const fetchData = async () => {
-        const token = localStorage.getItem('token')
-        const response = await fetch(`http://localhost:8000/api/leads/getleadsfordoc`, {
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
-        })
-        const data = await response.json()
-        const columnId = 1;
-        data.leads.map(lead => {
-            dispatch(addTask({
-                columnId,
-                title: lead._id
-            }));
-        })
-    }
+    const dispatch = useDispatch();
+    // const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        fetchData()
-    }, [])
+        dispatch(fetchTasks());
+    }, [dispatch]);
+
+    // const fetchData = async () => {
+
+    //     setLoading(true);
+
+    //     try {
+    //         const token = localStorage.getItem('token'); if (!token) {
+    //             console.error("Authentication token is missing");
+    //             return; // Exit if no token is available
+    //         }
+    //         const response = await fetch(`http://localhost:8000/api/leads/getleadsfordoc`, {
+    //             headers: {
+    //                 Authorization: `Bearer ${token}`
+    //             }
+    //         });
+    //         if (!response.ok) {
+    //             throw new Error(`HTTP error! status: ${response.status}`);
+    //         }
+    //         const data = await response.json();
+    //         const columnId = 2;
+    //         // Dispatch actions after all leads are fetched
+    //         const tasks = data.leads.map(lead => dispatch(addTask({
+    //             columnId,
+    //             title: lead._id
+    //         })));
+
+    //         await Promise.all(tasks);
+    //         // console.log('Dispatched all tasks:', tasks);
+    //     } catch (error) {
+    //         console.error("Failed to fetch data:", error);
+    //     } finally {
+    //         setLoading(false);
+    //     }
+    // };
+
+    // useEffect(() => {
+    //     fetchData();
+
+    //     return () => {
+    //         console.log("Cleanup if needed");
+    //         // Cleanup actions, like cancelling subscriptions or invalidating timers
+    //     };
+    // }, []); // Ensures this runs only once after the initial render
 
 
 
@@ -46,12 +74,15 @@ const KanbanBoard = () => {
 
     // Hooks
     const kanbanStore = useSelector(state => state.kanbanReducer)
+    const kanbanColumns = useSelector(state => state.kanbanReducer.columns)
+    const loading = useSelector(state => state.kanbanReducer.loading)
 
 
-    const [boardRef, columns, setColumns] = useDragAndDrop(kanbanStore.columns, {
+    const [boardRef, columns, setColumns] = useDragAndDrop(kanbanColumns, {
         plugins: [animations()],
         dragHandle: '.list-handle'
     })
+
 
     // Add New Column
     const addNewColumn = title => {
@@ -72,21 +103,25 @@ const KanbanBoard = () => {
 
     return (
         <div className='flex items-start gap-6'>
-            <div ref={boardRef} className='flex gap-6'>
-                {columns.map(column => (
-                    <KanbanList
-                        key={column.id}
-                        dispatch={dispatch}
-                        column={column}
-                        store={kanbanStore}
-                        setDrawerOpen={setDrawerOpen}
-                        columns={columns}
-                        setColumns={setColumns}
-                        currentTask={currentTask}
-                        tasks={column.taskIds.map(taskId => kanbanStore.tasks.find(task => task.id === taskId))}
-                    />
-                ))}
-            </div>
+            {loading ? (
+                <p>Loading...</p> // Show loading message or spinner during the loading state
+            ) : (
+                <div ref={boardRef} className='flex gap-6'>
+                    {columns.map(column => (
+                        <KanbanList
+                            key={column.id}
+                            dispatch={dispatch}
+                            column={column}
+                            store={kanbanStore}
+                            setDrawerOpen={setDrawerOpen}
+                            columns={columns}
+                            setColumns={setColumns}
+                            currentTask={currentTask}
+                            tasks={column.taskIds.map(taskId => kanbanStore.tasks.find(task => task.id === taskId))}
+                        />
+                    ))}
+                </div>
+            )}
             <NewColumn addNewColumn={addNewColumn} />
             {currentTask && (
                 <KanbanDrawer

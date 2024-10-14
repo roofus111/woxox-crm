@@ -16,6 +16,8 @@ import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from '
 import styles from '@core/styles/table.module.css'
 import { IconButton } from '@mui/material'
 import { toast } from 'react-toastify'
+import Link from 'next/link'
+
 
 
 const salesRequest = () => {
@@ -23,8 +25,6 @@ const salesRequest = () => {
     const [error, setError] = useState(null)
     const [loading, setLoading] = useState(true)
     const [data, setData] = useState([])
-
-    // Hooks
 
 
     const columnHelper = createColumnHelper()
@@ -70,9 +70,12 @@ const salesRequest = () => {
                                     <i className='ri-close-fill ' />
                                 </IconButton>
                             </>
-                        ) : <IconButton color='primary' size='small'>
-                            <i className='ri-bill-fill ' />
-                        </IconButton>}
+                        ) : <Link href={`saleRequest/createInvoice?id=${rowData.LeadId._id}`} passHref>
+                            <IconButton color="primary" size="small">
+                                <i className="ri-bill-fill" />
+                            </IconButton>
+                        </Link>
+                        }
                     </div>
                 );
             }

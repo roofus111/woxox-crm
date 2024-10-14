@@ -1,7 +1,18 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 
 // Define the async thunk for fetching tasks
+export const fetchInitialData = createAsyncThunk('kanban/fetchInitialData', async () => {
+  const token = localStorage.getItem('token')
+  const response = await fetch(`http://localhost:8000/api/leads/getleadsfordoc`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  })
+  const data = await response.json()
+  // console.log('DOC-', data)
 
+  return data.leads
+})
 
 const init = {
   columns: [

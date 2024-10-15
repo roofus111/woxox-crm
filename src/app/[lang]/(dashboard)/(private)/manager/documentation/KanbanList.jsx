@@ -23,182 +23,182 @@ import NewTask from './NewTask'
 import styles from './styles.module.css'
 
 const KanbanList = props => {
-  // Props
-  const { column, tasks, dispatch, store, setDrawerOpen, columns, setColumns, currentTask } = props
-  console.log(columns);
+    // Props
+    const { column, tasks, dispatch, store, setDrawerOpen, columns, setColumns, currentTask } = props
+    console.log(columns);
 
-  // States
-  const [editDisplay, setEditDisplay] = useState(false)
-  const [title, setTitle] = useState(column.title)
+    // States
+    const [editDisplay, setEditDisplay] = useState(false)
+    const [title, setTitle] = useState(column.title)
 
-  // Hooks
-  const [tasksListRef, tasksList, setTasksList] = useDragAndDrop(tasks, {
-    group: 'tasksList',
-    plugins: [animations()],
-    draggable: el => el.classList.contains('item-draggable')
-  })
-
-  // Add New Task
-  const addNewTask = title => {
-    dispatch(addTask({ columnId: column.id, title: title }))
-    setTasksList([...tasksList, { id: store.tasks[store.tasks.length - 1].id + 1, title }])
-
-    const newColumns = columns.map(col => {
-      if (col.id === column.id) {
-        return { ...col, taskIds: [...col.taskIds, store.tasks[store.tasks.length - 1].id + 1] }
-      }
-
-      return col
+    // Hooks
+    const [tasksListRef, tasksList, setTasksList] = useDragAndDrop(tasks, {
+        group: 'tasksList',
+        plugins: [animations()],
+        draggable: el => el.classList.contains('item-draggable')
     })
 
-    setColumns(newColumns)
-  }
+    // Add New Task
+    const addNewTask = title => {
+        dispatch(addTask({ columnId: column.id, title: title }))
+        setTasksList([...tasksList, { id: store.tasks[store.tasks.length - 1].id + 1, title }])
 
-  // Handle Submit Edit
-  const handleSubmitEdit = e => {
-    e.preventDefault()
-    setEditDisplay(!editDisplay)
-    dispatch(editColumn({ id: column.id, title }))
-
-    const newColumn = columns.map(col => {
-      if (col.id === column.id) {
-        return { ...col, title }
-      }
-
-      return col
-    })
-
-    setColumns(newColumn)
-  }
-
-  // Cancel Edit
-  const cancelEdit = () => {
-    setEditDisplay(!editDisplay)
-    setTitle(column.title)
-  }
-
-  // Delete Column
-  const handleDeleteColumn = () => {
-    dispatch(deleteColumn({ columnId: column.id }))
-    setColumns(columns.filter(col => col.id !== column.id))
-  }
-
-  // Update column taskIds on drag and drop
-  useEffect(() => {
-    if (tasksList !== tasks) {
-      dispatch(updateColumnTaskIds({ id: column.id, tasksList }))
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasksList])
-
-  // To update the tasksList when a task is edited
-  useEffect(() => {
-    const newTasks = tasksList.map(task => {
-      if (task?.id === currentTask?.id) {
-        return currentTask
-      }
-
-      return task
-    })
-
-    if (currentTask !== tasksList.find(task => task?.id === currentTask?.id)) {
-      setTasksList(newTasks)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentTask])
-
-  // To update the tasksList when columns are updated
-  useEffect(() => {
-    // Collect all task IDs from all columns in a more efficient way
-    const taskIds = new Set(); // Use a Set for O(1) complexity on lookups
-    store.columns.forEach(col => {
-      col.taskIds.forEach(id => taskIds.add(id));
-    });
-
-    // Create a new task list based on these IDs
-    const newTasksList = tasksList.filter(task => task && taskIds.has(task.id));
-
-    // Only update the state if there are changes
-    if (newTasksList.length !== tasksList.length) {
-      setTasksList(newTasksList);
-    }
-  }, [columns, store.columns, tasksList, setTasksList]);
-
-  // console.log(tasksList);
-
-  return (
-    <div ref={tasksListRef} className='flex flex-col is-[16.5rem]'>
-      {editDisplay ? (
-        <form
-          className='flex items-center mbe-4'
-          onSubmit={handleSubmitEdit}
-          onKeyDown={e => {
-            if (e.key === 'Escape') {
-              cancelEdit()
+        const newColumns = columns.map(col => {
+            if (col.id === column.id) {
+                return { ...col, taskIds: [...col.taskIds, store.tasks[store.tasks.length - 1].id + 1] }
             }
-          }}
-        >
-          <InputBase value={title} autoFocus onChange={e => setTitle(e.target.value)} required />
-          <IconButton color='success' size='small' type='submit'>
-            <i className='ri-check-line' />
-          </IconButton>
-          <IconButton color='error' size='small' type='reset' onClick={cancelEdit}>
-            <i className='ri-close-line' />
-          </IconButton>
-        </form>
-      ) : (
-        <div
-          id='no-drag'
-          className={classnames(
-            'flex items-center justify-between is-[16.5rem] bs-[2.125rem] mbe-4',
-            styles.kanbanColumn
-          )}
-        >
-          <Typography variant='h5' noWrap className='max-is-[80%]'>
-            {column.title}
-          </Typography>
-          <div className='flex items-center'>
-            <i className={classnames('ri-drag-move-fill text-textSecondary list-handle', styles.drag)} />
-            <OptionMenu
-              iconClassName='text-xl text-textPrimary'
-              options={[
-                {
-                  text: 'Edit',
-                  icon: 'ri-pencil-line text-base',
-                  menuItemProps: {
-                    className: 'flex items-center gap-2',
-                    onClick: () => setEditDisplay(!editDisplay)
-                  }
-                },
-                {
-                  text: 'Delete',
-                  icon: 'ri-delete-bin-line text-base',
-                  menuItemProps: { className: 'flex items-center gap-2', onClick: handleDeleteColumn }
-                }
-              ]}
-            />
-          </div>
+
+            return col
+        })
+
+        setColumns(newColumns)
+    }
+
+    // Handle Submit Edit
+    const handleSubmitEdit = e => {
+        e.preventDefault()
+        setEditDisplay(!editDisplay)
+        dispatch(editColumn({ id: column.id, title }))
+
+        const newColumn = columns.map(col => {
+            if (col.id === column.id) {
+                return { ...col, title }
+            }
+
+            return col
+        })
+
+        setColumns(newColumn)
+    }
+
+    // Cancel Edit
+    const cancelEdit = () => {
+        setEditDisplay(!editDisplay)
+        setTitle(column.title)
+    }
+
+    // Delete Column
+    const handleDeleteColumn = () => {
+        dispatch(deleteColumn({ columnId: column.id }))
+        setColumns(columns.filter(col => col.id !== column.id))
+    }
+
+    // Update column taskIds on drag and drop
+    useEffect(() => {
+        if (tasksList !== tasks) {
+            dispatch(updateColumnTaskIds({ id: column.id, tasksList }))
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tasksList])
+
+    // To update the tasksList when a task is edited
+    useEffect(() => {
+        const newTasks = tasksList.map(task => {
+            if (task?.id === currentTask?.id) {
+                return currentTask
+            }
+
+            return task
+        })
+
+        if (currentTask !== tasksList.find(task => task?.id === currentTask?.id)) {
+            setTasksList(newTasks)
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentTask])
+
+    // To update the tasksList when columns are updated
+    useEffect(() => {
+        // Collect all task IDs from all columns in a more efficient way
+        const taskIds = new Set(); // Use a Set for O(1) complexity on lookups
+        store.columns.forEach(col => {
+            col.taskIds.forEach(id => taskIds.add(id));
+        });
+
+        // Create a new task list based on these IDs
+        const newTasksList = tasksList.filter(task => task && taskIds.has(task.id));
+
+        // Only update the state if there are changes
+        if (newTasksList.length !== tasksList.length) {
+            setTasksList(newTasksList);
+        }
+    }, [columns, store.columns, tasksList, setTasksList]);
+
+    // console.log(tasksList);
+
+    return (
+        <div ref={tasksListRef} className='flex flex-col is-[16.5rem]'>
+            {editDisplay ? (
+                <form
+                    className='flex items-center mbe-4'
+                    onSubmit={handleSubmitEdit}
+                    onKeyDown={e => {
+                        if (e.key === 'Escape') {
+                            cancelEdit()
+                        }
+                    }}
+                >
+                    <InputBase value={title} autoFocus onChange={e => setTitle(e.target.value)} required />
+                    <IconButton color='success' size='small' type='submit'>
+                        <i className='ri-check-line' />
+                    </IconButton>
+                    <IconButton color='error' size='small' type='reset' onClick={cancelEdit}>
+                        <i className='ri-close-line' />
+                    </IconButton>
+                </form>
+            ) : (
+                <div
+                    id='no-drag'
+                    className={classnames(
+                        'flex items-center justify-between is-[16.5rem] bs-[2.125rem] mbe-4',
+                        styles.kanbanColumn
+                    )}
+                >
+                    <Typography variant='h5' noWrap className='max-is-[80%]'>
+                        {column.title}
+                    </Typography>
+                    <div className='flex items-center'>
+                        <i className={classnames('ri-drag-move-fill text-textSecondary list-handle', styles.drag)} />
+                        <OptionMenu
+                            iconClassName='text-xl text-textPrimary'
+                            options={[
+                                {
+                                    text: 'Edit',
+                                    icon: 'ri-pencil-line text-base',
+                                    menuItemProps: {
+                                        className: 'flex items-center gap-2',
+                                        onClick: () => setEditDisplay(!editDisplay)
+                                    }
+                                },
+                                {
+                                    text: 'Delete',
+                                    icon: 'ri-delete-bin-line text-base',
+                                    menuItemProps: { className: 'flex items-center gap-2', onClick: handleDeleteColumn }
+                                }
+                            ]}
+                        />
+                    </div>
+                </div>
+            )}
+            {tasksList.map(
+                task =>
+                    task && (
+                        <TaskCard
+                            key={task.id}
+                            task={task}
+                            dispatch={dispatch}
+                            column={column}
+                            setColumns={setColumns}
+                            columns={columns}
+                            setDrawerOpen={setDrawerOpen}
+                            tasksList={tasksList}
+                            setTasksList={setTasksList}
+                        />
+                    )
+            )}
+            <NewTask addTask={addNewTask} />
         </div>
-      )}
-      {tasksList.map(
-        task =>
-          task && (
-            <TaskCard
-              key={task.id}
-              task={task}
-              dispatch={dispatch}
-              column={column}
-              setColumns={setColumns}
-              columns={columns}
-              setDrawerOpen={setDrawerOpen}
-              tasksList={tasksList}
-              setTasksList={setTasksList}
-            />
-          )
-      )}
-      <NewTask addTask={addNewTask} />
-    </div>
-  )
+    )
 }
 
 export default KanbanList

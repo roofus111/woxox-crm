@@ -29,7 +29,7 @@ import Logo from '@components/layout/shared/Logo'
 // Styled Component Imports
 import AppReactDatepicker from '@/libs/styles/AppReactDatepicker'
 
-const AddAction = ({ invoiceData }) => {
+const AddAction = (props) => {
   // States
   const [open, setOpen] = useState(false)
   const [count, setCount] = useState(1)
@@ -53,6 +53,9 @@ const AddAction = ({ invoiceData }) => {
     e.target.closest('.repeater-item').remove()
   }
 
+  console.log(formData);
+
+
   return (
     <>
       <Card>
@@ -65,10 +68,12 @@ const AddAction = ({ invoiceData }) => {
                     <div className='flex items-center'>
                       <Logo />
                     </div>
+
+                    {/* Replace with dynamic content */}
                     <div>
-                      <Typography color='text.primary'>Office 149, 450 South Brand Brooklyn</Typography>
-                      <Typography color='text.primary'>San Diego County, CA 91905, USA</Typography>
-                      <Typography color='text.primary'>+1 (123) 456 7891, +44 (876) 543 2198</Typography>
+                      <Typography color='text.primary'>General Hospital Rd, opp. st joseph school,<br /> near indian oil pump,</Typography>
+                      <Typography color='text.primary'>Jai Vihar, Kunnukuzhy, <br /> Thiruvananthapuram, Kerala 695003</Typography>
+                      <Typography color='text.primary'>+91 73063 85701 | info@canbridge.in</Typography>
                     </div>
                   </div>
                   <div className='flex flex-col gap-2'>
@@ -122,7 +127,8 @@ const AddAction = ({ invoiceData }) => {
                   <Typography className='font-medium' color='text.primary'>
                     Invoice To:
                   </Typography>
-                  <Select
+                  {/*
+                   <Select
                     className={classnames('min-is-[200px]', { 'is-1/2': isBelowSmScreen })}
                     size='small'
                     value={selectData?.id || ''}
@@ -142,31 +148,32 @@ const AddAction = ({ invoiceData }) => {
                       <i className='ri-add-line' />
                       Add New Customer
                     </MenuItem>
-                    {/* {invoiceData?.slice(0, 5).map((invoice, index) => (
+                    {invoiceData?.slice(0, 5).map((invoice, index) => (
                       <MenuItem key={index} value={invoice.id}>
                         {invoice.name}
                       </MenuItem>
-                    ))} */}
-                  </Select>
-                  {selectData?.id ? (
+                    ))}
+                  </Select> 
+                  */}
+                  {props.data?._id ? (
                     <div>
-                      <Typography>{selectData?.name}</Typography>
-                      <Typography>{selectData?.company}</Typography>
-                      <Typography>{selectData?.address}</Typography>
-                      <Typography>{selectData?.contact}</Typography>
-                      <Typography>{selectData?.companyEmail}</Typography>
+                      <Typography>{props.data?.name}</Typography>
+                      <Typography>{props.data?.profile?.address}</Typography>
+                      <Typography>{props.data?.profile?.city} {props.data?.profile?.pinCode}</Typography>
+                      <Typography>{props.data?.profile?.state}</Typography>
+                      <Typography>{props.data?.phone}</Typography>
                     </div>
                   ) : (
                     <div>
-                      <Typography>{formData?.name}</Typography>
+                      {/* <Typography>{formData?.name}</Typography>
                       <Typography>{formData?.company}</Typography>
                       <Typography>{formData?.address}</Typography>
                       <Typography>{formData?.contactNumber}</Typography>
-                      <Typography>{formData?.email}</Typography>
+                      <Typography>{formData?.email}</Typography> */}
                     </div>
                   )}
                 </div>
-                <div className='flex flex-col gap-4'>
+                {/* <div className='flex flex-col gap-4'>
                   <Typography className='font-medium' color='text.primary'>
                     Bill To:
                   </Typography>
@@ -192,7 +199,7 @@ const AddAction = ({ invoiceData }) => {
                       <Typography>BR91905</Typography>
                     </div>
                   </div>
-                </div>
+                </div> */}
               </div>
             </Grid>
 

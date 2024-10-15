@@ -1,5 +1,7 @@
 'use client'
+import { useState, useEffect } from 'react'
 import Grid from '@mui/material/Grid'
+import axios from 'axios'
 import { useSearchParams } from 'next/navigation'
 
 // Component Imports
@@ -9,33 +11,35 @@ import AddActions from '@views/apps/manager/invoice/add/AddActions'
 // Data Imports
 import { getInvoiceData } from '@/app/server/actions'
 
-/**
- * ! If you need data using an API call, uncomment the below API code, update the `process.env.API_URL` variable in the
- * ! `.env` file found at root of your project and also update the API endpoints like `/apps/invoice` in below example.
- * ! Also, remove the above server action import and the action itself from the `src/app/server/actions.ts` file to clean up unused code
- * ! because we've used the server action for getting our static data.
- */
-/* const getInvoiceData = async () => {
-  // Vars
-  const res = await fetch(`${process.env.API_URL}/apps/invoice`)
-
-  if (!res.ok) {
-    throw new Error('Failed to fetch invoice data')
-  }
-
-  return res.json()
-}
- */
 const InvoiceAdd = () => {
     // Vars
 
     const searchParams = useSearchParams()
     const id = searchParams.get('id')
+    const [data, setData] = useState([])
+
+    useEffect(() => {
+        const token = localStorage.getItem('token')
+        axios
+            .get(`http://localhost:8000/api/leads/leads/${id}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                setData(response.data) // Update data if component is still mounted
+                console.log(response.data)
+            })
+            .catch(error => {
+                console.error('Failed to fetch data:', error)
+            })
+    }, [])
+
 
     return (
         <Grid container spacing={6}>
             <Grid item xs={12} md={9}>
-                <AddCard />
+                <AddCard data={data} />
             </Grid>
             <Grid item xs={12} md={3}>
                 <AddActions />

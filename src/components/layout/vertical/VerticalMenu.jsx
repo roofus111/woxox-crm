@@ -90,7 +90,9 @@ const VerticalMenu = ({ dictionary, scrollMenu }) => {
           icon={<i className='ri-home-smile-line' />}
         // suffix={<Chip label='5' size='small' color='error' />}
         >
-          <MenuItem href={`/${locale}/manager/saleRequest`}>Sales</MenuItem>
+          <MenuItem href={`/${locale}/manager/saleRequest`}>Sales Request</MenuItem>
+          <MenuItem href={`/${locale}/manager/saleRequest/invoice`}>Invoice</MenuItem>
+          <MenuItem href={`/${locale}/manager/saleRequest/transaction`}>Transaction</MenuItem>
         </SubMenu>
         <SubMenu
           label={dictionary['navigation'].dashboards}

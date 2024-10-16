@@ -38,12 +38,12 @@ const InvoiceAdd = () => {
 
     return (
         <Grid container spacing={6}>
-            <Grid item xs={12} md={9}>
+            <Grid item xs={12} md={12}>
                 <AddCard data={data} />
             </Grid>
-            <Grid item xs={12} md={3}>
+            {/* <Grid item xs={12} md={3}>
                 <AddActions />
-            </Grid>
+            </Grid> */}
         </Grid>
     )
 }

@@ -1,7 +1,7 @@
 'use client'
 
 // React Imports
-import { useState } from 'react'
+import React, { useState, useEffect } from 'react';
 
 // MUI Imports
 import Grid from '@mui/material/Grid'
@@ -32,11 +32,9 @@ import AppReactDatepicker from '@/libs/styles/AppReactDatepicker'
 const AddAction = (props) => {
   // States
   const [open, setOpen] = useState(false)
-  const [count, setCount] = useState(1)
   const [selectData, setSelectData] = useState(null)
   const [issuedDate, setIssuedDate] = useState(null)
   const [dueDate, setDueDate] = useState(null)
-  const [formData, setFormData] = useState(initialFormData)
 
   // Hooks
   const isBelowMdScreen = useMediaQuery(theme => theme.breakpoints.down('md'))
@@ -46,14 +44,58 @@ const AddAction = (props) => {
     setFormData(data)
   }
 
-  const deleteForm = e => {
-    e.preventDefault()
 
-    // @ts-ignore
-    e.target.closest('.repeater-item').remove()
-  }
+  const [formData, setFormData] = useState([
+    {
+      item: 'App Design',
+      description: 'Customization & Bug Fixes',
+      cost: 24,
+      quantity: 1,
+    }
+  ]);
 
+  const [count, setCount] = useState(1);
+
+  // Handle changes for the form fields
+  const handleChange = (index, field, value) => {
+    const updatedFormData = [...formData];
+    updatedFormData[index][field] = value;
+    setFormData(updatedFormData);
+  };
+
+  // Delete an item from the form
+  const deleteForm = (index) => {
+    const updatedFormData = formData.filter((_, i) => i !== index);
+    setFormData(updatedFormData);
+    setCount(count - 1);
+  };
+
+  // Add a new item to the form
+  const addItem = () => {
+    setFormData([...formData, { item: '', description: '', cost: '', quantity: '' }]);
+    setCount(count + 1);
+  };
+  const [totals, setTotals] = useState({ totalAmount: 0, gst: 0, grandTotal: 0 });
   console.log(formData);
+
+
+  const GST_RATE = 0.18; // 18% GST
+
+  const calculateTotals = () => {
+    const totalAmount = formData.reduce((acc, item) => acc + item.cost * item.quantity, 0);
+    const gst = totalAmount * GST_RATE;
+    const grandTotal = totalAmount + gst;
+
+    setTotals({
+      totalAmount,
+      gst,
+      grandTotal,
+    });
+  };
+
+  useEffect(() => {
+    calculateTotals();
+  }, [formData]);
 
 
   return (
@@ -207,94 +249,122 @@ const AddAction = (props) => {
               <Divider className='border-dashed' />
             </Grid>
             <Grid item xs={12}>
-              {Array.from(Array(count).keys()).map((item, index) => (
+              {formData.map((formItem, index) => (
                 <div
                   key={index}
                   className={classnames('repeater-item flex relative mbe-4 border rounded', {
                     'first:mbs-[38px] mbs-[62px]': !isBelowMdScreen,
-                    'gap-5': isBelowMdScreen
+                    'gap-5': isBelowMdScreen,
                   })}
                 >
-                  <Grid container spacing={5} className='m-0 pbe-5'>
+                  <Grid container spacing={5} className="m-0 pbe-5">
                     <Grid item lg={6} md={5} xs={12}>
-                      <Typography className='font-medium md:absolute md:-top-[38px]' color='text.primary'>
+                      <Typography className="font-medium md:absolute md:-top-[38px]" color="text.primary">
                         Item
                       </Typography>
-                      <Select fullWidth size='small' defaultValue='App Design' className='mbe-5'>
-                        <MenuItem value='App Design'>App Design</MenuItem>
-                        <MenuItem value='App Customization'>App Customization</MenuItem>
-                        <MenuItem value='ABC Template'>ABC Template</MenuItem>
-                        <MenuItem value='App Development'>App Development</MenuItem>
-                      </Select>
-                      <TextField rows={2} fullWidth multiline size='small' defaultValue='Customization & Bug Fixes' />
+                      <TextField
+                        rows={2}
+                        fullWidth
+                        size="small"
+                        className="mbe-5"
+                        value={formItem.item}
+                        onChange={(e) => handleChange(index, 'item', e.target.value)}
+                      />
+                      {/* <Select
+                        fullWidth
+                        size="small"
+                        value={formItem.item}
+                        onChange={(e) => handleChange(index, 'item', e.target.value)}
+                        className="mbe-5"
+                      >
+                        <MenuItem value="App Design">App Design</MenuItem>
+                        <MenuItem value="App Customization">App Customization</MenuItem>
+                        <MenuItem value="ABC Template">ABC Template</MenuItem>
+                        <MenuItem value="App Development">App Development</MenuItem>
+                      </Select> */}
+                      <TextField
+                        rows={2}
+                        fullWidth
+                        multiline
+                        size="small"
+                        value={formItem.description}
+                        onChange={(e) => handleChange(index, 'description', e.target.value)}
+                      />
                     </Grid>
+
                     <Grid item lg={2} md={3} xs={12}>
-                      <Typography className='font-medium md:absolute md:-top-[38px]' color='text.primary'>
+                      <Typography className="font-medium md:absolute md:-top-[38px]" color="text.primary">
                         Cost
                       </Typography>
                       <TextField
-                        {...(isBelowMdScreen && { fullWidth: true })}
-                        size='small'
-                        type='number'
-                        placeholder='24'
-                        defaultValue='24'
-                        className='mbe-5'
+                        fullWidth={isBelowMdScreen}
+                        size="small"
+                        type="number"
+                        placeholder="24"
+                        value={formItem.cost}
+                        onChange={(e) => handleChange(index, 'cost', e.target.value)}
+                        className="mbe-5"
                         InputProps={{ inputProps: { min: 0 } }}
                       />
-                      <div className='flex flex-col'>
-                        <Typography component='span' color='text.primary'>
+                      {/* <div className="flex flex-col">
+                        <Typography component="span" color="text.primary">
                           Discount:
                         </Typography>
-                        <div className='flex gap-2'>
-                          <Typography component='span' color='text.primary'>
+                        <div className="flex gap-2">
+                          <Typography component="span" color="text.primary">
                             0%
                           </Typography>
-                          <Tooltip title='Tax 1' placement='top'>
-                            <Typography component='span' color='text.primary'>
+                          <Tooltip title="Tax 1" placement="top">
+                            <Typography component="span" color="text.primary">
                               0%
                             </Typography>
                           </Tooltip>
-                          <Tooltip title='Tax 2' placement='top'>
-                            <Typography component='span' color='text.primary'>
+                          <Tooltip title="Tax 2" placement="top">
+                            <Typography component="span" color="text.primary">
                               0%
                             </Typography>
                           </Tooltip>
                         </div>
-                      </div>
+                      </div> */}
                     </Grid>
+
                     <Grid item md={2} xs={12}>
-                      <Typography className='font-medium md:absolute md:-top-[38px]' color='text.primary'>
-                        Hours
+                      <Typography className="font-medium md:absolute md:-top-[38px]" color="text.primary">
+                        Quantity
                       </Typography>
                       <TextField
-                        {...(isBelowMdScreen && { fullWidth: true })}
-                        size='small'
-                        type='number'
-                        placeholder='1'
-                        defaultValue='1'
+                        fullWidth={isBelowMdScreen}
+                        size="small"
+                        type="number"
+                        placeholder="1"
+                        value={formItem.quantity}
+                        onChange={(e) => handleChange(index, 'quantity', e.target.value)}
                         InputProps={{ inputProps: { min: 0 } }}
                       />
                     </Grid>
+
                     <Grid item md={2} xs={12}>
-                      <Typography className='font-medium md:absolute md:-top-[38px]' color='text.primary'>
+                      <Typography className="font-medium md:absolute md:-top-[38px]" color="text.primary">
                         Price
                       </Typography>
-                      <Typography color='text.primary'>$24.00</Typography>
+                      <Typography color="text.primary">Rs.{formItem.cost * formItem.quantity}</Typography>
                     </Grid>
                   </Grid>
-                  <div className='flex flex-col justify-start border-is'>
-                    <IconButton size='small' onClick={deleteForm}>
-                      <i className='ri-close-line text-2xl text-actionActive' />
+
+                  <div className="flex flex-col justify-start border-is">
+                    <IconButton size="small" onClick={() => deleteForm(index)}>
+                      <i className="ri-close-line text-2xl text-actionActive" />
                     </IconButton>
                   </div>
                 </div>
               ))}
+
               <Grid item xs={12}>
                 <Button
-                  size='small'
-                  variant='contained'
-                  onClick={() => setCount(count + 1)}
-                  startIcon={<i className='ri-add-line' />}
+                  size="small"
+                  variant="contained"
+                  onClick={addItem}
+                  startIcon={<i className="ri-add-line" />}
                 >
                   Add Item
                 </Button>
@@ -306,38 +376,38 @@ const AddAction = (props) => {
             <Grid item xs={12}>
               <div className='flex justify-between flex-col gap-4 sm:flex-row'>
                 <div className='flex flex-col gap-4 order-2 sm:order-[unset]'>
-                  <div className='flex items-center gap-2'>
+                  {/* <div className='flex items-center gap-2'>
                     <Typography className='font-medium' color='text.primary'>
                       Salesperson:
                     </Typography>
                     <TextField size='small' defaultValue='Tommy Shelby' />
-                  </div>
+                  </div> */}
                   <TextField size='small' placeholder='Thanks for your business' />
                 </div>
                 <div className='min-is-[200px]'>
                   <div className='flex items-center justify-between'>
                     <Typography>Subtotal:</Typography>
                     <Typography className='font-medium' color='text.primary'>
-                      $1800
+                      {totals.totalAmount}
                     </Typography>
                   </div>
-                  <div className='flex items-center justify-between'>
+                  {/* <div className='flex items-center justify-between'>
                     <Typography>Discount:</Typography>
                     <Typography className='font-medium' color='text.primary'>
                       $28
                     </Typography>
-                  </div>
+                  </div> */}
                   <div className='flex items-center justify-between'>
-                    <Typography>Tax:</Typography>
+                    <Typography>GST (18%):</Typography>
                     <Typography className='font-medium' color='text.primary'>
-                      21%
+                      {totals.gst}
                     </Typography>
                   </div>
                   <Divider className='mlb-2' />
                   <div className='flex items-center justify-between'>
                     <Typography>Total:</Typography>
                     <Typography className='font-medium' color='text.primary'>
-                      $1690
+                      {totals.grandTotal}
                     </Typography>
                   </div>
                 </div>
@@ -358,6 +428,9 @@ const AddAction = (props) => {
                 defaultValue='It was a pleasure working with you and your team. We hope you will keep us in mind for future freelance
               projects. Thank You!'
               />
+            </Grid>
+            <Grid item xs={12} display={'flex'} justifyContent={'flex-end'}>
+              <Button variant='contained' color='success'>Generate Invoice</Button>
             </Grid>
           </Grid>
         </CardContent>

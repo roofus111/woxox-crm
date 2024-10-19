@@ -28,6 +28,7 @@ import Logo from '@components/layout/shared/Logo'
 
 // Styled Component Imports
 import AppReactDatepicker from '@/libs/styles/AppReactDatepicker'
+import { toast } from 'react-toastify';
 
 const AddAction = (props) => {
   // States
@@ -35,7 +36,7 @@ const AddAction = (props) => {
   const [selectData, setSelectData] = useState(null)
   const [issuedDate, setIssuedDate] = useState(null)
   const [dueDate, setDueDate] = useState(null)
-
+  const [note, setNote] = useState('')
   // Hooks
   const isBelowMdScreen = useMediaQuery(theme => theme.breakpoints.down('md'))
   const isBelowSmScreen = useMediaQuery(theme => theme.breakpoints.down('sm'))
@@ -47,10 +48,11 @@ const AddAction = (props) => {
 
   const [formData, setFormData] = useState([
     {
-      item: 'App Design',
-      description: 'Customization & Bug Fixes',
-      cost: 24,
-      quantity: 1,
+      item: '',
+      description: '',
+      cost: 0,
+      quantity: 0,
+      total: 0
     }
   ]);
 
@@ -60,6 +62,12 @@ const AddAction = (props) => {
   const handleChange = (index, field, value) => {
     const updatedFormData = [...formData];
     updatedFormData[index][field] = value;
+
+    // Automatically calculate total if cost or quantity changes
+    if (field === 'cost' || field === 'quantity') {
+      updatedFormData[index].total = updatedFormData[index].cost * updatedFormData[index].quantity;
+    }
+
     setFormData(updatedFormData);
   };
 
@@ -72,11 +80,11 @@ const AddAction = (props) => {
 
   // Add a new item to the form
   const addItem = () => {
-    setFormData([...formData, { item: '', description: '', cost: '', quantity: '' }]);
+    setFormData([...formData, { item: '', description: '', cost: '', quantity: '', total: '' }]);
     setCount(count + 1);
   };
   const [totals, setTotals] = useState({ totalAmount: 0, gst: 0, grandTotal: 0 });
-  console.log(formData);
+
 
 
   const GST_RATE = 0.18; // 18% GST
@@ -97,6 +105,35 @@ const AddAction = (props) => {
     calculateTotals();
   }, [formData]);
 
+  const handleSubmit = async e => {
+    e.preventDefault()
+
+    console.log(formData, totals, issuedDate, dueDate);
+    const dataIn = { items: formData, ...totals, dateIssued: issuedDate, dueDate: dueDate, customer: props.data?._id, invoiceNumber: '777', notes: note }
+
+    try {
+      const token = localStorage.getItem('token')
+      // Example API call to submit the form
+      const response = await fetch('http://localhost:8000/api/invoice/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(dataIn)
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast.success('Invoice Generated')
+      } else {
+        toast.error('Something went Wronng')
+      }
+    } catch (error) {
+      toast.error('Please try Again')
+    }
+  }
 
   return (
     <>
@@ -421,16 +458,16 @@ const AddAction = (props) => {
                 Note:
               </InputLabel>
               <TextField
+                onChange={event => setNote(event.target.value)}
                 id='invoice-note'
                 rows={2}
                 fullWidth
                 multiline
-                defaultValue='It was a pleasure working with you and your team. We hope you will keep us in mind for future freelance
-              projects. Thank You!'
+                defaultValue={note}
               />
             </Grid>
             <Grid item xs={12} display={'flex'} justifyContent={'flex-end'}>
-              <Button variant='contained' color='success'>Generate Invoice</Button>
+              <Button onClick={handleSubmit} variant='contained' color='success'>Generate Invoice</Button>
             </Grid>
           </Grid>
         </CardContent>

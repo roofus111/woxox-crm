@@ -3,7 +3,7 @@ import axios from 'axios'
 import { redirect } from 'next/navigation'
 import { useState, useEffect } from 'react'
 // Component Imports
-import Preview from '@views/apps/invoice/preview'
+import Preview from '@views/apps/manager/invoice/preview'
 import { useSearchParams } from 'next/navigation'
 // Data Imports
 import { getInvoiceData } from '@/app/server/actions'
@@ -51,18 +51,24 @@ const PreviewPage = () => {
     issuedDate: data.issuedDate,
     address: data.address,
     company: 'Hall-Robbins PLC',
-    companyEmail: 'don85@johnson.com',
+    companyEmail: data.companyEmail,
     country: 'USA',
-    contact: '(616) 865-4180',
+    contact: data.contact,
     name: data.name,
     service: 'Software Development',
-    total: data.grandTotal,
+    total: data.total,
     avatar: '',
     avatarColor: 'primary',
-    invoiceStatus: 'Paid',
+    invoiceStatus: data.service,
     balance: data.balance,
-    dueDate: `23 }`
-  }} id={data.id} />
+    dueDate: data.dueDate,
+    items: data.items,
+    gst: data.gst,
+    subtotal: data.subtotal,
+    paid: data.paid,
+    leadId: data.leadId
+
+  }} id={data.refId} />
 
 
 }

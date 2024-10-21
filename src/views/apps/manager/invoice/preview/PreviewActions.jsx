@@ -11,13 +11,13 @@ import CardContent from '@mui/material/CardContent'
 import Button from '@mui/material/Button'
 
 // Component Imports
-import AddPaymentDrawer from '@views/apps/invoice/shared/AddPaymentDrawer'
-import SendInvoiceDrawer from '@views/apps/invoice/shared/SendInvoiceDrawer'
+import AddPaymentDrawer from '@views/apps/manager/invoice/shared/AddPaymentDrawer'
+import SendInvoiceDrawer from '@views/apps/manager/invoice/shared/SendInvoiceDrawer'
 
 // Util Imports
 import { getLocalizedUrl } from '@/utils/i18n'
 
-const PreviewActions = ({ id, onButtonClick }) => {
+const PreviewActions = ({ invoiceData, id, onButtonClick }) => {
   // States
   const [paymentDrawerOpen, setPaymentDrawerOpen] = useState(false)
   const [sendDrawerOpen, setSendDrawerOpen] = useState(false)
@@ -25,11 +25,12 @@ const PreviewActions = ({ id, onButtonClick }) => {
   // Hooks
   const { lang: locale } = useParams()
 
+
   return (
     <>
       <Card>
         <CardContent className='flex flex-col gap-4'>
-          <Button
+          {/* <Button
             fullWidth
             variant='contained'
             className='capitalize'
@@ -37,7 +38,7 @@ const PreviewActions = ({ id, onButtonClick }) => {
             onClick={() => setSendDrawerOpen(true)}
           >
             Send Invoice
-          </Button>
+          </Button> */}
           <Button fullWidth color='secondary' variant='outlined' className='capitalize'>
             Download
           </Button>
@@ -68,7 +69,7 @@ const PreviewActions = ({ id, onButtonClick }) => {
           </Button>
         </CardContent>
       </Card>
-      <AddPaymentDrawer open={paymentDrawerOpen} handleClose={() => setPaymentDrawerOpen(false)} />
+      <AddPaymentDrawer data={invoiceData} id={id} open={paymentDrawerOpen} handleClose={() => setPaymentDrawerOpen(false)} />
       <SendInvoiceDrawer open={sendDrawerOpen} handleClose={() => setSendDrawerOpen(false)} />
     </>
   )

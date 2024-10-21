@@ -19,7 +19,7 @@ const Preview = ({ invoiceData, id }) => {
         <PreviewCard invoiceData={invoiceData} id={id} />
       </Grid>
       <Grid item xs={12} md={3}>
-        <PreviewActions id={id} onButtonClick={handleButtonClick} />
+        <PreviewActions invoiceData={invoiceData} id={id} onButtonClick={handleButtonClick} />
       </Grid>
     </Grid>
   )

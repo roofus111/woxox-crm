@@ -109,7 +109,7 @@ const AddAction = (props) => {
     e.preventDefault()
 
     console.log(formData, totals, issuedDate, dueDate);
-    const dataIn = { items: formData, ...totals, dateIssued: issuedDate, dueDate: dueDate, customer: props.data?._id, invoiceNumber: '4587', notes: note }
+    const dataIn = { items: formData, ...totals, dateIssued: issuedDate, dueDate: dueDate, customer: props.data?._id, notes: note }
 
     try {
       const token = localStorage.getItem('token')

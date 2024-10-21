@@ -200,7 +200,7 @@ const InvoiceListTable = ({ invoiceData }) => {
               <Typography className='font-medium' color='text.primary'>
                 {row.original.paymentId}
               </Typography>
-              <Typography variant='body2'>RefID {row.original.invoice.invoiceNumber}</Typography>
+              <Typography variant='body2'>RefID {row.original.invoice?.invoiceNumber}</Typography>
             </div>
           </div>
         )

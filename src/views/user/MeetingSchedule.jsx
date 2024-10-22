@@ -41,7 +41,7 @@ const Transactions = (props) => {
     overview: <OverViewTab props={data} />,
     security: <SecurityTab props={data} />,
     // 'billing-plans': <BillingPlans data={data} />,
-    notifications: <NotificationsTab />,
+    notifications: <NotificationsTab props={data} />,
     connections: <ConnectionsTab />
   })
 

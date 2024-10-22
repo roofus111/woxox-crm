@@ -1,17 +1,20 @@
 // MUI Imports
 'use client'
 
-// React Imports
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import axios from 'axios'
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import CardContent from '@mui/material/CardContent'
 import Typography from '@mui/material/Typography'
+import IconButton from '@mui/material/IconButton'
+import Link from 'next/link'
+import { getLocalizedUrl } from '@/utils/i18n'
 
 // Components Imports
 import OptionMenu from '@core/components/option-menu'
 import CustomAvatar from '@core/components/mui/Avatar'
-
+import { useParams } from 'next/navigation'
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table'
 
 // Style Imports
@@ -22,40 +25,82 @@ import defaultData from './data'
 
 // Column Definitions
 
-const NotificationsTab = () => {
-  const columnHelper = createColumnHelper()
+const NotificationsTab = (props) => {
 
+
+  const columnHelper = createColumnHelper()
+  const { lang: locale } = useParams()
   const columns = [
-    columnHelper.accessor('id', {
-      cell: info => info.getValue(),
-      header: 'ID'
+    columnHelper.accessor('paymentId', {
+      header: 'Date',
+      cell: ({ row }) => (
+        <div className='flex items-center gap-3'>
+          <div className='flex flex-col'>
+            <Typography className='font-medium' color='text.primary'>
+              {row.original.paymentId}
+            </Typography>
+            <Typography variant='body2'>RefID {row.original.invoice?.invoiceNumber}</Typography>
+          </div>
+        </div>
+      )
     }),
-    columnHelper.accessor('fullName', {
-      cell: info => info.getValue(),
-      header: 'Name'
-    }),
-    columnHelper.accessor('email', {
-      cell: info => info.getValue(),
-      header: 'Email'
-    }),
-    columnHelper.accessor('start_date', {
+    columnHelper.accessor('createdAt', {
       cell: info => info.getValue(),
       header: 'Date'
     }),
-    columnHelper.accessor('experience', {
+    columnHelper.accessor('paymentMethod', {
       cell: info => info.getValue(),
-      header: 'Experience'
+      header: 'Method'
     }),
-    columnHelper.accessor('age', {
+    columnHelper.accessor('amount', {
       cell: info => info.getValue(),
-      header: 'Age'
+      header: 'Amount'
+    }),
+    columnHelper.accessor('action', {
+      header: 'Action',
+      cell: ({ row }) => (
+        <div className='flex items-center gap-0.5'>
+          <IconButton size='small' onClick={() => setData(data?.filter(invoice => invoice.id !== row.original.id))}>
+            <i className='ri-delete-bin-7-line text-textSecondary' />
+          </IconButton>
+          <IconButton size='small'>
+            <Link href={getLocalizedUrl(`/apps/invoice/preview/${row.original.id}`, locale)} className='flex'>
+              <i className='ri-eye-line text-textSecondary' />
+            </Link>
+          </IconButton>
+          <OptionMenu
+            iconClassName='text-textSecondary'
+            options={[
+              {
+                text: 'Download',
+                icon: 'ri-download-line',
+                menuItemProps: { className: 'flex items-center gap-2' }
+              },
+              {
+                text: 'Edit',
+                icon: 'ri-pencil-line',
+                href: getLocalizedUrl(`/apps/invoice/edit/${row.original.id}`, locale),
+                linkProps: {
+                  className: 'flex items-center is-full plb-2 pli-5 gap-2'
+                }
+              },
+              {
+                text: 'Duplicate',
+                icon: 'ri-file-copy-line',
+                menuItemProps: { className: 'flex items-center gap-2' }
+              }
+            ]}
+          />
+        </div>
+      ),
+      enableSorting: false
     })
   ]
 
 
   // States
 
-  const [data, setData] = useState(() => [...defaultData])
+  const [data, setData] = useState(() => [])
 
   // Hooks
   const table = useReactTable({
@@ -87,6 +132,25 @@ const NotificationsTab = () => {
       icon: 'ri-arrow-left-right-line'
     }
   ]
+
+  console.log(props.props.viewItem);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    axios
+      .get(`http://localhost:8000/api/payment/bylead/${props.props.viewItem._id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+      .then(response => {
+        setData(response.data) // Update data if component is still mounted
+        console.log(response.data)
+      })
+      .catch(error => {
+        console.error('Failed to fetch data:', error)
+      })
+  }, [])
 
   return (
     <><Card>

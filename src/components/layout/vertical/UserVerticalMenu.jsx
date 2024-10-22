@@ -45,13 +45,13 @@ const UserVerticalMenu = ({ dictionary, scrollMenu }) => {
     <ScrollWrapper
       {...(isBreakpointReached
         ? {
-            className: 'bs-full overflow-y-auto overflow-x-hidden',
-            onScroll: container => scrollMenu(container, false)
-          }
+          className: 'bs-full overflow-y-auto overflow-x-hidden',
+          onScroll: container => scrollMenu(container, false)
+        }
         : {
-            options: { wheelPropagation: false, suppressScrollX: true },
-            onScrollY: container => scrollMenu(container, true)
-          })}
+          options: { wheelPropagation: false, suppressScrollX: true },
+          onScrollY: container => scrollMenu(container, true)
+        })}
     >
       {/* Incase you also want to scroll NavHeader to scroll with Vertical Menu, remove NavHeader from above and paste it below this comment */}
       {/* Vertical Menu */}
@@ -66,25 +66,33 @@ const UserVerticalMenu = ({ dictionary, scrollMenu }) => {
           Home
         </MenuItem>
         <SubMenu
-          label={'Leads'}
-          icon={<i className='ri-home-smile-line' />}
-          // suffix={<Chip label='6' size='small' color='error' />}
+          label={'Campaigns'}
+          icon={<i className='ri-flags-line' />}
+        // suffix={<Chip label='6' size='small' color='error' />}
         >
-          <MenuItem href={`/${locale}/leads`}>Total Leads</MenuItem>
-          <MenuItem href={`/${locale}/dashboards/analytics`}>Untouched</MenuItem>
+          <MenuItem href={`/${locale}/leads`}>All Leads</MenuItem>
+          <MenuItem href={`/${locale}/dashboards/analytics`}>New</MenuItem>
+          <MenuItem href={`/${locale}/dashboards/analytics`}>Progress</MenuItem>
+          <MenuItem href={`/${locale}/dashboards/analytics`}>Converted</MenuItem>
         </SubMenu>
+        <MenuItem icon={<i className='ri-contacts-line' />} href={`/${locale}/leads`}>
+          All Leads
+        </MenuItem>
+        <MenuItem icon={<i className='ri-calendar-schedule-line' />} href={`/${locale}/home`}>
+          Follow Up
+        </MenuItem>
 
-        <SubMenu
+        {/* <SubMenu
           label={'Home'}
           icon={<i className='ri-home-smile-line' />}
-          // suffix={<Chip label='6' size='small' color='error' />}
+        // suffix={<Chip label='6' size='small' color='error' />}
         >
           <MenuItem href={`/${locale}/dashboards/crm`}>{dictionary['navigation'].crm}</MenuItem>
           <MenuItem href={`/${locale}/dashboards/analytics`}>{dictionary['navigation'].analytics}</MenuItem>
           <MenuItem href={`/${locale}/dashboards/ecommerce`}>{dictionary['navigation'].eCommerce}</MenuItem>
           <MenuItem href={`/${locale}/dashboards/academy`}>{dictionary['navigation'].academy}</MenuItem>
           <MenuItem href={`/${locale}/dashboards/logistics`}>{dictionary['navigation'].logistics}</MenuItem>
-        </SubMenu>
+        </SubMenu> */}
       </Menu>
       {/* <Menu
           popoutMenuOffset={{ mainAxis: 17 }}

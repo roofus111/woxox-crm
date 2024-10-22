@@ -35,7 +35,7 @@ const Layout = async ({ children, params }) => {
     USER: 'user',
     GUEST: 'guest'
   }
-  const requiredRole = roles.GUEST
+  const requiredRole = roles.USER
   return (
     <Providers direction={direction}>
       <AuthGuard locale={params.lang} requiredRole={requiredRole}>
@@ -52,11 +52,11 @@ const Layout = async ({ children, params }) => {
               {children}
             </VerticalLayout>
           }
-          // horizontalLayout={
-          //   <HorizontalLayout header={<Header dictionary={dictionary} />} footer={<HorizontalFooter />}>
-          //     {children}
-          //   </HorizontalLayout>
-          // }
+        // horizontalLayout={
+        //   <HorizontalLayout header={<Header dictionary={dictionary} />} footer={<HorizontalFooter />}>
+        //     {children}
+        //   </HorizontalLayout>
+        // }
         />
         <ScrollToTop className='mui-fixed'>
           <Button

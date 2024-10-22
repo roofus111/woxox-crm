@@ -121,8 +121,8 @@ const Navigation = props => {
       // when semiDark is enabled and the mode or systemMode is light
       {...(isSemiDark &&
         !isDark && {
-          'data-mui-color-scheme': 'dark'
-        })}
+        'data-mui-color-scheme': 'dark'
+      })}
     >
       {/* Nav Header including Logo & nav toggle icons  */}
       <NavHeader>
@@ -140,7 +140,7 @@ const Navigation = props => {
         )}
       </NavHeader>
       <StyledBoxForShadow ref={shadowRef} />
-      {user == 'guest' ? (
+      {user == 'user' ? (
         <UserVerticalMenu dictionary={dictionary} scrollMenu={scrollMenu} />
       ) : (
         <VerticalMenu dictionary={dictionary} scrollMenu={scrollMenu} />

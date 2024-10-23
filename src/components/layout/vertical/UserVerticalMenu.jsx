@@ -1,6 +1,9 @@
 // Next Imports
-import { useParams } from 'next/navigation'
 
+'use client'
+import { useParams } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import axios from 'axios'
 // MUI Imports
 import { useTheme } from '@mui/material/styles'
 import Chip from '@mui/material/Chip'
@@ -39,6 +42,26 @@ const UserVerticalMenu = ({ dictionary, scrollMenu }) => {
   const { lang: locale } = params
   const ScrollWrapper = isBreakpointReached ? 'div' : PerfectScrollbar
 
+
+  const [data, setData] = useState([])
+
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    axios
+      .get('http://localhost:8000/api/leads/getcampaign', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+      .then(response => {
+        setData(response.data.campaign) // Update data if component is still mounted
+      })
+      .catch(error => {
+        console.error('Failed to fetch data:', error)
+      })
+  }, [])
+
+
   return (
     // eslint-disable-next-line lines-around-comment
     /* Custom scrollbar instead of browser scroll, remove if you want browser scroll only */
@@ -70,10 +93,10 @@ const UserVerticalMenu = ({ dictionary, scrollMenu }) => {
           icon={<i className='ri-flags-line' />}
         // suffix={<Chip label='6' size='small' color='error' />}
         >
-          <MenuItem href={`/${locale}/leads`}>All Leads</MenuItem>
-          <MenuItem href={`/${locale}/dashboards/analytics`}>New</MenuItem>
-          <MenuItem href={`/${locale}/dashboards/analytics`}>Progress</MenuItem>
-          <MenuItem href={`/${locale}/dashboards/analytics`}>Converted</MenuItem>
+          {data.map((menu, index) => {
+            return <MenuItem key={index} href={`/${locale}/leads`}>{menu}</MenuItem>
+          })}
+
         </SubMenu>
         <MenuItem icon={<i className='ri-contacts-line' />} href={`/${locale}/leads`}>
           All Leads

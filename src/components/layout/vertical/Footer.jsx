@@ -1,11 +1,15 @@
 // Component Imports
+'use client'
 import LayoutFooter from '@layouts/components/vertical/Footer'
 import FooterContent from './FooterContent'
+import UserFooterContent from './UserFooterContent';
 
-const Footer = () => {
+const Footer = (user) => {
+  console.log(user);
+
   return (
     <LayoutFooter>
-      <FooterContent />
+      {user != 'user' ? <UserFooterContent /> : <FooterContent />}
     </LayoutFooter>
   )
 }

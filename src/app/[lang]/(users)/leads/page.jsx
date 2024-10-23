@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import MeetingSchedule from '@views/user/MeetingSchedule'
+import LeadsbyCampaign from '@views/user/leadbycampaign'
+
 const Leads = () => {
   const [data, setData] = useState([])
 
@@ -23,7 +25,8 @@ const Leads = () => {
       })
   }, [])
   return (
-    <MeetingSchedule user={data} />
+    // <MeetingSchedule user={data} />
+    <LeadsbyCampaign user={data} />
   )
 }
 

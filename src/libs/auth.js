@@ -52,6 +52,7 @@ export const authOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.name = user.name
+        token.id = user.id
         token.email = user.email
         token.role = user.role
         token.accessToken = user.Stoken // Store token in JWT payload
@@ -60,6 +61,7 @@ export const authOptions = {
     },
     async session({ session, token }) {
       if (session.user) {
+        session.user.id = token.id
         session.user.name = token.name
         session.user.email = token.email
         session.user.role = token.role

@@ -18,6 +18,7 @@
 const themeConfig = {
   templateName: 'Canbridge',
   homePageUrl: '/dashboards/crm',
+  userHomePageUrl: '/home',
   settingsCookieName: 'materialize-mui-next-demo-1',
   mode: 'system', // 'system', 'light', 'dark'
   skin: 'default', // 'default', 'bordered'

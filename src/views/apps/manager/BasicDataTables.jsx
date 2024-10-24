@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import axios from 'axios'
 
 // MUI Imports
-import Card from '@mui/material/Card'
+
 import CardHeader from '@mui/material/CardHeader'
 
 // Third-party Imports
@@ -16,7 +16,10 @@ import styles from '@core/styles/table.module.css'
 
 // Data Imports
 import defaultData from './data'
-import Typography from '@mui/material/Typography'
+
+import { Card, CardContent, CardActions, Button, Typography, Grid, Chip, Avatar, Box, Divider } from '@mui/material'
+
+import React from 'react'
 
 // Column Definitions
 const columnHelper = createColumnHelper()
@@ -112,36 +115,113 @@ const BasicDataTables = () => {
   }, [])
 
   return (
-    <Card>
-      <CardHeader title='Follow Ups' />
-      <div className='overflow-x-auto'>
-        <table className={styles.table}>
-          <thead>
-            {table.getHeaderGroups().map(headerGroup => (
-              <tr key={headerGroup.id}>
-                {headerGroup.headers.map(header => (
-                  <th key={header.id}>
-                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                  </th>
-                ))}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {table
-              .getRowModel()
-              .rows.slice(0, 10)
-              .map(row => (
-                <tr key={row.id}>
-                  {row.getVisibleCells().map(cell => (
-                    <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
+    <>
+      {data.map((followUp, index) => {
+        return (
+          <Card key={index} sx={{ maxWidth: 600, m: 2, boxShadow: 3, borderRadius: 2 }}>
+            <CardContent>
+              <Typography
+                variant='h6'
+                color='primary'
+                gutterBottom
+                sx={{ fontSize: '14px', display: 'flex', alignItems: 'center' }}
+              >
+                <Box sx={{ mr: 2 }}>
+                  {' '}
+                  {/* Adds right margin to the text */}
+                  {followUp.leadId.name}
+                </Box>
+                <Chip
+                  size='small'
+                  icon={<Box component='i' className='bi bi-bookmark-fill' />}
+                  label={`${followUp.status}`}
+                  color='secondary'
+                  variant='contained'
+                />
+              </Typography>
+              <Divider sx={{ my: 1.5 }} />
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <Typography variant='body2' color='text.secondary'>
+                    <i className='bi bi-calendar-event' style={{ verticalAlign: 'middle', marginRight: 8 }}></i>
+                    Date: <b> {new Date(followUp.nextFollowUpDate).toLocaleString()} </b>
+                  </Typography>
+                </Grid>
+                <Divider sx={{ my: 1.5 }} />
+                <Grid item xs={12}>
+                  <Typography variant='body2' color='text.secondary' gutterBottom>
+                    <i className='bi bi-sticky-note' style={{ verticalAlign: 'middle', marginRight: 8 }}></i>
+                    Notes: {followUp.notes}
+                  </Typography>
+                </Grid>
+                {/* <Grid item xs={6}>
+                  <Typography color='text.secondary' sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Avatar sx={{ bgcolor: 'secondary.main', width: 24, height: 24, mr: 1 }}>
+                      {followUp.assignedTo.name.charAt(0)}
+                    </Avatar>
+                    {followUp.assignedTo.name}
+                  </Typography>
+                </Grid>
+                <Grid item xs={6}>
+                  <Chip
+                    size='small'
+                    icon={<Box component='i' className='bi bi-sticky-note-2-line' />}
+                    label={`${followUp.leadId.campaign}`}
+                    color='primary'
+                    variant='outlined'
+                  />
+                </Grid> */}
+              </Grid>
+            </CardContent>
+            <CardActions>
+
+              <Button size='small' color='error' variant='outlined'>
+                Close
+              </Button> <Button
+                startIcon={<Box component='i' className='bi bi-pencil-square' />}
+                size='small'
+                color='primary'
+                variant='contained'
+              >
+                View
+              </Button>
+            </CardActions>
+          </Card>
+        )
+      })}
+
+      {/* <Card>
+        <CardHeader title='Follow Ups' />
+        <div className='overflow-x-auto'>
+          <table className={styles.table}>
+            <thead>
+              {table.getHeaderGroups().map(headerGroup => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map(header => (
+                    <th key={header.id}>
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                    </th>
                   ))}
                 </tr>
               ))}
-          </tbody>
-        </table>
-      </div>
-    </Card>
+            </thead>
+            <tbody>
+              {table
+                .getRowModel()
+                .rows.slice(0, 10)
+                .map(row => (
+                  <tr key={row.id}>
+                    {row.getVisibleCells().map(cell => (
+                      <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
+                    ))}
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+       */}
+    </>
   )
 }
 

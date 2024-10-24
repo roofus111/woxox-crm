@@ -1,13 +1,10 @@
 'use client'
 import React, { useState, useEffect, useRef } from 'react'
 import Grid from '@mui/material/Grid'
-import axios from 'axios'
 import Card from '@mui/material/Card'
-import CardHeader from '@mui/material/CardHeader'
 import CardContent from '@mui/material/CardContent'
 import Typography from '@mui/material/Typography'
 import Chip from '@mui/material/Chip'
-import OptionMenu from '@core/components/option-menu'
 import dynamic from 'next/dynamic'
 import CustomAvatar from '@core/components/mui/Avatar'
 import Button from '@mui/material/Button'
@@ -20,8 +17,7 @@ import DialogContentText from '@mui/material/DialogContentText'
 import UserLeftOverview from '@views/apps/leadView/view/user-left-overview'
 import UserRight from '@views/apps/leadView/view/user-right'
 import { DataProvider } from '@/contexts/DataContext'
-import { Box, Menu, MenuItem, FormControl, InputLabel, Select } from '@mui/material'
-import debounce from 'lodash.debounce'
+import { Box, MenuItem, FormControl, InputLabel, Select } from '@mui/material'
 const OverViewTab = dynamic(() => import('@views/apps/leadView/view/user-right/overview'))
 const SecurityTab = dynamic(() => import('@views/apps/leadView/view/user-right/security'))
 const BillingPlans = dynamic(() => import('@views/apps/leadView/view/user-right/billing-plans'))

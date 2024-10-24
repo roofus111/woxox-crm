@@ -22,6 +22,7 @@ export default function UserFooterContent() {
         <BottomNavigationAction href={`/${locale}/home`} label="Home" icon={<i class="ri-home-8-fill"></i>} />
         <BottomNavigationAction href={`/${locale}/leads`} label="Leads" icon={<i class="ri-contacts-fill"></i>} />
         <BottomNavigationAction href={`/${locale}/followup`} label="Follow Up" icon={<i class="ri-chat-check-fill"></i>} />
+        <BottomNavigationAction href={`/${locale}/notes`} label="Notes" icon={<i class="ri-chat-check-fill"></i>} />
       </BottomNavigation>
     </Box>
 

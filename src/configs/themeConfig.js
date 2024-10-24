@@ -16,7 +16,7 @@
  * Another way is to clear the cookie from the browser's Application/Storage tab and then reload the page.
  */
 const themeConfig = {
-  templateName: 'Canbridge',
+  templateName: 'Canbridge Global',
   homePageUrl: '/dashboards/crm',
   userHomePageUrl: '/home',
   settingsCookieName: 'materialize-mui-next-demo-1',

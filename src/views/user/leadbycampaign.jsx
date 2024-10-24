@@ -31,6 +31,7 @@ const ConnectionsTab = dynamic(() => import('@views/apps/leadView/view/user-righ
 const Transactions = (props) => {
   const [open, setOpen] = useState(false)
   const [viewItem, setViewItem] = useState({})
+  console.log(props.campaign);
 
   const handleClickOpen = item => {
     setOpen(true)
@@ -114,14 +115,17 @@ const Transactions = (props) => {
       setLoading(false)
       return
     }
+
+    // const qualification = encodeURIComponent(props.campaign)
     const response = await fetch(
-      `http://localhost:8000/api/leads/search?page=${page}&search=${encodeURIComponent(searchTerm)}&status=${encodeURIComponent(status)}&assignedTo=${encodeURIComponent(assignee)}`,
+      // `http://localhost:8000/api/leads/getleads/${props.campaign}`,
+      `http://localhost:8000/api/leads/search?page=${page}&search=${encodeURIComponent(searchTerm)}&status=${encodeURIComponent(status)}&assignedTo=${encodeURIComponent(assignee)}&campaign=${props.campaign}`,
       {
         headers: { Authorization: `Bearer ${token}` }
       }
     )
     const newData = await response.json()
-    console.log(newData.leads)
+    console.log(newData)
 
     if (page === 1) {
       setLoading(false)

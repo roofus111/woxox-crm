@@ -47,7 +47,7 @@ const columns = [
   }),
   columnHelper.accessor('createdBy.name', {
     cell: info => info.getValue(),
-    header: 'Assigned To'
+    header: 'Created By'
   }),
   columnHelper.accessor('notes', {
     cell: info => info.getValue(),

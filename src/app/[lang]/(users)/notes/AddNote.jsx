@@ -3,10 +3,22 @@
 import React, { useState, useEffect } from 'react';
 import { TextField, Button, Box, List, ListItem, ListItemText, IconButton } from '@mui/material';
 import axios from 'axios';
+import Fab from '@mui/material/Fab'
+import Dialog from '@mui/material/Dialog'
+import DialogTitle from '@mui/material/DialogTitle'
+import DialogContent from '@mui/material/DialogContent'
+import DialogActions from '@mui/material/DialogActions'
+import DialogContentText from '@mui/material/DialogContentText'
+
 
 function AddNote() {
     const [note, setNote] = useState('');
     const [notes, setNotes] = useState([{ content: '' }]);
+    const [open, setOpen] = useState(false)
+
+    const handleClickOpen = () => setOpen(true)
+
+    const handleClose = () => setOpen(false)
 
     useEffect(() => {
         fetchNotes();
@@ -47,6 +59,8 @@ function AddNote() {
             console.log(data);
 
             setNotes([...notes, data]);
+            handleClose()
+            setFormData('')
         } catch (error) {
             console.error('Error adding note:', error);
         }
@@ -82,37 +96,59 @@ function AddNote() {
     };
 
     return (
-        <Box sx={{ width: '100%', maxWidth: 360, bgcolor: 'background.paper' }}>
-            <TextField
-                label="Add Note"
-                variant="outlined"
-                value={formData}
-                onChange={handleInputChange}
-                fullWidth
-            />
-            <Button variant="contained" color="primary" onClick={handleSubmit}>
-                Add Note
-            </Button>
+        <><Box sx={{ width: '100%', maxWidth: 360 }}>
+            {/* <Box display={'flex'}>
+        <TextField
+            margin='20px'
+            label="Add Note"
+            variant="outlined"
+            value={formData}
+            onChange={handleInputChange}
+            fullWidth
+        />
+        <Button margin='2' size='small' variant="contained" color="primary" onClick={handleSubmit}>
+            Add
+        </Button>
+        </Box> */}
             <List>
                 {notes?.map((item) => (
                     <ListItem
+                        style={{ marginBottom: '12px', backgroundColor: '#f8f8ba', borderRadius: '5px' }}
                         key={item._id}
-                        secondaryAction={
-                            <>
-                                <IconButton edge="end" aria-label="delete" onClick={() => handleDelete(item._id)}>
-                                    delete
-                                </IconButton>
-                                <IconButton edge="end" aria-label="edit" onClick={() => handleUpdate(item._id, note)}>
-                                    edit
-                                </IconButton>
-                            </>
-                        }
+                        secondaryAction={<>
+                            <IconButton edge="end" aria-label="delete" onClick={() => handleDelete(item._id)}>
+                                <i class="ri-close-line"></i>
+                            </IconButton>
+                        </>}
                     >
                         <ListItemText primary={item.content} />
                     </ListItem>
                 ))}
             </List>
-        </Box>
+        </Box><Fab onClick={handleClickOpen} style={{ position: 'fixed', bottom: '10%', right: '10%' }} aria-label='edit'>
+                <i className='ri-add-line' />
+            </Fab>
+            <Dialog open={open} onClose={handleClose} aria-labelledby='form-dialog-title' fullWidth>
+                <DialogContent>
+                    <TextField value={formData}
+                        fullWidth
+                        rows={4}
+                        multiline
+                        id='textarea-outlined-static'
+                        onChange={handleInputChange} autoFocus type='email' label='Add Notes' />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleClose} variant='outlined' color='secondary' >
+                        Cancel
+                    </Button>
+                    <Button onClick={handleSubmit} variant='contained'>
+                        Save
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+
+        </>
     );
 }
 

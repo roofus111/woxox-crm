@@ -90,7 +90,7 @@ const UserVerticalMenu = ({ dictionary, scrollMenu }) => {
         </MenuItem>
         <SubMenu
           label={'Campaigns'}
-          icon={<i className='ri-flags-line' />}
+          icon={<i class="ri-megaphone-line"></i>}
         // suffix={<Chip label='6' size='small' color='error' />}
         >
           {data.map((menu, index) => {

@@ -1,153 +1,165 @@
 'use client'
 
-import React, { useState, useEffect } from 'react';
-import { TextField, Button, Box, List, ListItem, ListItemText, IconButton } from '@mui/material';
+import React, { useState, useEffect, useCallback } from 'react';
+import { TextField, Button, Box, List, ListItem, ListItemText, IconButton, Fab, Dialog, DialogContent, DialogActions, Snackbar, CircularProgress } from '@mui/material';
 import axios from 'axios';
-import Fab from '@mui/material/Fab'
-import Dialog from '@mui/material/Dialog'
-import DialogTitle from '@mui/material/DialogTitle'
-import DialogContent from '@mui/material/DialogContent'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContentText from '@mui/material/DialogContentText'
-
+import debounce from 'lodash.debounce';
 
 function AddNote() {
-    const [note, setNote] = useState('');
-    const [notes, setNotes] = useState([{ content: '' }]);
-    const [open, setOpen] = useState(false)
+    const [formData, setFormData] = useState('');
+    const [notes, setNotes] = useState([]);
+    const [open, setOpen] = useState(false);
+    const [editId, setEditId] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: '' });
 
-    const handleClickOpen = () => setOpen(true)
-
-    const handleClose = () => setOpen(false)
+    const handleClickOpen = () => setOpen(true);
+    const handleClose = () => {
+        setOpen(false);
+        setFormData('');
+        setEditId(null);
+    };
 
     useEffect(() => {
         fetchNotes();
     }, []);
 
     const fetchNotes = async () => {
+        setLoading(true);
         try {
-            const token = localStorage.getItem('token')
+            const token = localStorage.getItem('token');
             const response = await axios.get('http://localhost:8000/api/notes/', {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
+                headers: { Authorization: `Bearer ${token}` }
             });
             setNotes(response.data);
         } catch (error) {
-            console.error('Error fetching notes:', error);
+            showSnackbar('Error fetching notes', 'error');
+        } finally {
+            setLoading(false);
         }
     };
 
-
-    const [formData, setFormData] = useState('')
     const handleInputChange = (event) => {
-        setFormData(event.target.value);
+        const value = event.target.value;
+        debouncedSetFormData(value);
     };
-    const handleSubmit = async () => {
-        try {
-            const token = localStorage.getItem('token')
-            // Example API call to submit the form
-            const response = await fetch('http://localhost:8000/api/notes/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({ content: formData })
-            })
-            const data = await response.json()
-            console.log(data);
 
-            setNotes([...notes, data]);
-            handleClose()
-            setFormData('')
+    const debouncedSetFormData = useCallback(debounce((value) => setFormData(value), 10), []);
+
+    const handleSubmit = async () => {
+        if (!formData.trim()) {
+            showSnackbar('Note content cannot be empty', 'warning');
+            return;
+        }
+        try {
+            const token = localStorage.getItem('token');
+            const url = editId ? `http://localhost:8000/api/notes/${editId}` : 'http://localhost:8000/api/notes/';
+            const method = editId ? 'put' : 'post';
+
+            const response = await axios[method](url, { content: formData }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setNotes(editId ? notes.map(note => (note._id === editId ? response.data : note)) : [...notes, response.data]);
+            showSnackbar(editId ? 'Note updated' : 'Note added', 'success');
+            handleClose();
         } catch (error) {
-            console.error('Error adding note:', error);
+            showSnackbar('Error saving note', 'error');
         }
     };
 
     const handleDelete = async (id) => {
         try {
-            const token = localStorage.getItem('token')
+            const token = localStorage.getItem('token');
             await axios.delete(`http://localhost:8000/api/notes/${id}`, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
+                headers: { Authorization: `Bearer ${token}` }
             });
             setNotes(notes.filter(note => note._id !== id));
+            showSnackbar('Note deleted', 'success');
         } catch (error) {
-            console.error('Error deleting note:', error);
+            showSnackbar('Error deleting note', 'error');
         }
     };
 
-    const handleUpdate = async (id, newContent) => {
-        try {
-            const token = localStorage.getItem('token')
-            const response = await axios.put(`http://localhost:8000/api/notes/${id}`, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            }, { content: newContent });
-            const updatedNotes = notes.map(note => note._id === id ? response.data : note);
-            setNotes(updatedNotes);
-        } catch (error) {
-            console.error('Error updating note:', error);
-        }
+    const handleDoubleClick = (note) => {
+        setEditId(note._id);
+        setFormData(note.content);
+        setOpen(true);
+    };
+
+    const showSnackbar = (message, severity) => {
+        setSnackbar({ open: true, message, severity });
+    };
+
+    const handleSnackbarClose = () => {
+        setSnackbar({ ...snackbar, open: false });
     };
 
     return (
-        <><Box sx={{ width: '100%', maxWidth: 360 }}>
-            {/* <Box display={'flex'}>
-        <TextField
-            margin='20px'
-            label="Add Note"
-            variant="outlined"
-            value={formData}
-            onChange={handleInputChange}
-            fullWidth
-        />
-        <Button margin='2' size='small' variant="contained" color="primary" onClick={handleSubmit}>
-            Add
-        </Button>
-        </Box> */}
-            <List>
-                {notes?.map((item) => (
-                    <ListItem
-                        style={{ marginBottom: '12px', backgroundColor: '#f8f8ba', borderRadius: '5px' }}
-                        key={item._id}
-                        secondaryAction={<>
-                            <IconButton edge="end" aria-label="delete" onClick={() => handleDelete(item._id)}>
-                                <i class="ri-close-line"></i>
-                            </IconButton>
-                        </>}
-                    >
-                        <ListItemText primary={item.content} />
-                    </ListItem>
-                ))}
-            </List>
-        </Box><Fab onClick={handleClickOpen} style={{ position: 'fixed', bottom: '10%', right: '10%' }} aria-label='edit'>
-                <i className='ri-add-line' />
+        <>
+            <Box sx={{ width: '100%', maxWidth: 360, position: 'relative' }}>
+                {loading ? (
+                    <Box display="flex" justifyContent="center" alignItems="center" height="100vh">
+                        <CircularProgress />
+                    </Box>
+                ) : (
+                    <List>
+                        {notes.map((item) => (
+                            <ListItem
+                                key={item._id}
+                                style={{ marginBottom: '12px', backgroundColor: '#f8f8ba', borderRadius: '5px', cursor: 'pointer' }}
+                                onDoubleClick={() => handleDoubleClick(item)}
+                                secondaryAction={
+                                    <IconButton edge="end" aria-label="delete" onClick={() => handleDelete(item._id)}>
+                                        <i className="ri-close-line"></i>
+                                    </IconButton>
+                                }
+                            >
+                                <ListItemText
+                                    primary={<span style={{ whiteSpace: 'pre-line' }}>{item.content}</span>}
+                                />
+                            </ListItem>
+                        ))}
+                    </List>
+                )}
+            </Box>
+
+            <Fab
+                onClick={handleClickOpen}
+                style={{ position: 'fixed', bottom: '10%', right: '10%' }}
+                aria-label="add"
+            >
+                <i className="ri-add-line" />
             </Fab>
-            <Dialog open={open} onClose={handleClose} aria-labelledby='form-dialog-title' fullWidth>
+
+            <Dialog open={open} onClose={handleClose} aria-labelledby="form-dialog-title" fullWidth>
                 <DialogContent>
-                    <TextField value={formData}
+                    <TextField
+                        value={formData}
+                        onChange={handleInputChange}
                         fullWidth
-                        rows={4}
                         multiline
-                        id='textarea-outlined-static'
-                        onChange={handleInputChange} autoFocus type='email' label='Add Notes' />
+                        rows={4}
+                        label={editId ? "Edit Note" : "Add Note"}
+                        autoFocus
+                    />
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={handleClose} variant='outlined' color='secondary' >
+                    <Button onClick={handleClose} variant="outlined" color="secondary">
                         Cancel
                     </Button>
-                    <Button onClick={handleSubmit} variant='contained'>
-                        Save
+                    <Button onClick={handleSubmit} variant="contained">
+                        {editId ? "Update" : "Save"}
                     </Button>
                 </DialogActions>
             </Dialog>
 
-
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={3000}
+                onClose={handleSnackbarClose}
+                message={snackbar.message}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            />
         </>
     );
 }

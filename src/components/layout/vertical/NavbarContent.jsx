@@ -55,49 +55,49 @@ const shortcuts = [
 
 const notifications = [
   {
-    avatarImage: '/images/avatars/2.png',
-    title: 'Congratulations Flora 🎉',
-    subtitle: 'Won the monthly bestseller gold badge',
+    avatarImage: '/images/avatars/1.png',
+    title: 'Welcome to the Woxox CRM Beta Programme🎉',
+    subtitle: 'To improve the system, report issues and mistakes - Admin',
     time: '1h ago',
     read: false
   },
   {
-    title: 'Cecilia Becker',
-    subtitle: 'Accepted your connection',
-    time: '12h ago',
+    title: 'New Patches',
+    subtitle: 'Coming Sonn',
+    time: '1m ago',
     read: false
   },
-  {
-    avatarImage: '/images/avatars/3.png',
-    title: 'Bernard Woods',
-    subtitle: 'You have new message from Bernard Woods',
-    time: 'May 18, 8:26 AM',
-    read: true
-  },
-  {
-    avatarIcon: 'ri-bar-chart-line',
-    avatarColor: 'info',
-    title: 'Monthly report generated',
-    subtitle: 'July month financial report is generated',
-    time: 'Apr 24, 10:30 AM',
-    read: true
-  },
-  {
-    avatarText: 'MG',
-    avatarColor: 'success',
-    title: 'Application has been approved 🚀',
-    subtitle: 'Your Meta Gadgets project application has been approved.',
-    time: 'Feb 17, 12:17 PM',
-    read: true
-  },
-  {
-    avatarIcon: 'ri-mail-line',
-    avatarColor: 'error',
-    title: 'New message from Harry',
-    subtitle: 'You have new message from Harry',
-    time: 'Jan 6, 1:48 PM',
-    read: true
-  }
+  // {
+  //   avatarImage: '/images/avatars/3.png',
+  //   title: 'Bernard Woods',
+  //   subtitle: 'You have new message from Bernard Woods',
+  //   time: 'May 18, 8:26 AM',
+  //   read: true
+  // },
+  // {
+  //   avatarIcon: 'ri-bar-chart-line',
+  //   avatarColor: 'info',
+  //   title: 'Monthly report generated',
+  //   subtitle: 'July month financial report is generated',
+  //   time: 'Apr 24, 10:30 AM',
+  //   read: true
+  // },
+  // {
+  //   avatarText: 'MG',
+  //   avatarColor: 'success',
+  //   title: 'Application has been approved 🚀',
+  //   subtitle: 'Your Meta Gadgets project application has been approved.',
+  //   time: 'Feb 17, 12:17 PM',
+  //   read: true
+  // },
+  // {
+  //   avatarIcon: 'ri-mail-line',
+  //   avatarColor: 'error',
+  //   title: 'New message from Harry',
+  //   subtitle: 'You have new message from Harry',
+  //   time: 'Jan 6, 1:48 PM',
+  //   read: true
+  // }
 ]
 
 const NavbarContent = () => {
@@ -105,12 +105,12 @@ const NavbarContent = () => {
     <div className={classnames(verticalLayoutClasses.navbarContent, 'flex items-center justify-between gap-4 is-full')}>
       <div className='flex items-center gap-[7px]'>
         <NavToggle />
-        <NavSearch />
+        {/* <NavSearch /> */}
       </div>
       <div className='flex items-center'>
-        <LanguageDropdown />
+        {/* <LanguageDropdown />
         <ModeDropdown />
-        <ShortcutsDropdown shortcuts={shortcuts} />
+        <ShortcutsDropdown shortcuts={shortcuts} /> */}
         <NotificationsDropdown notifications={notifications} />
         <UserDropdown />
       </div>

@@ -17,17 +17,45 @@ import DialogContentText from '@mui/material/DialogContentText'
 import UserLeftOverview from '@views/apps/leadView/view/user-left-overview'
 import UserRight from '@views/apps/leadView/view/user-right'
 import { DataProvider } from '@/contexts/DataContext'
-import { Box, MenuItem, FormControl, InputLabel, Select } from '@mui/material'
+import { Box, MenuItem, FormControl, InputLabel, Select, InputAdornment, IconButton } from '@mui/material'
 const OverViewTab = dynamic(() => import('@views/apps/leadView/view/user-right/overview'))
 const SecurityTab = dynamic(() => import('@views/apps/leadView/view/user-right/security'))
 const BillingPlans = dynamic(() => import('@views/apps/leadView/view/user-right/billing-plans'))
 const NotificationsTab = dynamic(() => import('@views/apps/leadView/view/user-right/notifications'))
 const ConnectionsTab = dynamic(() => import('@views/apps/leadView/view/user-right/connections'))
-
+import { toast } from 'react-toastify'
+import { useSearchParams } from 'next/navigation'
 const Transactions = (props) => {
   const [open, setOpen] = useState(false)
   const [viewItem, setViewItem] = useState({})
-  console.log(props.campaign);
+
+  const searchParams = useSearchParams();
+  const userId = searchParams.get('Userid');
+
+  useEffect(() => {
+    if (userId) {
+      fetchItemById(userId)
+    }
+  }, [userId]);
+
+
+  const fetchItemById = async (userId) => {
+    setLoading(true)
+    const token = localStorage.getItem('token')
+    if (!token) {
+      setError('No authorization token found.')
+      setLoading(false)
+      return
+    }
+    const response = await fetch(
+      `http://localhost:8000/api/leads/leads/${userId}`,
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    )
+    const newData = await response.json()
+    handleClickOpen(newData)
+  }
 
   const handleClickOpen = item => {
     setOpen(true)
@@ -151,71 +179,105 @@ const Transactions = (props) => {
     fetchItems(page, searchTerm)
   }
 
+  const getStatusColor = (status) => {
+    switch (status.toLowerCase()) {
+      case 'active':
+        return 'primary';
+      case 'inactive':
+        return 'default';
+      case 'new':
+        return 'info';
+      case 'pending':
+        return 'warning';
+      case 'converted':
+        return 'success';
+      case 'lost':
+        return 'error';
+      default:
+        return 'default';
+    }
+  };
+
   const [assignee, setAssignee] = useState('')
   const [status, setStatus] = useState('')
   return (
-    <>
-      <Card>
-        <Grid container spacing={6} marginLeft={3} marginTop={3} marginRight={3}>
-          <Grid xs={12} item md={4}>
-            <h2>All Leads</h2>
-          </Grid>
-          <Grid item xs={10} md={4}>
-            <Box display={'flex'}>
-              <TextField
-                fullWidth
-                label='Search'
-                variant='standard'
-                type='text'
-                ref={inputRef}
-                onChange={handleSearchChange}
-              />
-              <Button onClick={resetSearch} color='primary' variant='standard'>
-                Reset
-              </Button>{' '}
-            </Box>
-          </Grid>
-          <Grid xs={12} item md={4}>
-            <Button onClick={handleClickOpen2}> Filter</Button>
-          </Grid>
+    <> <Typography variant="h5" padding={2}>{props.campaign ? `Leads by ${decodeURIComponent(props.campaign)} Campaign` : "All Leads"}</Typography>
+      <Card style={{ marginBottom: '5px' }}> <Grid container spacing={2} padding={3}>
+        <Grid item xs={12} md={4}>
+          <Box display="flex" alignItems="center">
+            <TextField
+              size="small"
+              fullWidth
+              variant="outlined"
+              type="text"
+              ref={inputRef}
+              onChange={handleSearchChange}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <i className="ri-search-2-line"></i>
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton onClick={resetSearch} aria-label="Clear search">
+                      <i className="ri-close-line"></i>
+                    </IconButton>
+                  </InputAdornment>
+                )
+              }}
+            />
+            <IconButton onClick={handleClickOpen2} color="primary">
+              <i class="ri-filter-line"></i>
+            </IconButton>
+          </Box>
         </Grid>
-        <CardContent className='flex flex-col gap-3'>
-          {items &&
-            items.map((item, index) => (
+        {/* <Grid item xs={12} md={4}>
+            <Button variant="contained" color="primary" onClick={handleClickOpen2}>
+              Filter
+            </Button>
+          </Grid> */}
+      </Grid></Card>
+
+      <Card>
+
+        <CardContent>
+          <Box display="flex" flexDirection="column" gap={2}>
+            {items && items.map((item, index) => (
               <Box
                 key={index}
-                className='flex items-center gap-4'
+                display="flex"
+                alignItems="center"
+                justifyContent="space-between"
+                padding={2}
+                bgcolor="#f0f0f0"
+                borderRadius={2}
                 onClick={() => handleClickOpen(item)}
                 sx={{
-                  transition: 'padding 0.3s linear, backgroundColor 0.3s linear',
+                  transition: 'all 0.3s ease',
                   '&:hover': {
-                    padding: '9px',
-                    backgroundColor: '#f7f7f7', // Darken background on hover
-                    transitionTimingFunction: 'linear',
-                    transitionDuration: '0.3s', // Corrected property name and value format
-                    cursor: 'pointer' // Indicates a clickable element
+                    backgroundColor: '#e0e0e0',
+                    cursor: 'pointer'
                   }
                 }}
               >
-                <CustomAvatar variant='rounded' src={item.avatarSrc} size={38} />
-                <div className='flex justify-between items-center is-full flex-wrap gap-x-4 gap-y-2'>
-                  <div className='flex flex-col gap-0.5'>
-                    <Typography color='text.primary' className='font-medium'>
+                <Box display="flex" alignItems="center" gap={2}>
+                  <i class="ri-account-box-fill"></i>                  <Box display="flex" flexDirection="column">
+                    <Typography variant="subtitle1" color="textPrimary">
                       {item.name}
                     </Typography>
-                    <div className='flex items-center gap-2'>
-                      <i className='ri-flag-line text-base text-textSecondary' />
-                      <Typography variant='body2'>{item.campaign}</Typography>
-                    </div>
-                  </div>
-                  <Chip label={item.status} color={item.chipColor} size='small' variant='tonal' />
-                </div>
+                    <Typography variant="body2" color="textSecondary">
+                      {item.campaign}
+                    </Typography>
+                  </Box>
+                </Box>
+                <Chip label={item.status} color={getStatusColor(item.status)} size="small" variant="contained" />
               </Box>
             ))}
-
-          <div ref={loader} style={{ height: '50px' }}>
-            {loading ? <p> Loading more... </p> : null}
-          </div>
+            <div style={{ height: '50px' }}>
+              {loading && <Typography>Loading more...</Typography>}
+            </div>
+          </Box>
         </CardContent>
       </Card>
       {/* Filter Modal */}

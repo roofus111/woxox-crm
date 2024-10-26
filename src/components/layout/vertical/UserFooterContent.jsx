@@ -3,6 +3,7 @@ import Box from '@mui/material/Box';
 import BottomNavigation from '@mui/material/BottomNavigation';
 import BottomNavigationAction from '@mui/material/BottomNavigationAction';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 
 export default function UserFooterContent() {
   const [value, setValue] = React.useState(0);
@@ -28,12 +29,32 @@ export default function UserFooterContent() {
           setValue(newValue);
         }}
       >
-        <BottomNavigationAction href={`/${locale}/home`} label="Home" icon={<i className="ri-home-8-fill"></i>} />
-        <BottomNavigationAction href={`/${locale}/leads`} label="Leads" icon={<i className="ri-contacts-fill"></i>} />
-        <BottomNavigationAction href={`/${locale}/followup`} label="Follow Up" icon={<i className="ri-chat-check-fill"></i>} />
-        <BottomNavigationAction href={`/${locale}/notes`} label="Notes" icon={<i className="ri-book-2-fill"></i>} />
-        <BottomNavigationAction href={`/${locale}/tasks`} label="Tasks" icon={<i class="ri-task-fill"></i>} />
+        {/* Use Link with a wrapping component that can handle onClick */}
+        <Link href={`/${locale}/home`} passHref>
+          <BottomNavigationWrapper label="Home" icon={<i className="ri-home-8-fill"></i>} />
+        </Link>
+        <Link href={`/${locale}/leads`} passHref>
+          <BottomNavigationWrapper label="Leads" icon={<i className="ri-contacts-fill"></i>} />
+        </Link>
+        <Link href={`/${locale}/followup`} passHref>
+          <BottomNavigationWrapper label="Follow Up" icon={<i className="ri-chat-check-fill"></i>} />
+        </Link>
+        <Link href={`/${locale}/notes`} passHref>
+          <BottomNavigationWrapper label="Notes" icon={<i className="ri-book-2-fill"></i>} />
+        </Link>
+        <Link href={`/${locale}/tasks`} passHref>
+          <BottomNavigationWrapper label="Tasks" icon={<i className="ri-task-fill"></i>} />
+        </Link>
       </BottomNavigation>
     </Box>
+  );
+}
+
+// Custom component to wrap BottomNavigationAction
+function BottomNavigationWrapper({ icon, label, ...props }) {
+  return (
+    <div {...props} style={{ width: '100%' }}> {/* Div to handle the click area properly */}
+      <BottomNavigationAction label={label} icon={icon} />
+    </div>
   );
 }

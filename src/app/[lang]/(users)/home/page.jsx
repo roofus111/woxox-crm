@@ -1,4 +1,4 @@
-import Award from '@views/dashboards/crm/Award'
+import Award from '@views/user/award'
 import Grid from '@mui/material/Grid'
 
 const DashboardCRM = async () => {

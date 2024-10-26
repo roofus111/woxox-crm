@@ -5,225 +5,195 @@ import { useEffect, useState } from 'react'
 import axios from 'axios'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
+
 // MUI Imports
+import {
+  Card,
+  CardContent,
+  CardActions,
+  Button,
+  Typography,
+  Grid,
+  Chip,
+  Box,
+  Divider,
+  Snackbar,
+  Alert,
+  CircularProgress,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails
+} from '@mui/material'
 
-import CardHeader from '@mui/material/CardHeader'
 
-// Third-party Imports
-import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table'
-
-// Style Imports
-import styles from '@core/styles/table.module.css'
-
-// Data Imports
-import defaultData from './data'
-
-import { Card, CardContent, CardActions, Button, Typography, Grid, Chip, Avatar, Box, Divider } from '@mui/material'
-
-import React from 'react'
+// Utility Imports
 import { getLocalizedUrl } from '@/utils/i18n'
-// Column Definitions
-const columnHelper = createColumnHelper()
 
-const columns = [
-  columnHelper.accessor('createdAt', {
-    cell: info => info.getValue(),
-    header: 'Created',
-    cell: info => new Date(info.getValue()).toLocaleString()
-  }),
-  columnHelper.accessor('leadId.name', {
-    cell: info => info.getValue(),
-    header: 'Lead Name'
-  }),
-  columnHelper.accessor('status', {
-    cell: info => info.getValue(),
-    header: 'Follow-Up Status'
-  }),
+// FollowUpCard Component for each follow-up
+const FollowUpCard = ({ followUp, locale, onClose }) => {
+  const [submitting, setSubmitting] = useState(false)
 
-  columnHelper.accessor('nextFollowUpDate', {
-    cell: info => info.getValue(),
-    header: 'Scheduled On',
-    cell: info => new Date(info.getValue()).toLocaleString()
-  }),
-  columnHelper.accessor('assignedTo.name', {
-    cell: info => info.getValue(),
-    header: 'Assigned To'
-  }),
-  columnHelper.accessor('createdBy.name', {
-    cell: info => info.getValue(),
-    header: 'Created By'
-  }),
-  columnHelper.accessor('notes', {
-    cell: info => info.getValue(),
-    header: 'Notes'
-  })
-]
+  // Dynamic Chip color based on status
+  const getStatusColor = status => {
+    switch (status) {
+      case 'Closed':
+        return 'success'
+      case 'Pending':
+        return 'warning'
+      case 'Open':
+        return 'primary'
+      default:
+        return 'default'
+    }
+  }
 
+  const handleClose = async () => {
+    setSubmitting(true)
+    try {
+      await onClose(followUp._id)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <Card sx={{ maxWidth: 600, m: 2, boxShadow: 3, borderRadius: 2 }}>
+      <CardContent>
+        <Typography variant="h6" color="primary" gutterBottom sx={{ fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box sx={{ mr: 2 }}>{followUp.leadId.name}</Box>
+          <Chip size="small" label={followUp.status} color={getStatusColor(followUp.status)} />
+        </Typography>
+        <Divider sx={{ my: 1.5 }} />
+        <Grid container spacing={2}>
+          <Grid item xs={12}>
+            <Typography variant="body2" color="text.secondary">
+              <i className="bi bi-calendar-event" style={{ verticalAlign: 'middle', marginRight: 8 }}></i>
+              Date: <b>{new Date(followUp.nextFollowUpDate).toLocaleString()}</b>
+            </Typography>
+          </Grid>
+          <Divider sx={{ my: 1.5 }} />
+          <Grid item xs={12}>
+            <Typography variant="body2" color="text.secondary">
+              <i className="bi bi-sticky-note" style={{ verticalAlign: 'middle', marginRight: 8 }}></i>
+              Notes: {followUp.notes}
+            </Typography>
+          </Grid>
+        </Grid>
+      </CardContent>
+      <CardActions sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+        {followUp.status !== 'Closed' && (
+          <Button size="small" color="success" variant="contained" onClick={handleClose} disabled={submitting}>
+            {submitting ? <CircularProgress size={20} /> : 'Close'}
+          </Button>
+        )}
+        <Button size="small" color="primary" variant="contained" startIcon={<Box component="i" className="bi bi-pencil-square" />}>
+          <Link href={getLocalizedUrl(`/leads?Userid=${followUp.leadId._id}`, locale)} className="flex">
+            View
+          </Link>
+        </Button>
+      </CardActions>
+    </Card>
+  )
+}
+
+// Main Component
 const BasicDataTables = () => {
-  // const [data, setData] = useState(null)
+  const [data, setData] = useState([])
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [data, setData] = useState([])
-
-  // if (loading) return <Typography>Loading...</Typography>
-  // if (error) return <Typography color='error'>{error}</Typography>
-  // States
-
-  // Hooks
-  const table = useReactTable({
-    data,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-    filterFns: {
-      fuzzy: () => false
-    }
-  })
-
-  useEffect(() => {
-    let isMounted = true // Flag to check if component is still mounted
-
-    const token = localStorage.getItem('token')
-
-    if (!token) {
-      setError('No authorization token found.')
-      setLoading(false)
-      return
-    }
-
-    axios
-      .get('http://localhost:8000/api/followups/', {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      })
-      .then(response => {
-        if (isMounted) {
-          setData(response.data) // Update data if component is still mounted
-          console.log(response.data)
-          setLoading(false)
-        }
-      })
-      .catch(error => {
-        console.error('Failed to fetch data:', error)
-        if (isMounted) {
-          setError('Failed to fetch data.')
-          setLoading(false)
-        }
-      })
-    return () => {
-      isMounted = false // Cleanup flag when component unmounts
-    }
-  }, [])
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' })
   const { lang: locale } = useParams()
+
+  // Fetch data on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        setError('No authorization token found.')
+        setLoading(false)
+        return
+      }
+
+      try {
+        const response = await axios.get('http://localhost:8000/api/followups/', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        setData(response.data)
+      } catch (error) {
+        setError('Failed to fetch data.')
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [])
+
+  // Close FollowUp Handler
+  const handleCloseFollowUp = async id => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`http://localhost:8000/api/followups/update/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: 'Closed' })
+      })
+
+      if (response.ok) {
+        setData(prevData => prevData.map(followUp => (followUp._id === id ? { ...followUp, status: 'Closed' } : followUp)))
+        setSnackbar({ open: true, message: 'Marked as Done', severity: 'success' })
+      } else {
+        const errorData = await response.json()
+        setSnackbar({ open: true, message: errorData.message || 'An error occurred. Please try again.', severity: 'error' })
+      }
+    } catch (error) {
+      setSnackbar({ open: true, message: 'An error occurred. Please try again.', severity: 'error' })
+    }
+  }
+
+  // Filter and sort data
+  const pendingFollowUps = data
+    .filter(followUp => followUp.status !== 'Closed')
+    .sort((a, b) => new Date(a.nextFollowUpDate) - new Date(b.nextFollowUpDate))
+
+  const archivedFollowUps = data
+    .filter(followUp => followUp.status === 'Closed')
+    .sort((a, b) => new Date(b.nextFollowUpDate) - new Date(a.nextFollowUpDate))
+
+  // Handle Snackbar Close
+  const handleSnackbarClose = () => setSnackbar({ ...snackbar, open: false })
+
+  if (loading) return <Typography>Loading...</Typography>
+  if (error) return <Typography color="error">{error}</Typography>
+
   return (
     <>
-      {data.map((followUp, index) => {
-        return (
-          <Card key={index} sx={{ maxWidth: 600, m: 2, boxShadow: 3, borderRadius: 2 }}>
-            <CardContent>
-              <Typography
-                variant='h6'
-                color='primary'
-                gutterBottom
-                sx={{ fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-              >
-                <Box sx={{ mr: 2 }}>
-                  {' '}
-                  {/* Adds right margin to the text */}
-                  {followUp.leadId.name}
-                </Box>
-                <Chip
-                  size='small'
-
-                  label={`${followUp.status}`}
-                  color='secondary'
-                  variant='contained'
-                />
-              </Typography>
-              <Divider sx={{ my: 1.5 }} />
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <Typography variant='body2' color='text.secondary'>
-                    <i className='bi bi-calendar-event' style={{ verticalAlign: 'middle', marginRight: 8 }}></i>
-                    Date: <b> {new Date(followUp.nextFollowUpDate).toLocaleString()} </b>
-                  </Typography>
-                </Grid>
-                <Divider sx={{ my: 1.5 }} />
-                <Grid item xs={12}>
-                  <Typography variant='body2' color='text.secondary' gutterBottom>
-                    <i className='bi bi-sticky-note' style={{ verticalAlign: 'middle', marginRight: 8 }}></i>
-                    Notes: {followUp.notes}
-                  </Typography>
-                </Grid>
-                {/* <Grid item xs={6}>
-                  <Typography color='text.secondary' sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Avatar sx={{ bgcolor: 'secondary.main', width: 24, height: 24, mr: 1 }}>
-                      {followUp.assignedTo.name.charAt(0)}
-                    </Avatar>
-                    {followUp.assignedTo.name}
-                  </Typography>
-                </Grid>
-                <Grid item xs={6}>
-                  <Chip
-                    size='small'
-                    icon={<Box component='i' className='bi bi-sticky-note-2-line' />}
-                    label={`${followUp.leadId.campaign}`}
-                    color='primary'
-                    variant='outlined'
-                  />
-                </Grid> */}
-              </Grid>
-            </CardContent>
-            <CardActions style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <Button size='small' color='success' variant='contained'>
-                Close
-              </Button> <Button
-                startIcon={<Box component='i' className='bi bi-pencil-square' />}
-                size='small'
-                color='primary'
-                variant='contained'
-              >
-                <Link href={getLocalizedUrl(`/leads?Userid=${followUp.leadId._id}`, locale)} className='flex'>
-                  View
-                </Link>
-              </Button>
-            </CardActions>
-          </Card>
-        )
-      })}
-
-      {/* <Card>
-        <CardHeader title='Follow Ups' />
-        <div className='overflow-x-auto'>
-          <table className={styles.table}>
-            <thead>
-              {table.getHeaderGroups().map(headerGroup => (
-                <tr key={headerGroup.id}>
-                  {headerGroup.headers.map(header => (
-                    <th key={header.id}>
-                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            <tbody>
-              {table
-                .getRowModel()
-                .rows.slice(0, 10)
-                .map(row => (
-                  <tr key={row.id}>
-                    {row.getVisibleCells().map(cell => (
-                      <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
-                    ))}
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-       */}
+      <Typography variant="h5" gutterBottom>Pending Follow-ups</Typography>
+      {pendingFollowUps.map(followUp => (
+        <FollowUpCard key={followUp._id} followUp={followUp} locale={locale} onClose={handleCloseFollowUp} />
+      ))}
+      <br />
+      {archivedFollowUps.length > 0 && (
+        <Accordion style={{ width: '100%' }}>
+          <AccordionSummary expandIcon={<i class="ri-arrow-right-double-fill"></i>}>
+            <Typography variant="h6">Archived Follow-ups</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            {archivedFollowUps.map(followUp => (
+              <FollowUpCard key={followUp._id} followUp={followUp} locale={locale} onClose={() => { }} />
+            ))}
+          </AccordionDetails>
+        </Accordion>
+      )}
+      <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={handleSnackbarClose}>
+        <Alert onClose={handleSnackbarClose} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </>
+
   )
 }
 

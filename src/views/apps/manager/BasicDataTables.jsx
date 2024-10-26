@@ -3,7 +3,8 @@
 // React Imports
 import { useEffect, useState } from 'react'
 import axios from 'axios'
-
+import Link from 'next/link'
+import { useParams } from 'next/navigation'
 // MUI Imports
 
 import CardHeader from '@mui/material/CardHeader'
@@ -20,7 +21,7 @@ import defaultData from './data'
 import { Card, CardContent, CardActions, Button, Typography, Grid, Chip, Avatar, Box, Divider } from '@mui/material'
 
 import React from 'react'
-
+import { getLocalizedUrl } from '@/utils/i18n'
 // Column Definitions
 const columnHelper = createColumnHelper()
 
@@ -113,7 +114,7 @@ const BasicDataTables = () => {
       isMounted = false // Cleanup flag when component unmounts
     }
   }, [])
-
+  const { lang: locale } = useParams()
   return (
     <>
       {data.map((followUp, index) => {
@@ -124,7 +125,7 @@ const BasicDataTables = () => {
                 variant='h6'
                 color='primary'
                 gutterBottom
-                sx={{ fontSize: '14px', display: 'flex', alignItems: 'center' }}
+                sx={{ fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
               >
                 <Box sx={{ mr: 2 }}>
                   {' '}
@@ -133,7 +134,7 @@ const BasicDataTables = () => {
                 </Box>
                 <Chip
                   size='small'
-                  icon={<Box component='i' className='bi bi-bookmark-fill' />}
+
                   label={`${followUp.status}`}
                   color='secondary'
                   variant='contained'
@@ -173,9 +174,8 @@ const BasicDataTables = () => {
                 </Grid> */}
               </Grid>
             </CardContent>
-            <CardActions>
-
-              <Button size='small' color='error' variant='outlined'>
+            <CardActions style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <Button size='small' color='success' variant='contained'>
                 Close
               </Button> <Button
                 startIcon={<Box component='i' className='bi bi-pencil-square' />}
@@ -183,7 +183,9 @@ const BasicDataTables = () => {
                 color='primary'
                 variant='contained'
               >
-                View
+                <Link href={getLocalizedUrl(`/leads?Userid=${followUp.leadId._id}`, locale)} className='flex'>
+                  View
+                </Link>
               </Button>
             </CardActions>
           </Card>

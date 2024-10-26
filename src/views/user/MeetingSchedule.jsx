@@ -21,7 +21,8 @@ import UserLeftOverview from '@views/apps/leadView/view/user-left-overview'
 import UserRight from '@views/apps/leadView/view/user-right'
 import { DataProvider } from '@/contexts/DataContext'
 import { Box, Menu, MenuItem, FormControl, InputLabel, Select } from '@mui/material'
-import debounce from 'lodash.debounce'
+import { toast } from 'react-toastify'
+import { useSearchParams } from 'next/navigation'
 const OverViewTab = dynamic(() => import('@views/apps/leadView/view/user-right/overview'))
 const SecurityTab = dynamic(() => import('@views/apps/leadView/view/user-right/security'))
 const BillingPlans = dynamic(() => import('@views/apps/leadView/view/user-right/billing-plans'))
@@ -153,6 +154,18 @@ const Transactions = (props) => {
 
   const [assignee, setAssignee] = useState('')
   const [status, setStatus] = useState('')
+
+  const searchParams = useSearchParams();
+  const userId = searchParams.get('Userid');
+
+  useEffect(() => {
+    if (userId) {
+      console.log("URL parameter detected");
+      toast.error("UserID detected");
+    }
+  }, [userId]);
+
+
   return (
     <>
       <Card>

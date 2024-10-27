@@ -32,7 +32,7 @@ const KanbanBoard = () => {
     //             console.error("Authentication token is missing");
     //             return; // Exit if no token is available
     //         }
-    //         const response = await fetch(`http://localhost:8000/api/leads/getleadsfordoc`, {
+    //         const response = await fetch(`http://13.127.160.185:8000/api/leads/getleadsfordoc`, {
     //             headers: {
     //                 Authorization: `Bearer ${token}`
     //             }

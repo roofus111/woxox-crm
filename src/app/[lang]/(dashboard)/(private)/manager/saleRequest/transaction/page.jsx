@@ -15,7 +15,7 @@ const Transaction = () => {
     useEffect(() => {
         const token = localStorage.getItem('token')
         axios
-            .get('http://localhost:8000/api/payment/', {
+            .get('http://13.127.160.185:8000/api/payment/', {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }

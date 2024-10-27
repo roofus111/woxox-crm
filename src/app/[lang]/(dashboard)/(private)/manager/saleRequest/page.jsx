@@ -90,7 +90,7 @@ const salesRequest = () => {
 
                 return
             }
-            const response = await fetch(`http://localhost:8000/api/leads/${id}/status`, {
+            const response = await fetch(`http://13.127.160.185:8000/api/leads/${id}/status`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -128,7 +128,7 @@ const salesRequest = () => {
         }
 
         axios
-            .get('http://localhost:8000/api/sales/', {
+            .get('http://13.127.160.185:8000/api/sales/', {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }

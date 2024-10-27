@@ -52,7 +52,7 @@ const UserActivityTimeLine = ({ id }) => {
     }
 
     axios
-      .get(`http://localhost:8000/api/leadactivity/${id}`, {
+      .get(`http://13.127.160.185:8000/api/leadactivity/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }

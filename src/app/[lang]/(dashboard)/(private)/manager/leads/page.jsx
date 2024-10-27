@@ -43,7 +43,7 @@ const Leads = () => {
   useEffect(() => {
     const token = localStorage.getItem('token')
     axios
-      .get('http://localhost:8000/api/user-profiles', {
+      .get('http://13.127.160.185:8000/api/user-profiles', {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -70,7 +70,7 @@ const Leads = () => {
 
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('http://localhost:8000/api/leads/assign', {
+      const response = await fetch('http://13.127.160.185:8000/api/leads/assign', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

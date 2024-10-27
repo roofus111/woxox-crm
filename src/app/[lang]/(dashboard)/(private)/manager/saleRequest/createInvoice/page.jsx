@@ -21,7 +21,7 @@ const InvoiceAdd = () => {
     useEffect(() => {
         const token = localStorage.getItem('token')
         axios
-            .get(`http://localhost:8000/api/leads/leads/${id}`, {
+            .get(`http://13.127.160.185:8000/api/leads/leads/${id}`, {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }

@@ -114,7 +114,7 @@ const AddAction = (props) => {
     try {
       const token = localStorage.getItem('token')
       // Example API call to submit the form
-      const response = await fetch('http://localhost:8000/api/invoice/', {
+      const response = await fetch('http://13.127.160.185:8000/api/invoice/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

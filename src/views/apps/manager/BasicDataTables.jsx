@@ -115,7 +115,7 @@ const BasicDataTables = () => {
       }
 
       try {
-        const response = await axios.get('http://localhost:8000/api/followups/', {
+        const response = await axios.get('http://13.127.160.185:8000/api/followups/', {
           headers: { Authorization: `Bearer ${token}` }
         })
         setData(response.data)
@@ -132,7 +132,7 @@ const BasicDataTables = () => {
   const handleCloseFollowUp = async id => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`http://localhost:8000/api/followups/update/${id}`, {
+      const response = await fetch(`http://13.127.160.185:8000/api/followups/update/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

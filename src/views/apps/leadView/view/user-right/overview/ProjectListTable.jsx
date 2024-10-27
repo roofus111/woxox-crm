@@ -44,7 +44,7 @@ const ProjectListTable = ({ id }) => {
     }
 
     axios
-      .get(`http://localhost:8000/api/followups/${id}`, {
+      .get(`http://13.127.160.185:8000/api/followups/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -75,7 +75,7 @@ const ProjectListTable = ({ id }) => {
     try {
       const token = localStorage.getItem('token')
       // Example API call to submit the form
-      const response = await fetch(`http://localhost:8000/api/followups/update/${id}`, {
+      const response = await fetch(`http://13.127.160.185:8000/api/followups/update/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

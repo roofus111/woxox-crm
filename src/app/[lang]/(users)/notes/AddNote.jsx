@@ -28,7 +28,7 @@ function AddNote() {
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.get('http://localhost:8000/api/notes/', {
+            const response = await axios.get('http://13.127.160.185:8000/api/notes/', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setNotes(response.data);
@@ -53,7 +53,7 @@ function AddNote() {
         }
         try {
             const token = localStorage.getItem('token');
-            const url = editId ? `http://localhost:8000/api/notes/${editId}` : 'http://localhost:8000/api/notes/';
+            const url = editId ? `http://13.127.160.185:8000/api/notes/${editId}` : 'http://13.127.160.185:8000/api/notes/';
             const method = editId ? 'put' : 'post';
 
             const response = await axios[method](url, { content: formData }, {
@@ -70,7 +70,7 @@ function AddNote() {
     const handleDelete = async (id) => {
         try {
             const token = localStorage.getItem('token');
-            await axios.delete(`http://localhost:8000/api/notes/${id}`, {
+            await axios.delete(`http://13.127.160.185:8000/api/notes/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setNotes(notes.filter(note => note._id !== id));

@@ -19,8 +19,8 @@ const themeConfig = {
   templateName: 'WOXOX',
   homePageUrl: '/dashboards/crm',
   userHomePageUrl: '/home',
-  settingsCookieName: 'materialize-mui-next-demo-1',
-  mode: 'system', // 'system', 'light', 'dark'
+  settingsCookieName: 'TastyCookies',
+  mode: 'light', // 'system', 'light', 'dark'
   skin: 'default', // 'default', 'bordered'
   semiDark: false, // true, false
   layout: 'vertical', // 'vertical', 'collapsed', 'horizontal'

@@ -105,7 +105,6 @@ const Transactions = (props) => {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      console.log('triggered')
       setPage(1) // Reset to page 1 to handle new search terms correctly
       fetchItems(1, searchTerm)
     }, 300) // 300ms debounce time
@@ -114,6 +113,8 @@ const Transactions = (props) => {
   }, [searchTerm])
 
   const handleObserver = entities => {
+    console.log("triggered");
+
     const target = entities[0]
     if (target.isIntersecting) {
       setPage(prev => prev + 1)
@@ -274,8 +275,8 @@ const Transactions = (props) => {
                 <Chip label={item.status} color={getStatusColor(item.status)} size="small" variant="contained" />
               </Box>
             ))}
-            <div style={{ height: '50px' }}>
-              {loading && <Typography>Loading more...</Typography>}
+            <div ref={loader} style={{ height: '50px' }}>
+              {loading ? <p> Loading more... </p> : null}
             </div>
           </Box>
         </CardContent>

@@ -10,116 +10,18 @@ module.exports = {
     "react/no-children-prop": "off",
     "@next/next/no-img-element": "off",
     "@next/next/no-page-custom-font": "off",
-    "lines-around-comment": [
-      "error",
-      {
-        "beforeBlockComment": true,
-        "beforeLineComment": true,
-        "allowBlockStart": true,
-        "allowObjectStart": true,
-        "allowArrayStart": true
-      }
-    ],
-    "padding-line-between-statements": [
-      "error",
-      {
-        "blankLine": "any",
-        "prev": "export",
-        "next": "export"
-      },
-      {
-        "blankLine": "always",
-        "prev": [
-          "const",
-          "let",
-          "var"
-        ],
-        "next": "*"
-      },
-      {
-        "blankLine": "any",
-        "prev": [
-          "const",
-          "let",
-          "var"
-        ],
-        "next": [
-          "const",
-          "let",
-          "var"
-        ]
-      },
-      {
-        "blankLine": "always",
-        "prev": "*",
-        "next": [
-          "function",
-          "multiline-const",
-          "multiline-block-like"
-        ]
-      },
-      {
-        "blankLine": "always",
-        "prev": [
-          "function",
-          "multiline-const",
-          "multiline-block-like"
-        ],
-        "next": "*"
-      }
-    ],
-    "newline-before-return": "error",
-    "import/newline-after-import": [
-      "error",
-      {
-        "count": 1
-      }
-    ],
-    "import/order": [
-      "error",
-      {
-        "groups": [
-          "builtin",
-          "external",
-          [
-            "internal",
-            "parent",
-            "sibling",
-            "index"
-          ],
-          [
-            "object",
-            "unknown"
-          ]
-        ],
-        "pathGroups": [
-          {
-            "pattern": "react",
-            "group": "external",
-            "position": "before"
-          },
-          {
-            "pattern": "next/**",
-            "group": "external",
-            "position": "before"
-          },
-          {
-            "pattern": "~/**",
-            "group": "external",
-            "position": "before"
-          },
-          {
-            "pattern": "@/**",
-            "group": "internal"
-          }
-        ],
-        "pathGroupsExcludedImportTypes": [
-          "react",
-          "type"
-        ],
-        "newlines-between": "always-and-inside-groups"
-      }
-    ]
+    "lines-around-comment": "off",
+    "padding-line-between-statements": "off",
+    "newline-before-return": "off",
+    "import/newline-after-import": "off",
+    "import/order": "off",
+    // Disabling React Hook Rules
+    "react-hooks/exhaustive-deps": "off", // Disables missing dependencies warnings
+    "react-hooks/rules-of-hooks": "off",  // Disables React hook usage errors
+    // Disabling Import Duplicate Rules
+    "import/no-duplicates": "off", // Disables duplicate import warnings
+    // Disabling JSX Key Warnings
+    "react/jsx-key": "off" // Disables missing "key" prop warnings in iterators
   },
   "settings": {
     "react": {

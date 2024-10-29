@@ -116,7 +116,7 @@ const Transactions = (props) => {
       return
     }
     const response = await fetch(
-      `http://localhost:8000/api/leads/search?page=${page}&search=${encodeURIComponent(searchTerm)}&status=${encodeURIComponent(status)}&assignedTo=${encodeURIComponent(assignee)}`,
+      `https://app.canbridge.in/api/leads/search?page=${page}&search=${encodeURIComponent(searchTerm)}&status=${encodeURIComponent(status)}&assignedTo=${encodeURIComponent(assignee)}`,
       {
         headers: { Authorization: `Bearer ${token}` }
       }

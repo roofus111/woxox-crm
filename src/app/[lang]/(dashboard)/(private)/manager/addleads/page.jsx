@@ -80,7 +80,7 @@ const Leads = () => {
     try {
       const token = localStorage.getItem('token')
       // Example API call to submit the form
-      const response = await fetch('http://localhost:8000/api/leads', {
+      const response = await fetch('https://app.canbridge.in/api/leads', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -166,7 +166,7 @@ const Leads = () => {
       formData.append('source', uploadData.source)
 
       // Example API call to submit the form
-      const response = await fetch('http://localhost:8000/api/excel/upload', {
+      const response = await fetch('https://app.canbridge.in/api/excel/upload', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}` // Only include Authorization, no need for Content-Type

@@ -117,7 +117,7 @@ const UserDetails = props => {
       const token = localStorage.getItem('token')
 
       if (formData.notes !== '') {
-        const response = await fetch('http://localhost:8000/api/leadactivity', {
+        const response = await fetch('https://app.canbridge.in/api/leadactivity', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -179,7 +179,7 @@ const UserDetails = props => {
       console.log(body)
       const token = localStorage.getItem('token')
       // Example API call to submit the form
-      const response = await fetch('http://localhost:8000/api/followups/', {
+      const response = await fetch('https://app.canbridge.in/api/followups/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -248,7 +248,7 @@ const UserDetails = props => {
     formData.append('docName', docData.docName)
     formData.append('leadId', userData.leadId)
     try {
-      const response = await fetch('http://localhost:8000/api/leads/upload', {
+      const response = await fetch('https://app.canbridge.in/api/leads/upload', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}` // Only include Authorization, no need for Content-Type
@@ -272,7 +272,7 @@ const UserDetails = props => {
   useEffect(() => {
     const token = localStorage.getItem('token')
     axios
-      .get('http://localhost:8000/api/user-profiles', {
+      .get('https://app.canbridge.in/api/user-profiles', {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -325,7 +325,7 @@ const UserDetails = props => {
 
         return
       }
-      const response = await fetch(`http://localhost:8000/api/leads/${userData.leadId}/status`, {
+      const response = await fetch(`https://app.canbridge.in/api/leads/${userData.leadId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -383,7 +383,7 @@ const UserDetails = props => {
 
         return
       }
-      const response = await fetch(`http://localhost:8000/api/leads/assignlead/${userData.leadId}/${value}`, {
+      const response = await fetch(`https://app.canbridge.in/api/leads/assignlead/${userData.leadId}/${value}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

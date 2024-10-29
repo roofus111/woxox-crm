@@ -15,7 +15,7 @@ const Transaction = () => {
     useEffect(() => {
         const token = localStorage.getItem('token')
         axios
-            .get('http://localhost:8000/api/payment/', {
+            .get('https://app.canbridge.in/api/payment/', {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }

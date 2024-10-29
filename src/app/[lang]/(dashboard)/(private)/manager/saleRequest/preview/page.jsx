@@ -32,7 +32,7 @@ const PreviewPage = () => {
   useEffect(() => {
     const token = localStorage.getItem('token')
     axios
-      .get(`http://localhost:8000/api/invoice/${id}`, {
+      .get(`https://app.canbridge.in/api/invoice/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }

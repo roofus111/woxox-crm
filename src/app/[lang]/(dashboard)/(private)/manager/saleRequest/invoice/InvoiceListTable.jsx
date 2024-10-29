@@ -111,7 +111,7 @@ const InvoiceListTable = ({ invoiceData }) => {
   useEffect(() => {
     const token = localStorage.getItem('token')
     axios
-      .get('http://localhost:8000/api/invoice', {
+      .get('https://app.canbridge.in/api/invoice', {
         headers: {
           Authorization: `Bearer ${token}`
         }

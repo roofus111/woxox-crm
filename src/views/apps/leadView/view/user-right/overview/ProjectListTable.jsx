@@ -44,7 +44,7 @@ const ProjectListTable = ({ id }) => {
     }
 
     axios
-      .get(`http://localhost:8000/api/followups/${id}`, {
+      .get(`https://app.canbridge.in/api/followups/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -75,7 +75,7 @@ const ProjectListTable = ({ id }) => {
     try {
       const token = localStorage.getItem('token')
       // Example API call to submit the form
-      const response = await fetch(`http://localhost:8000/api/followups/update/${id}`, {
+      const response = await fetch(`https://app.canbridge.in/api/followups/update/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

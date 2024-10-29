@@ -48,7 +48,7 @@ const Transactions = (props) => {
       return
     }
     const response = await fetch(
-      `http://localhost:8000/api/leads/leads/${userId}`,
+      `https://app.canbridge.in/api/leads/leads/${userId}`,
       {
         headers: { Authorization: `Bearer ${token}` }
       }
@@ -142,8 +142,8 @@ const Transactions = (props) => {
 
     // const qualification = encodeURIComponent(props.campaign)
     const response = await fetch(
-      // `http://localhost:8000/api/leads/getleads/${props.campaign}`,
-      `http://localhost:8000/api/leads/search?page=${page}&search=${encodeURIComponent(searchTerm)}&status=${encodeURIComponent(status)}&assignedTo=${encodeURIComponent(assignee)}&campaign=${props.campaign}`,
+      // `https://app.canbridge.in/api/leads/getleads/${props.campaign}`,
+      `https://app.canbridge.in/api/leads/search?page=${page}&search=${encodeURIComponent(searchTerm)}&status=${encodeURIComponent(status)}&assignedTo=${encodeURIComponent(assignee)}&campaign=${props.campaign}`,
       {
         headers: { Authorization: `Bearer ${token}` }
       }

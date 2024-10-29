@@ -125,7 +125,7 @@ const FormLayoutsCollapsible = (props) => {
     try {
       const token = localStorage.getItem('token')
       // Example API call to submit the form
-      const response = await fetch(`http://localhost:8000/api/leads/updateprofile/${props.props._id}`, {
+      const response = await fetch(`https://app.canbridge.in/api/leads/updateprofile/${props.props._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

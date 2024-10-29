@@ -67,7 +67,7 @@ const KitchenSink = () => {
     }
 
     axios
-      .get('http://localhost:8000/api/leads', {
+      .get('https://app.canbridge.in/api/leads', {
         headers: {
           Authorization: `Bearer ${token}`
         }

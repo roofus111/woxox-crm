@@ -11,7 +11,7 @@ export const fetchTasks = createAsyncThunk(
                 console.error("Authentication token is missing");
                 return; // Exit if no token is available
             }
-            const response = await fetch(`http://localhost:8000/api/leads/getleadsfordoc`, {
+            const response = await fetch(`https://app.canbridge.in/api/leads/getleadsfordoc`, {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }

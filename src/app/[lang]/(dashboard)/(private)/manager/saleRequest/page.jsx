@@ -90,11 +90,7 @@ const salesRequest = () => {
 
                 return
             }
-<<<<<<< HEAD
             const response = await fetch(`https://app.canbridge.in/api/leads/${id}/status`, {
-=======
-            const response = await fetch(`http://13.127.160.185:8000/api/leads/${id}/status`, {
->>>>>>> production
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -132,11 +128,7 @@ const salesRequest = () => {
         }
 
         axios
-<<<<<<< HEAD
             .get('https://app.canbridge.in/api/sales/', {
-=======
-            .get('http://13.127.160.185:8000/api/sales/', {
->>>>>>> production
                 headers: {
                     Authorization: `Bearer ${token}`
                 }

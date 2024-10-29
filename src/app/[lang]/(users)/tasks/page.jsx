@@ -14,11 +14,7 @@ function TaskManager() {
     const fetchTasks = async () => {
         try {
             const token = localStorage.getItem('token')
-<<<<<<< HEAD
             const response = await fetch(`https://app.canbridge.in/api/tasks/`, {
-=======
-            const response = await fetch(`http://13.127.160.185:8000/api/tasks/`, {
->>>>>>> production
                 headers: {
                     Authorization: `Bearer ${token}`
                 }
@@ -33,11 +29,7 @@ function TaskManager() {
     const addTask = async (taskText) => {
         try {
             const token = localStorage.getItem('token')
-<<<<<<< HEAD
             const response = await fetch(`https://app.canbridge.in/api/tasks/`, {
-=======
-            const response = await fetch(`http://13.127.160.185:8000/api/tasks/`, {
->>>>>>> production
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -55,11 +47,7 @@ function TaskManager() {
     const removeTask = async (id) => {
         const token = localStorage.getItem('token')
         try {
-<<<<<<< HEAD
             await fetch(`https://app.canbridge.in/api/tasks/${id}`, {
-=======
-            await fetch(`http://13.127.160.185:8000/api/tasks/${id}`, {
->>>>>>> production
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
@@ -75,11 +63,7 @@ function TaskManager() {
     const toggleTask = async (id, isCompleted) => {
         const token = localStorage.getItem('token')
         try {
-<<<<<<< HEAD
             const response = await fetch(`https://app.canbridge.in/api/tasks/${id}`, {
-=======
-            const response = await fetch(`http://13.127.160.185:8000/api/tasks/${id}`, {
->>>>>>> production
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',

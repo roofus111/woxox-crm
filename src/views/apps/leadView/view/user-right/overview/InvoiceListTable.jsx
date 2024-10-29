@@ -105,11 +105,7 @@ const InvoiceListTable = ({ id }) => {
             <IconButton size='small'>
               <i
                 className='ri-download-line'
-<<<<<<< HEAD
                 onClick={() => (window.location.href = `https://app.canbridge.in/api/leads/docs/${row.original._id}`)}
-=======
-                onClick={() => (window.location.href = `http://13.127.160.185:8000/api/leads/docs/${row.original._id}`)}
->>>>>>> production
               />
             </IconButton>
             <OptionMenu
@@ -196,11 +192,7 @@ const InvoiceListTable = ({ id }) => {
     }
 
     axios
-<<<<<<< HEAD
       .get(`https://app.canbridge.in/api/leads/docs/bylead/${id}`, {
-=======
-      .get(`http://13.127.160.185:8000/api/leads/docs/bylead/${id}`, {
->>>>>>> production
         headers: {
           Authorization: `Bearer ${token}`
         }

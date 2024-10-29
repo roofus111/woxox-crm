@@ -93,11 +93,7 @@ const Teams = () => {
         role: 'user'
       }
       //   Example API call to submit the form
-<<<<<<< HEAD
       const response = await fetch('https://app.canbridge.in/api/user-profiles', {
-=======
-      const response = await fetch('http://13.127.160.185:8000/api/user-profiles', {
->>>>>>> production
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -169,11 +165,7 @@ const Teams = () => {
     }
 
     axios
-<<<<<<< HEAD
       .get('https://app.canbridge.in/api/user-profiles', {
-=======
-      .get('http://13.127.160.185:8000/api/user-profiles', {
->>>>>>> production
         headers: {
           Authorization: `Bearer ${token}`
         }

@@ -115,7 +115,11 @@ const BasicDataTables = () => {
       }
 
       try {
+<<<<<<< HEAD
         const response = await axios.get('https://app.canbridge.in/api/followups/', {
+=======
+        const response = await axios.get('http://13.127.160.185:8000/api/followups/', {
+>>>>>>> production
           headers: { Authorization: `Bearer ${token}` }
         })
         setData(response.data)
@@ -132,7 +136,11 @@ const BasicDataTables = () => {
   const handleCloseFollowUp = async id => {
     try {
       const token = localStorage.getItem('token')
+<<<<<<< HEAD
       const response = await fetch(`https://app.canbridge.in/api/followups/update/${id}`, {
+=======
+      const response = await fetch(`http://13.127.160.185:8000/api/followups/update/${id}`, {
+>>>>>>> production
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

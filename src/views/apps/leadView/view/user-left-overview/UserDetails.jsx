@@ -117,7 +117,11 @@ const UserDetails = props => {
       const token = localStorage.getItem('token')
 
       if (formData.notes !== '') {
+<<<<<<< HEAD
         const response = await fetch('https://app.canbridge.in/api/leadactivity', {
+=======
+        const response = await fetch('http://13.127.160.185:8000/api/leadactivity', {
+>>>>>>> production
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -179,7 +183,11 @@ const UserDetails = props => {
       console.log(body)
       const token = localStorage.getItem('token')
       // Example API call to submit the form
+<<<<<<< HEAD
       const response = await fetch('https://app.canbridge.in/api/followups/', {
+=======
+      const response = await fetch('http://13.127.160.185:8000/api/followups/', {
+>>>>>>> production
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -248,7 +256,11 @@ const UserDetails = props => {
     formData.append('docName', docData.docName)
     formData.append('leadId', userData.leadId)
     try {
+<<<<<<< HEAD
       const response = await fetch('https://app.canbridge.in/api/leads/upload', {
+=======
+      const response = await fetch('http://13.127.160.185:8000/api/leads/upload', {
+>>>>>>> production
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}` // Only include Authorization, no need for Content-Type
@@ -272,7 +284,11 @@ const UserDetails = props => {
   useEffect(() => {
     const token = localStorage.getItem('token')
     axios
+<<<<<<< HEAD
       .get('https://app.canbridge.in/api/user-profiles', {
+=======
+      .get('http://13.127.160.185:8000/api/user-profiles', {
+>>>>>>> production
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -325,7 +341,11 @@ const UserDetails = props => {
 
         return
       }
+<<<<<<< HEAD
       const response = await fetch(`https://app.canbridge.in/api/leads/${userData.leadId}/status`, {
+=======
+      const response = await fetch(`http://13.127.160.185:8000/api/leads/${userData.leadId}/status`, {
+>>>>>>> production
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -383,7 +403,11 @@ const UserDetails = props => {
 
         return
       }
+<<<<<<< HEAD
       const response = await fetch(`https://app.canbridge.in/api/leads/assignlead/${userData.leadId}/${value}`, {
+=======
+      const response = await fetch(`http://13.127.160.185:8000/api/leads/assignlead/${userData.leadId}/${value}`, {
+>>>>>>> production
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

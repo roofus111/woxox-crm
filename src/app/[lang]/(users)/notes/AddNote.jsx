@@ -28,7 +28,11 @@ function AddNote() {
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
+<<<<<<< HEAD
             const response = await axios.get('https://app.canbridge.in/api/notes/', {
+=======
+            const response = await axios.get('http://13.127.160.185:8000/api/notes/', {
+>>>>>>> production
                 headers: { Authorization: `Bearer ${token}` }
             });
             setNotes(response.data);
@@ -53,7 +57,11 @@ function AddNote() {
         }
         try {
             const token = localStorage.getItem('token');
+<<<<<<< HEAD
             const url = editId ? `https://app.canbridge.in/api/notes/${editId}` : 'https://app.canbridge.in/api/notes/';
+=======
+            const url = editId ? `http://13.127.160.185:8000/api/notes/${editId}` : 'http://13.127.160.185:8000/api/notes/';
+>>>>>>> production
             const method = editId ? 'put' : 'post';
 
             const response = await axios[method](url, { content: formData }, {
@@ -70,7 +78,11 @@ function AddNote() {
     const handleDelete = async (id) => {
         try {
             const token = localStorage.getItem('token');
+<<<<<<< HEAD
             await axios.delete(`https://app.canbridge.in/api/notes/${id}`, {
+=======
+            await axios.delete(`http://13.127.160.185:8000/api/notes/${id}`, {
+>>>>>>> production
                 headers: { Authorization: `Bearer ${token}` }
             });
             setNotes(notes.filter(note => note._id !== id));

@@ -52,7 +52,11 @@ const UserActivityTimeLine = ({ id }) => {
     }
 
     axios
+<<<<<<< HEAD
       .get(`https://app.canbridge.in/api/leadactivity/${id}`, {
+=======
+      .get(`http://13.127.160.185:8000/api/leadactivity/${id}`, {
+>>>>>>> production
         headers: {
           Authorization: `Bearer ${token}`
         }

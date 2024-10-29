@@ -43,7 +43,11 @@ const Leads = () => {
   useEffect(() => {
     const token = localStorage.getItem('token')
     axios
+<<<<<<< HEAD
       .get('https://app.canbridge.in/api/user-profiles', {
+=======
+      .get('http://13.127.160.185:8000/api/user-profiles', {
+>>>>>>> production
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -70,7 +74,11 @@ const Leads = () => {
 
     try {
       const token = localStorage.getItem('token')
+<<<<<<< HEAD
       const response = await fetch('https://app.canbridge.in/api/leads/assign', {
+=======
+      const response = await fetch('http://13.127.160.185:8000/api/leads/assign', {
+>>>>>>> production
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

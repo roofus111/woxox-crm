@@ -178,6 +178,7 @@ const Transactions = (props) => {
   const handleFilter = () => {
     setPage(1)
     fetchItems(page, searchTerm)
+    handleClose2()
   }
 
   const getStatusColor = (status) => {
@@ -202,8 +203,9 @@ const Transactions = (props) => {
   const [assignee, setAssignee] = useState('')
   const [status, setStatus] = useState('')
   return (
-    <> <Typography variant="h5" padding={2}>{props.campaign ? `Leads by ${decodeURIComponent(props.campaign)} Campaign` : "All Leads"}</Typography>
-      <Card style={{ marginBottom: '5px' }}> <Grid container spacing={2} padding={3}>
+    <>
+      <Typography variant="h5" padding={2}>{props.campaign ? `Leads by ${decodeURIComponent(props.campaign)} Campaign` : "All Leads"}</Typography>
+      <Grid container spacing={2} padding={3}>
         <Grid item xs={12} md={4}>
           <Box display="flex" alignItems="center">
             <TextField
@@ -238,55 +240,52 @@ const Transactions = (props) => {
               Filter
             </Button>
           </Grid> */}
-      </Grid></Card>
+      </Grid>
 
-      <Card>
 
-        <CardContent>
-          <Box display="flex" flexDirection="column" gap={2}>
-            {items && items.map((item, index) => (
-              <Box
-                key={index}
-                display="flex"
-                alignItems="center"
-                justifyContent="space-between"
-                padding={2}
-                bgcolor="#f0f0f0"
-                borderRadius={2}
-                onClick={() => handleClickOpen(item)}
-                sx={{
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    backgroundColor: '#e0e0e0',
-                    cursor: 'pointer'
-                  }
-                }}
-              >
-                <Box display="flex" alignItems="center" gap={2}>
-                  <i class="ri-account-box-fill"></i>                  <Box display="flex" flexDirection="column">
-                    <Typography variant="subtitle1" color="textPrimary">
-                      {item.name}
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      {item.campaign}
-                    </Typography>
-                  </Box>
-                </Box>
-                <Chip label={item.status} color={getStatusColor(item.status)} size="small" variant="contained" />
+      <Box display="flex" flexDirection="column" gap={2}>
+        {items && items.map((item, index) => (
+          <Box
+            key={index}
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
+            padding={2}
+            bgcolor="#ffffff"
+            borderRadius={2}
+            onClick={() => handleClickOpen(item)}
+            sx={{
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                backgroundColor: '#e0e0e0',
+                cursor: 'pointer'
+              }
+            }}
+          >
+            <Box display="flex" alignItems="center" gap={2}>
+              <i class="ri-account-box-fill"></i>                  <Box display="flex" flexDirection="column">
+                <Typography variant="subtitle1" color="textPrimary">
+                  {item.name}
+                </Typography>
+                <Typography variant="body2" color="textSecondary">
+                  {item.campaign}
+                </Typography>
               </Box>
-            ))}
-            <div ref={loader} style={{ height: '50px' }}>
-              {loading ? <p> Loading more... </p> : null}
-            </div>
+            </Box>
+            <Chip label={item.status} color={getStatusColor(item.status)} size="small" variant="contained" />
           </Box>
-        </CardContent>
-      </Card>
+        ))}
+        <div ref={loader} style={{ height: '50px' }}>
+          {loading ? <p> Loading more... </p> : null}
+        </div>
+      </Box>
+
       {/* Filter Modal */}
       <Dialog maxWidth='xs' fullWidth open={open2} onClose={handleClose2}>
         <DialogTitle>Filter the Leads</DialogTitle>
         <DialogContent className='!pbs-2'>
           <Box component='form' className='flex gap-4'>
-            <FormControl className='mie-4 mbe-4' fullWidth>
+            {/* <FormControl className='mie-4 mbe-4' fullWidth>
               <InputLabel id='demo-dialog-select-label'>Assigned</InputLabel>
               <Select
                 label='Assigned'
@@ -304,7 +303,7 @@ const Transactions = (props) => {
                   </MenuItem>
                 ))}
               </Select>
-            </FormControl>
+            </FormControl> */}
             <FormControl fullWidth>
               <InputLabel htmlFor='outlined-age-native-basic'>Status</InputLabel>
               <Select label='Status' labelId='demo-dialog-select-label' id='demo-dialog-select' value={status} onChange={(e) => setStatus(e.target.value)}>

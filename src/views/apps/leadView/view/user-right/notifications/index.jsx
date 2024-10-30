@@ -153,7 +153,8 @@ const NotificationsTab = (props) => {
   }, [])
 
   return (
-    <><Card>
+    <>
+      {/* <Card>
       <CardHeader
         title='Sales Overview'
         action={<OptionMenu options={['Refresh', 'Share', 'Update']} />}
@@ -179,7 +180,7 @@ const NotificationsTab = (props) => {
           ))}
         </div>
       </CardContent>
-    </Card>
+    </Card> */}
       <br />
       <Card>
         <CardHeader title='Transaction History' />

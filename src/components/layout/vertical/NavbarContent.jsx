@@ -56,8 +56,8 @@ const shortcuts = [
 const notifications = [
   {
     avatarImage: '/images/avatars/1.png',
-    title: 'Welcome to the Woxox CRM Beta Programme🎉',
-    subtitle: 'To improve the system, report issues and mistakes - Admin',
+    title: 'Welcome to the Woxox CRM Beta Program🎉',
+    subtitle: 'To improve the system, report issues - Admin',
     time: '1h ago',
     read: false
   },

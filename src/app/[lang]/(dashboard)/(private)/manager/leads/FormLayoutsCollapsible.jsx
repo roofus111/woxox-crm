@@ -49,7 +49,7 @@ const data = [
   }
 ]
 
-const FormLayoutsCollapsible = (props) => {
+const FormLayoutsCollapsible = ({ props, handleClose }) => {
   // Vars
   const initialSelectedOption = data.filter(item => item.isSelected)[data.filter(item => item.isSelected).length - 1]
     .value
@@ -57,38 +57,40 @@ const FormLayoutsCollapsible = (props) => {
 
   // States
   const [expanded, setExpanded] = useState('panel1')
+  console.log(handleClose);
+
 
 
   const [cardData, setCardData] = useState({
-    fullName: props.props.name || '', // Prefill fullName if provided
-    phone: props.props.phone || '',
-    email: props.props.email || '',
-    age: props.props.profile?.age || '',
-    address: props.props.profile?.address || '',
-    pinCode: props.props.profile?.pinCode || '',
-    state: props.props.profile?.state || '',
-    city: props.props.profile?.city || '',
-    country: props.props.profile?.country || '',
-    sslcJoinYear: props.props.profile?.sslcJoinYear || '',
-    sslcPassOutYear: props.props.profile?.sslcPassOutYear || '',
-    sslcScore: props.props.profile?.sslcScore || '',
-    hscJoinYear: props.props.profile?.hscJoinYear || '',
-    hscPassOutYear: props.props.profile?.hscPassOutYear || '',
-    hscScore: props.props.profile?.hscScore || '',
-    ieltsScore: props.props.profile?.ieltsScore || '',
-    pteToeflScore: props.props.profile?.pteToeflScore || '',
-    germanScore: props.props.profile?.germanScore || '',
-    xiiEnglishScore: props.props.profile?.xiiEnglishScore || '',
-    careerGapFrom: props.props.profile?.careerGapFrom || '',
-    careerGapTo: props.props.profile?.careerGapTo || '',
-    experienceFrom: props.props.profile?.experienceFrom || '',
-    experienceTo: props.props.profile?.experienceTo || '',
-    backlogs: props.props.profile?.backlogs || '',
-    targetIntake: props.props.profile?.targetIntake || '',
-    programOfInterest: props.props.profile?.programOfInterest || '',
-    countryOfInterest: props.props.profile?.countryOfInterest || '',
-    visaRefusal: props.props.profile?.visaRefusal || '',
-    tuitionFeePreference: props.props.profile?.tuitionFeePreference || ''
+    fullName: props.name || '',
+    phone: props.phone || '',
+    email: props.email || '',
+    age: props.profile?.age || '',
+    address: props.profile?.address || '',
+    pinCode: props.profile?.pinCode || '',
+    state: props.profile?.state || '',
+    city: props.profile?.city || '',
+    country: props.profile?.country || '',
+    sslcJoinYear: props.profile?.sslcJoinYear || '',
+    sslcPassOutYear: props.profile?.sslcPassOutYear || '',
+    sslcScore: props.profile?.sslcScore || '',
+    hscJoinYear: props.profile?.hscJoinYear || '',
+    hscPassOutYear: props.profile?.hscPassOutYear || '',
+    hscScore: props.profile?.hscScore || '',
+    ieltsScore: props.profile?.ieltsScore || '',
+    pteToeflScore: props.profile?.pteToeflScore || '',
+    germanScore: props.profile?.germanScore || '',
+    xiiEnglishScore: props.profile?.xiiEnglishScore || '',
+    careerGapFrom: props.profile?.careerGapFrom || '',
+    careerGapTo: props.profile?.careerGapTo || '',
+    experienceFrom: props.profile?.experienceFrom || '',
+    experienceTo: props.profile?.experienceTo || '',
+    backlogs: props.profile?.backlogs || '',
+    targetIntake: props.profile?.targetIntake || '',
+    programOfInterest: props.profile?.programOfInterest || '',
+    countryOfInterest: props.profile?.countryOfInterest || '',
+    visaRefusal: props.profile?.visaRefusal || '',
+    tuitionFeePreference: props.profile?.tuitionFeePreference || ''
   })
 
   const handleExpandChange = panel => (event, isExpanded) => {
@@ -125,7 +127,7 @@ const FormLayoutsCollapsible = (props) => {
     try {
       const token = localStorage.getItem('token')
       // Example API call to submit the form
-      const response = await fetch(`https://app.canbridge.in/api/leads/updateprofile/${props.props._id}`, {
+      const response = await fetch(`https://app.canbridge.in/api/leads/updateprofile/${props._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -245,10 +247,8 @@ const FormLayoutsCollapsible = (props) => {
                   value={cardData.country}
                   onChange={e => setCardData({ ...cardData, country: e.target.value })}
                 >
-                  <MenuItem value='UK'>UK</MenuItem>
-                  <MenuItem value='USA'>USA</MenuItem>
-                  <MenuItem value='Australia'>Australia</MenuItem>
-                  <MenuItem value='Germany'>Germany</MenuItem>
+                  <MenuItem value='India'>India</MenuItem>
+
                 </Select>
               </FormControl>
             </Grid>
@@ -406,7 +406,7 @@ const FormLayoutsCollapsible = (props) => {
             <Grid item xs={6}>
               <Typography>Career Gap</Typography>
             </Grid>
-            <Grid item xs={3}>
+            <Grid item xs={12} sm={3}>
               <TextField
                 fullWidth
                 type='number'
@@ -415,7 +415,7 @@ const FormLayoutsCollapsible = (props) => {
                 onChange={e => setCardData({ ...cardData, careerGapFrom: e.target.value })}
               />
             </Grid>
-            <Grid item xs={3}>
+            <Grid item xs={12} sm={3}>
               <TextField
                 fullWidth
                 type='number'
@@ -428,7 +428,7 @@ const FormLayoutsCollapsible = (props) => {
             <Grid item xs={6}>
               <Typography>Experience</Typography>
             </Grid>
-            <Grid item xs={3}>
+            <Grid item xs={12} sm={3}>
               <TextField
                 fullWidth
                 type='number'
@@ -437,7 +437,7 @@ const FormLayoutsCollapsible = (props) => {
                 onChange={e => setCardData({ ...cardData, experienceFrom: e.target.value })}
               />
             </Grid>
-            <Grid item xs={3}>
+            <Grid item xs={12} sm={3}>
               <TextField
                 fullWidth
                 type='number'
@@ -450,7 +450,7 @@ const FormLayoutsCollapsible = (props) => {
             <Grid item xs={6}>
               <Typography>Backlogs</Typography>
             </Grid>
-            <Grid item xs={6}>
+            <Grid item xs={12} sm={3}>
               <TextField
                 fullWidth
                 type='number'
@@ -518,11 +518,11 @@ const FormLayoutsCollapsible = (props) => {
           </Grid>
         </AccordionDetails>
       </Accordion>
-      <Button variant='outlined' color='secondary'>
-        Disagree
+      <Button onClick={() => handleClose()} sx={{ margin: 5 }} variant='outlined' color='secondary'>
+        Cancel
       </Button>
-      <Button onClick={handleSubmit} variant='contained'>
-        Agree
+      <Button sx={{ margin: 5 }} onClick={handleSubmit} variant='contained'>
+        Save
       </Button>
     </>
   )

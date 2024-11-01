@@ -32,7 +32,7 @@ const OverViewTab = ({ props }) => {
   return (
     <Grid container spacing={6}>
       <Grid item xs={12}>
-        <Progress id={props.viewItem._id} />
+        {/* <Progress id={props.viewItem._id} /> */}
       </Grid>
       <Grid item xs={12}>
         <ProjectListTable id={props.viewItem._id} />

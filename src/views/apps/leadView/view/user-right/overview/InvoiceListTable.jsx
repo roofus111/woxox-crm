@@ -227,7 +227,7 @@ const InvoiceListTable = ({ id }) => {
         sx={{ '& .MuiCardHeader-action': { m: 0 } }}
         action={
           <>
-            <Button
+            {/* <Button
               variant='contained'
               aria-haspopup='true'
               onClick={handleClick}
@@ -236,7 +236,7 @@ const InvoiceListTable = ({ id }) => {
               aria-controls={open ? 'user-view-overview-export' : undefined}
             >
               Export
-            </Button>
+            </Button> */}
             <Menu open={open} anchorEl={anchorEl} onClose={handleClose} id='user-view-overview-export'>
               <MenuItem onClick={handleClose} className='uppercase'>
                 pdf

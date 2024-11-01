@@ -76,7 +76,8 @@ const UserDetails = props => {
     leadId: props.data._id,
     createdAt: props.data.createdAt,
     modify: props.data.updatedAt,
-    assigned: props.data.assignedTo
+    assigned: props.data.assignedTo,
+    profile: props.data.profile
   }
   const [open, setOpen] = useState(false)
 
@@ -113,42 +114,63 @@ const UserDetails = props => {
     setError('')
     setLoading(true)
 
+    const token = localStorage.getItem('token') // Retrieve token once
+
+    const headers = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    };
+
     try {
-      const token = localStorage.getItem('token')
+      const promises = [];
 
       if (formData.notes !== '') {
-        const response = await fetch('https://app.canbridge.in/api/leadactivity', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            leadId: userData.leadId,
-            action: 'note_added',
-            details: formData.notes
-          })
-        })
-
-        const data = await response.json()
-
-        if (response.ok) {
-          updateData({ refresh: true })
-          toast.success('Successfully uploaded', {
-            position: 'bottom-right'
-          })
-          handleReset() // Reset form after successful submission
-          handleClose()
-        } else {
-          setError(data.message || 'An error occurred. Please try again.')
-        }
+        promises.push(
+          fetch('https://app.canbridge.in/api/leadactivity', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              leadId: userData.leadId,
+              action: 'note_added',
+              details: formData.notes
+            })
+          }).then(response => response.json().then(data => ({ response, data })))
+        );
       }
+
+      if (userData.status === 'New') {
+        promises.push(
+          fetch(`https://app.canbridge.in/api/leads/${userData.leadId}/status`, {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify({ status: "Contacted" }) // Corrected JSON structure
+          }).then(response => response.json().then(data => ({ response, data })))
+        );
+      }
+
+      const results = await Promise.all(promises);
+
+      results.forEach(result => {
+        if (result.response.ok) {
+          toast.success('Successfully updated', {
+            position: 'bottom-right'
+          });
+        } else {
+          throw new Error(result.data.message || 'An error occurred. Please try again.');
+        }
+      });
+
+      updateData({ refresh: true });
+      handleReset();
+      handleClose();
+
     } catch (error) {
-      setError('An error occurred. Please try again.')
+      setError(error.message);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
+
 
   const [open2, setOpen2] = useState(false)
 
@@ -424,7 +446,15 @@ const UserDetails = props => {
 
   const handleClose4 = () => setOpen4(false)
 
+  const handleCall = (phone) => {
+    // Open the modal
+    setOpen(true);
 
+    // Delay the phone call by a short time so the user can see the modal
+    setTimeout(() => {
+      window.location.href = `tel:${phone}`;
+    }, 1000); // Adjust the delay as necessary, 1000ms = 1 second
+  };
   return (
     <>
       <Dialog fullScreen open={open} onClose={handleClose} aria-labelledby='form-dialog-title'>
@@ -435,7 +465,7 @@ const UserDetails = props => {
               <div>
                 <Box display={'flex'} justifyContent={'space-between'}>
                   <Typography variant='h5'>Customer Details</Typography>
-                  <Button>Add more information</Button>
+                  <Button onClick={handleClickOpen4}>Add more information</Button>
                 </Box>
 
                 <Divider className='mlb-4' />
@@ -460,17 +490,46 @@ const UserDetails = props => {
                   </div>
                 </div>
                 <>
-                  <Accordion style={{ boxShadow: 'none', marginTop: '5px' }}>
+                  {/* <Accordion style={{ boxShadow: 'none', marginTop: '5px' }}>
                     <AccordionSummary style={{ padding: '0px' }} id='panel-header-1' aria-controls='panel-content-1'>
-                      <p>More information</p>
+                      <Grid container spacing={2}>
+                        <Typography color='text.primary' className='font-medium'>
+                          Address
+                        </Typography>
+                      </Grid>
                     </AccordionSummary>
                     <AccordionDetails style={{ padding: '0px' }}>
-                      <Typography>
-                        Wafer sesame snaps chocolate bar candy canes halvah. Cupcake sesame snaps sweet tart dessert
-                        biscuit. Topping soufflé tart sweet croissant.
-                      </Typography>
+
+                      <Grid item xs={12} sm={6} md={4} >
+
+                        <Typography variant="h6" color="text.primary">
+                          {userData.firstName}
+                        </Typography>
+                        <Typography color="text.secondary">
+                          Phone: {userData.phone || 'N/A'}
+                        </Typography>
+                        <Typography color="text.secondary">
+                          Email: {userData.email || 'N/A'}
+                        </Typography>
+                        <Typography color="text.secondary">
+                          Address: {userData.profile?.address || 'N/A'}
+                        </Typography>
+                        <Typography color="text.secondary">
+                          City: {userData.profile?.city || 'N/A'}
+                        </Typography>
+                        <Typography color="text.secondary">
+                          State: {userData.profile?.state || 'N/A'}
+                        </Typography>
+                        <Typography color="text.secondary">
+                          Country: {userData.profile?.country || 'N/A'}
+                        </Typography>
+                        <Typography color="text.secondary">
+                          Pin Code: {userData.profile?.pinCode || 'N/A'}
+                        </Typography>
+
+                      </Grid>
                     </AccordionDetails>
-                  </Accordion>
+                  </Accordion> */}
                 </>
                 <Divider className='mlb-4' />
                 <div>
@@ -652,7 +711,7 @@ const UserDetails = props => {
       <Dialog open={open4} onClose={handleClose4} aria-labelledby='form-dialog-title'>
         <DialogTitle id='form-dialog-title'>Complete Profile</DialogTitle>
         <DialogContent>
-          <FormLayoutsCollapsible props={props.data} />
+          <FormLayoutsCollapsible props={props.data} handleClose={handleClose4} />
         </DialogContent>
         {/* <DialogActions>
           <Button onClick={handleClose4} variant='outlined' color='secondary'>
@@ -675,7 +734,8 @@ const UserDetails = props => {
               <AvatarGroup className='pull-up m-3' max={3} >
                 <Tooltip title={getTooltipTitle()}>
                   <Box display={'flex'}>
-                    <Avatar onClick={toggleBox} src='/images/avatars/4.png' />
+                    {/* <Avatar onClick={toggleBox} src='/images/avatars/4.png' /> */}
+                    <Avatar sx={{ bgcolor: "yellow" }} onClick={toggleBox} >{userData ? userData.assigned?.firstName?.substring(0, 2).toUpperCase() : '??'}</Avatar>
                     {isOpen && (
                       <IconButton onClick={handleClickOpenAssign} aria-label='capture screenshot' style={{ color: 'white' }} size='small'>
                         <i className='ri-user-search-fill text-xl' />
@@ -693,18 +753,19 @@ const UserDetails = props => {
         </CardMedia>
         <CardContent className='flex justify-center flex-col items-center gap-6 md:items-end md:flex-row !pt-0 md:justify-start'>
           <div className='flex rounded-bs-xl mbs-[-30px] mli-[-5px] border-[5px] border-be-0 border-backgroundPaper bg-backgroundPaper '>
-            <img height={120} width={120} src='/images/avatars/1.png' className='rounded' alt='Profile Background' />
+            {/* <img height={120} width={120} src='/images/avatars/1.png' className='rounded' alt='Profile Background' /> */}
+            <Avatar sx={{ width: 120, height: 120, fontSize: 50, bgcolor: "#DC4D01", color: 'white' }} className='rounded'>{userData ? userData.firstName.substring(0, 2).toUpperCase() : '??'}</Avatar>
           </div>
           <div className='flex is-full flex-wrap justify-start flex-col items-center sm:flex-row sm:justify-between sm:items-end gap-5'>
             <div className='flex flex-col items-center sm:items-start gap-2'>
               <Typography variant='h4'>{userData?.firstName}</Typography>
               <div className='flex flex-wrap gap-6 gap-y-3 justify-center sm:justify-normal min-bs-[38px]'>
                 <div className='flex items-center gap-2'>
-                  <Chip label={userData.campaign} variant='tonal' color='error' size='small' />
+                  <Chip icon={<i className='ri-megaphone-line'></i>} label={userData.campaign} variant='tonal' size='small' />
                 </div>
-                <div className='flex items-center gap-2'>
-                  <Chip label={userData.source} variant='tonal' color='error' size='small' />
-                </div>
+                {/* <div className='flex items-center gap-2'>
+                  <Chip label={userData.source} variant='tonal' size='small' />
+                </div> */}
               </div>
             </div>
             {/* <Button variant='contained' className='flex gap-2'>
@@ -752,7 +813,7 @@ const UserDetails = props => {
               <div className='flex flex-col gap-4'>
                 <Typography className='uppercase' variant='body2' color='text.disabled'>
                   Action
-                </Typography>  <Button onClick={handleClickOpen} variant='contained' className='flex gap-2'>
+                </Typography>  <Button onClick={() => handleCall(userData.phone)} variant='contained' className='flex gap-2'>
                   <i className='ri-phone-line text-base'></i>
                   <span>Call</span>
                 </Button>
@@ -783,48 +844,59 @@ const UserDetails = props => {
                   CONTACTS
                 </Typography>
                 <div className='flex items-center gap-2'>
-                  <i className='ri-user-follow-line text-base'></i>
+                  <i className='ri-phone-line text-base'></i>
                   <div className='flex items-center flex-wrap gap-2'>
                     <Typography className='font-medium'>Phone</Typography>
-                    <Typography>{userData?.phone}</Typography>
+                    <Typography>{userData.phone || "No phone number provided"}</Typography>
                   </div>
                 </div>
                 <div className='flex items-center gap-2'>
-                  <i className='ri-user-follow-line text-base'></i>
+                  <i className='ri-mail-line text-base'></i>
                   <div className='flex items-center flex-wrap gap-2'>
                     <Typography className='font-medium'>E-mail</Typography>
-                    <Typography>{userData?.email}</Typography>
+                    <Typography>{userData.email}</Typography>
                   </div>
                 </div>
               </div>
               <div className='flex flex-col gap-4'>
                 <Typography className='uppercase' variant='body2' color='text.disabled'>
-                  ABOUT
+                  PROFILE
                 </Typography>
-                {data?.contacts && renderList(data?.contacts)}
-              </div>
-              <div className='flex flex-col gap-4'>
-                <Typography className='uppercase' variant='body2' color='text.disabled'>
-                  EDUCATION
-                </Typography>
-                {data?.teams && renderTeams(data?.teams)}
-              </div>
-              <div className='flex flex-col gap-4'>
-                <Typography className='uppercase' variant='body2' color='text.disabled'>
-                  OTHERS
-                </Typography>
+                <div className='flex items-center flex-wrap gap-2'>
+                  <Typography className='font-medium'>Age</Typography>
+                  <Typography>{userData.profile?.age || "Not provided"}</Typography>
+                </div>
+                <div className='flex items-center flex-wrap gap-2'>
+                  <Typography className='font-medium'>Address</Typography>
+                  <Typography>{userData.profile?.address} {userData.profile?.city} {userData.profile?.state} {userData.profile?.pinCode}</Typography>
+                </div>
                 <div className='flex items-center flex-wrap gap-2'>
                   <Typography className='font-medium'>Created At</Typography>
-                  <Typography>{userData?.createdAt}</Typography>
-                </div>
-                <div className='flex items-center flex-wrap gap-2'>
-                  <Typography className='font-medium'>Last Update</Typography>
-                  <Typography>{userData?.modify}</Typography>
+                  {/* <Typography>{format(new Date(userData.createdAt), 'PPP')}</Typography> */}
                 </div>
               </div>
+              <div className='flex flex-col gap-4'>
+                <Typography className='uppercase' variant='body2' color='text.disabled'>
+                  LEAD DETAILS
+                </Typography>
+                <div className='flex items-center flex-wrap gap-2'>
+                  <Typography className='font-medium'>Campaign</Typography>
+                  <Typography>{userData.campaign}</Typography>
+                </div>
+                <div className='flex items-center flex-wrap gap-2'>
+                  <Typography className='font-medium'>Source</Typography>
+                  <Typography>{userData.source}</Typography>
+                </div>
+                <div className='flex items-center flex-wrap gap-2'>
+                  <Typography className='font-medium'>Created At</Typography>
+                  <Typography>{userData.createdAt}</Typography>
+                </div>
+              </div>
+
             </CardContent>
           </Card>
         </Grid>
+
       </Grid>
       {/* <Card>
         <CardContent className='flex flex-col pbs-12 gap-6'>

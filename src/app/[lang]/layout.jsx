@@ -19,8 +19,8 @@ import '@/app/globals.css'
 import '@assets/iconify-icons/generated-icons.css'
 
 export const metadata = {
-  title: 'Materialize - Material Next.js Admin Template',
-  description: 'Materialize - Material Next.js Admin Template'
+  title: 'Woxox-CRM',
+  description: 'Future CRM is here'
 }
 
 const RootLayout = ({ children, params }) => {

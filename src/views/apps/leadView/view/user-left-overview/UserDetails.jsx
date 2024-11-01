@@ -77,7 +77,8 @@ const UserDetails = props => {
     createdAt: props.data.createdAt,
     modify: props.data.updatedAt,
     assigned: props.data.assignedTo,
-    profile: props.data.profile
+    profile: props.data.profile,
+    moreData: props.data.additionalFields
   }
   const [open, setOpen] = useState(false)
 
@@ -455,6 +456,10 @@ const UserDetails = props => {
       window.location.href = `tel:${phone}`;
     }, 1000); // Adjust the delay as necessary, 1000ms = 1 second
   };
+
+  const formatLabel = (label) => {
+    return label.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+  };
   return (
     <>
       <Dialog fullScreen open={open} onClose={handleClose} aria-labelledby='form-dialog-title'>
@@ -830,6 +835,8 @@ const UserDetails = props => {
                   <span>Add Documents</span>
                 </Button>
 
+                {/* add note Button Needed */}
+
               </div>
             </CardContent>
           </Card>
@@ -839,6 +846,22 @@ const UserDetails = props => {
         <Grid item xs={12}>
           <Card>
             <CardContent className='flex flex-col gap-6'>
+              {userData.additionalFields ? <div className='flex flex-col gap-4'>
+                <Typography className='uppercase' variant='body2' color='text.disabled'>
+                  Enquiry Data
+                </Typography>
+                {Object.entries(userData.moreData).map(([key, value]) => {
+                  return (<>
+                    <div className='flex items-center gap-2'>
+                      <i class="ri-question-line"></i>
+                      <div className='flex items-center flex-wrap gap-2'>
+                        <p sx={{ fontSize: '12px' }}>{formatLabel(key)}</p>
+                        <Typography><b>{value} </b></Typography>
+                      </div>
+                    </div>
+                  </>)
+                })}
+              </div> : null}
               <div className='flex flex-col gap-4'>
                 <Typography className='uppercase' variant='body2' color='text.disabled'>
                   CONTACTS

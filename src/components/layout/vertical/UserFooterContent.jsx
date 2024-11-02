@@ -23,7 +23,6 @@ export default function UserFooterContent() {
       }}
     >
       <BottomNavigation
-        showLabels
         value={value}
         onChange={(event, newValue) => {
           setValue(newValue);

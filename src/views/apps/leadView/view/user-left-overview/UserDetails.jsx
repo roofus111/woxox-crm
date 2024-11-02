@@ -231,9 +231,11 @@ const UserDetails = props => {
   }
   const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
   const [open3, setOpen3] = useState(false)
+  const [noteOpen, setNoteOpen] = useState(false)
 
   const handleClickOpen3 = () => setOpen3(true)
-
+  const handleNoteOpen = () => setNoteOpen(true)
+  const handleNoteClose = () => setNoteOpen(false)
   const handleClose3 = () => setOpen3(false)
 
   const [file, setFile] = useState(null)
@@ -694,6 +696,35 @@ const UserDetails = props => {
         </DialogActions>
       </Dialog>
 
+      <Dialog fullWidth id='popper' open={noteOpen} onClose={handleNoteClose} aria-labelledby='form-dialog-title'>
+        <DialogTitle id='form-dialog-title'>Add Notes</DialogTitle>
+        <DialogContent>
+          <Grid marginTop={1} container spacing={6}>
+
+            <Grid item xs={12} sm={12}>
+              <TextField
+                fullWidth
+                multiline
+                minRows={3}
+                id='outlined-textarea'
+                placeholder='Placeholder'
+                label='Add Notes'
+                onChange={e => setFormData({ ...formData, notes: e.target.value })}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleNoteClose} variant='outlined' color='secondary'>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} variant='contained'>
+            Submit
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+
 
       <Dialog onClose={handleDialogCloseAssign} aria-labelledby='simple-dialog-title' open={openAssign}>
         <DialogTitle id='simple-dialog-title'>Assign Lead to</DialogTitle>
@@ -830,12 +861,14 @@ const UserDetails = props => {
                   <i className='ri-calendar-line text-base'></i>
                   <span>Add Follow up</span>
                 </Button>
+                <Button onClick={handleNoteOpen} variant='contained' className='flex gap-2'>
+                  <i class="ri-sticky-note-line"></i>
+                  <span>Add Note</span>
+                </Button>
                 <Button onClick={handleClickOpen3} variant='contained' className='flex gap-2'>
                   <i className='ri-file-line text-base'></i>
                   <span>Add Documents</span>
                 </Button>
-
-                {/* add note Button Needed */}
 
               </div>
             </CardContent>
@@ -846,22 +879,25 @@ const UserDetails = props => {
         <Grid item xs={12}>
           <Card>
             <CardContent className='flex flex-col gap-6'>
-              {userData.additionalFields ? <div className='flex flex-col gap-4'>
-                <Typography className='uppercase' variant='body2' color='text.disabled'>
-                  Enquiry Data
-                </Typography>
-                {Object.entries(userData.moreData).map(([key, value]) => {
-                  return (<>
-                    <div className='flex items-center gap-2'>
-                      <i class="ri-question-line"></i>
-                      <div className='flex items-center flex-wrap gap-2'>
-                        <p sx={{ fontSize: '12px' }}>{formatLabel(key)}</p>
-                        <Typography><b>{value} </b></Typography>
+              {userData.moreData && (
+                <div className="flex flex-col gap-4">
+                  <Typography className="uppercase" variant="body2" color="text.disabled">
+                    Enquiry Data
+                  </Typography>
+                  {Object.entries(userData.moreData).map(([key, value]) => (
+                    <div key={key} className="flex items-center gap-2">
+                      <i className="ri-question-line"></i>
+                      <div className="flex items-center flex-wrap gap-2">
+                        <p style={{ fontSize: '12px' }}>{formatLabel(key)}</p>
+                        <Typography>
+                          <b>{value}</b>
+                        </Typography>
                       </div>
                     </div>
-                  </>)
-                })}
-              </div> : null}
+                  ))}
+                </div>
+              )}
+
               <div className='flex flex-col gap-4'>
                 <Typography className='uppercase' variant='body2' color='text.disabled'>
                   CONTACTS

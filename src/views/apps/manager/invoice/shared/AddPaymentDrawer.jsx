@@ -39,7 +39,7 @@ const AddPaymentDrawer = ({ data, id, open, handleClose }) => {
       const dataIn = { ...formData, leadId: data, invoice: id }; // Ensure 'data.leadId' is correctly sourced
       console.log(dataIn); // Useful for debugging, consider removing in production
 
-      const response = await fetch('https://app.canbridge.in/api/payment/', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/payment/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

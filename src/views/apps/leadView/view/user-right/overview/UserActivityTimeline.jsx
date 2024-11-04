@@ -52,7 +52,7 @@ const UserActivityTimeLine = ({ id }) => {
     }
 
     axios
-      .get(`https://app.canbridge.in/api/leadactivity/${id}`, {
+      .get(`${process.env.NEXT_PUBLIC_API_URL}/api/leadactivity/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }

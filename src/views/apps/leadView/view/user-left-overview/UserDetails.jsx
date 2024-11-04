@@ -127,7 +127,7 @@ const UserDetails = props => {
 
       if (formData.notes !== '') {
         promises.push(
-          fetch('https://app.canbridge.in/api/leadactivity', {
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leadactivity`, {
             method: 'POST',
             headers,
             body: JSON.stringify({
@@ -141,7 +141,7 @@ const UserDetails = props => {
 
       if (userData.status === 'New') {
         promises.push(
-          fetch(`https://app.canbridge.in/api/leads/${userData.leadId}/status`, {
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leads/${userData.leadId}/status`, {
             method: 'PUT',
             headers,
             body: JSON.stringify({ status: "Contacted" }) // Corrected JSON structure
@@ -202,7 +202,7 @@ const UserDetails = props => {
       console.log(body)
       const token = localStorage.getItem('token')
       // Example API call to submit the form
-      const response = await fetch('https://app.canbridge.in/api/followups/', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/followups/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -215,6 +215,7 @@ const UserDetails = props => {
         toast.success('New Follow Up added', {
           position: 'bottom-right'
         })
+        handleClose2()
         handleReset2() // Reset form after successful submission
       } else {
         toast.error('An error occurred. Please try again.', {
@@ -273,7 +274,7 @@ const UserDetails = props => {
     formData.append('docName', docData.docName)
     formData.append('leadId', userData.leadId)
     try {
-      const response = await fetch('https://app.canbridge.in/api/leads/upload', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leads/upload`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}` // Only include Authorization, no need for Content-Type
@@ -297,7 +298,7 @@ const UserDetails = props => {
   useEffect(() => {
     const token = localStorage.getItem('token')
     axios
-      .get('https://app.canbridge.in/api/user-profiles', {
+      .get(`${process.env.NEXT_PUBLIC_API_URL}/api/user-profiles`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -350,7 +351,7 @@ const UserDetails = props => {
 
         return
       }
-      const response = await fetch(`https://app.canbridge.in/api/leads/${userData.leadId}/status`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leads/${userData.leadId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -408,7 +409,7 @@ const UserDetails = props => {
 
         return
       }
-      const response = await fetch(`https://app.canbridge.in/api/leads/assignlead/${userData.leadId}/${value}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leads/assignlead/${userData.leadId}/${value}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

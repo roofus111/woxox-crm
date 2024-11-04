@@ -43,7 +43,7 @@ const Leads = () => {
   useEffect(() => {
     const token = localStorage.getItem('token')
     axios
-      .get('https://app.canbridge.in/api/user-profiles', {
+      .get(`${process.env.NEXT_PUBLIC_API_URL}/api/user-profiles`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -70,7 +70,7 @@ const Leads = () => {
 
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('https://app.canbridge.in/api/leads/assign', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leads/assign`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

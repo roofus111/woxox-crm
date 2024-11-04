@@ -105,7 +105,7 @@ const InvoiceListTable = ({ id }) => {
             <IconButton size='small'>
               <i
                 className='ri-download-line'
-                onClick={() => (window.location.href = `https://app.canbridge.in/api/leads/docs/${row.original._id}`)}
+                onClick={() => (window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/api/leads/docs/${row.original._id}`)}
               />
             </IconButton>
             <OptionMenu
@@ -192,7 +192,7 @@ const InvoiceListTable = ({ id }) => {
     }
 
     axios
-      .get(`https://app.canbridge.in/api/leads/docs/bylead/${id}`, {
+      .get(`${process.env.NEXT_PUBLIC_API_URL}/api/leads/docs/bylead/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }

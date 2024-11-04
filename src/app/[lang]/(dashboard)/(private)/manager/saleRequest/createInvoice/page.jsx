@@ -21,7 +21,7 @@ const InvoiceAdd = () => {
     useEffect(() => {
         const token = localStorage.getItem('token')
         axios
-            .get(`https://app.canbridge.in/api/leads/leads/${id}`, {
+            .get(`${process.env.NEXT_PUBLIC_API_URL}/api/leads/leads/${id}`, {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }

@@ -14,7 +14,7 @@ function TaskManager() {
     const fetchTasks = async () => {
         try {
             const token = localStorage.getItem('token')
-            const response = await fetch(`https://app.canbridge.in/api/tasks/`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tasks/`, {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }
@@ -29,7 +29,7 @@ function TaskManager() {
     const addTask = async (taskText) => {
         try {
             const token = localStorage.getItem('token')
-            const response = await fetch(`https://app.canbridge.in/api/tasks/`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tasks/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -47,7 +47,7 @@ function TaskManager() {
     const removeTask = async (id) => {
         const token = localStorage.getItem('token')
         try {
-            await fetch(`https://app.canbridge.in/api/tasks/${id}`, {
+            await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tasks/${id}`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
@@ -63,7 +63,7 @@ function TaskManager() {
     const toggleTask = async (id, isCompleted) => {
         const token = localStorage.getItem('token')
         try {
-            const response = await fetch(`https://app.canbridge.in/api/tasks/${id}`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tasks/${id}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',

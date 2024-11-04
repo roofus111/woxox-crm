@@ -138,7 +138,7 @@ const NotificationsTab = (props) => {
   useEffect(() => {
     const token = localStorage.getItem('token')
     axios
-      .get(`https://app.canbridge.in/api/payment/bylead/${props.props.viewItem._id}`, {
+      .get(`${process.env.NEXT_PUBLIC_API_URL}/api/payment/bylead/${props.props.viewItem._id}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }

@@ -1,6 +1,9 @@
-// Third-party Imports
+
+"use client"
 import classnames from 'classnames'
 
+
+import { useState, useEffect } from "react";
 // Component Imports
 import NavToggle from './NavToggle'
 import NavSearch from '@components/layout/shared/search'
@@ -9,10 +12,11 @@ import ModeDropdown from '@components/layout/shared/ModeDropdown'
 import ShortcutsDropdown from '@components/layout/shared/ShortcutsDropdown'
 import NotificationsDropdown from '@components/layout/shared/NotificationsDropdown'
 import UserDropdown from '@components/layout/shared/UserDropdown'
-
+import io from 'socket.io-client';
 // Util Imports
 import { verticalLayoutClasses } from '@layouts/utils/layoutClasses'
-
+import { ToastContainer, toast } from "react-toastify";
+import { useSession } from 'next-auth/react'
 // Vars
 const shortcuts = [
   {
@@ -101,6 +105,44 @@ const notifications = [
 ]
 
 const NavbarContent = () => {
+  const { data: session } = useSession()
+  useEffect(() => {
+    const socket = io('http://localhost:8000', {
+      // Reconnect automatically
+      reconnection: true,
+      reconnectionDelay: 500,
+      reconnectionAttempts: 10
+    });
+
+    socket.on('connect', () => {
+      console.log('Connected to server');
+      socket.emit('register', session?.user?.id); // Send the user ID to register
+    });
+
+    socket.on('followUpAlert', function (data) {
+      toast(`Reminder: ${data.message}`);
+    });
+
+    socket.on('welcome', function (data) {
+      toast(data.message); // Display welcome message
+    });
+
+    // Handle socket connection error
+    socket.on('connect_error', (err) => {
+      console.error('Connection failed: ', err);
+    });
+
+    // Cleanup on component unmount
+    return () => {
+      socket.off('connect');
+      socket.off('followUpAlert');
+      socket.off('welcome');
+      socket.off('connect_error');
+      socket.disconnect();
+    };
+  }, [session?.user?.id]); // Dependencies ensure effect runs only if userID changes
+
+
   return (
     <div className={classnames(verticalLayoutClasses.navbarContent, 'flex items-center justify-between gap-4 is-full')}>
       <div className='flex items-center gap-[7px]'>

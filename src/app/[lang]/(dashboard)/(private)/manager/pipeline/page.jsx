@@ -1,178 +1,263 @@
-'use client'
-import { useState } from 'react'
+'use client';
+import React, { useState, useEffect } from 'react';
+import {
+    Grid,
+    Typography,
+    Button,
+    Card,
+    CardContent,
+    Drawer,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    TextField,
+} from '@mui/material';
+import { DndContext, closestCenter } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import SortableItem from './SortableItem'; // Assume a SortableItem component exists
+import { toast } from 'react-toastify';
+import axios from 'axios';
 
-import { Grid, Button, Card, CardContent, Divider } from '@mui/material';
-import React from 'react';
-import Dialog from '@mui/material/Dialog'
-import TextField from '@mui/material/TextField'
-import DialogTitle from '@mui/material/DialogTitle'
-import DialogContent from '@mui/material/DialogContent'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContentText from '@mui/material/DialogContentText'
-import Box from '@mui/material/Box';
-import Drawer from '@mui/material/Drawer';
 
-const Pipeline = () => {
+const PipelineManager = () => {
+    const [loading, setLoading] = useState(false);
+    const [pipelines, setPipelines] = useState([]);
+    const [open, setOpen] = useState(false);
+    const [drawerOpen, setDrawerOpen] = useState(false);
+    const [selectedPipeline, setSelectedPipeline] = useState(null);
+    const [pipelineData, setPipelineData] = useState({
+        name: '',
+        description: '',
+        stages: [],
+    });
 
-    const [open, setOpen] = useState(false)
-    const [draw, setDraw] = useState(false)
+    const handleClickOpen = () => setOpen(true);
+    const handleClose = () => setOpen(false);
+    const toggleDrawer = (open) => () => setDrawerOpen(open);
 
-    const handleClickOpen = () => setOpen(true)
-
-    const handleClose = () => setOpen(false)
-
-    const toggleDrawer = (open) => (event) => {
-        if (
-            event.type === 'keydown' &&
-            (event.key === 'Tab' || event.key === 'Shift')
-        ) {
-            return;
-        }
-        setDraw(open);
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setPipelineData((prev) => ({ ...prev, [name]: value }));
     };
 
-    const DrawerList = (
-        <Box sx={{ width: "700px" }} role="presentation" onClick={toggleDrawer(false)} padding={5}>
-            <Grid container spacing={5}>
-                <Grid item xs={12}>
-                    <Card>
-                        <CardContent >
-                            <Box >
-                                <Box>
-                                    <h3>Pipe Name 1</h3>
-                                    <h6>This is a paragraph that describe the characteristicsd</h6>
-                                </Box>
-                            </Box>
-                        </CardContent>
-                    </Card>
-                </Grid>
-                <Grid item xs={3}>
-                    <Card>
-                        <CardContent >
-                            <Box display={'flex'} justifyContent={'center'} alignItems={'center'} textAlign={'center'}>
-                                <Box>
-                                    <h2>6</h2>
-                                    <h6>Insigth</h6>
-                                </Box>
-                            </Box>
-                        </CardContent>
-                    </Card>
-                </Grid>
-                <Grid item xs={3}>
-                    <Card>
-                        <CardContent >
-                            <Box display={'flex'} justifyContent={'center'} alignItems={'center'} textAlign={'center'}>
-                                <Box>
-                                    <h2>6</h2>
-                                    <h6>Insigth</h6>
-                                </Box>
-                            </Box>
-                        </CardContent>
-                    </Card>
-                </Grid>
-                <Grid item xs={3}>
-                    <Card>
-                        <CardContent >
-                            <Box display={'flex'} justifyContent={'center'} alignItems={'center'} textAlign={'center'}>
-                                <Box>
-                                    <h2>6</h2>
-                                    <h6>Insigth</h6>
-                                </Box>
-                            </Box>
-                        </CardContent>
-                    </Card>
-                </Grid>
+    const addStage = () => {
+        setPipelineData((prev) => ({
+            ...prev,
+            stages: [...prev.stages, { id: `stage-${Date.now()}`, name: '' }],
+        }));
+    };
 
-                <Grid item xs={3}>
-                    <Card>
-                        <CardContent >
-                            <Box display={'flex'} justifyContent={'center'} alignItems={'center'} textAlign={'center'}>
-                                <Box>
-                                    <h2>6</h2>
-                                    <h6>Insigth</h6>
-                                </Box>
-                            </Box>
-                        </CardContent>
-                    </Card>
-                </Grid>
-                <Divider />
-                <Grid item xs={12}>
-                    <Card>
-                        <CardContent >
-                            <Box display={'flex'} justifyContent={'space-between'} alignItems={'center'}>
-                                <h4>Stages</h4>
-                                <Button>Create New</Button>
-                            </Box>
-                        </CardContent>
-                    </Card>
-                </Grid>
-                <Grid item xs={12}>
-                    <Card>
-                        <CardContent >
-                            <Box display={'flex'} justifyContent={'space-between'} alignItems={'center'}>
-                                <h4>Campaigns List</h4>
-                            </Box>
-                        </CardContent>
-                    </Card>
-                </Grid>
-            </Grid>
-        </Box>
-    );
+    const removeStage = (index) => {
+        setPipelineData((prev) => ({
+            ...prev,
+            stages: prev.stages.filter((_, i) => i !== index),
+        }));
+    };
+
+    const handleStageChange = (index, event) => {
+        const { value } = event.target;
+        setPipelineData((prev) => {
+            const stages = [...prev.stages];
+            stages[index].name = value;
+            return { ...prev, stages };
+        });
+    };
+
+    const handleDragEnd = (event) => {
+        const { active, over } = event;
+        if (active.id !== over.id) {
+            const oldIndex = pipelineData.stages.findIndex((stage) => stage.id === active.id);
+            const newIndex = pipelineData.stages.findIndex((stage) => stage.id === over.id);
+            const reorderedStages = Array.from(pipelineData.stages);
+            const [movedStage] = reorderedStages.splice(oldIndex, 1);
+            reorderedStages.splice(newIndex, 0, movedStage);
+
+            setPipelineData((prev) => ({ ...prev, stages: reorderedStages }));
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+
+        const token = localStorage.getItem('token');
+        if (!token) {
+            toast.error('No authorization token found.');
+            return;
+        }
+
+        if (!pipelineData.name.trim()) {
+            toast.error('Pipeline name is required.');
+            return;
+        }
+
+        try {
+            // Use array index as the order
+            const stagesWithOrder = pipelineData.stages.map((stage, index) => ({
+                ...stage,
+                order: index, // Index used as the order
+            }));
+
+            const response = await axios.post(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/pipelines/createpipeline`,
+                {
+                    name: pipelineData.name,
+                    description: pipelineData.description,
+                    stages: stagesWithOrder,
+                },
+                {
+                    headers: { Authorization: `Bearer ${token}` },
+                }
+            );
+
+            if (response.status === 201 || response.status === 200) {
+                toast.success('Pipeline created successfully!');
+                setPipelines((prev) => [...prev, { ...pipelineData, id: response.data.id || Date.now() }]);
+                setPipelineData({ name: '', description: '', stages: [] });
+                handleClose();
+            } else {
+                toast.error('Unexpected response from the server.');
+            }
+        } catch (error) {
+            if (error.response) {
+                toast.error(`Error: ${error.response.data.message || 'Server error occurred.'}`);
+            } else if (error.request) {
+                toast.error('No response from the server. Please try again later.');
+            } else {
+                toast.error(`Error: ${error.message}`);
+            }
+        }
+    };
+
+
+
+
+    useEffect(() => {
+        const fetchData = async () => {
+            const token = localStorage.getItem('token')
+            if (!token) {
+                toast('No authorization token found.')
+                return
+            }
+            try {
+                const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/pipelines/getpipeline`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                })
+                setPipelines(response.data)
+            } catch (error) {
+                toast('Failed to fetch data.')
+            }
+        }
+        fetchData()
+    }, [])
     return (
-        <><Grid container spacing={2}>
-            <Grid xs={12} item display={'flex'} justifyContent={'space-between'}>
-                <div>
-                    <h1>Pipeline</h1>
-                </div>
-                <div>
-                    <Button variant='outlined' onClick={handleClickOpen}>Create Pipeline</Button>
-                </div>
+        <Grid container spacing={2}>
+            <Grid item xs={12} display="flex" justifyContent="space-between">
+                <Typography variant="h4">Pipelines</Typography>
+                <Button variant="outlined" onClick={handleClickOpen}>
+                    Create Pipeline
+                </Button>
             </Grid>
-            <Grid item marginTop={10} xs={8}>
-                <Card>
-                    <CardContent>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <div><h3>Pipe1</h3></div>
-                            <div> <Button onClick={toggleDrawer("right", true)}>View</Button></div>
-                        </div>
-                        <Divider />
-                        <Grid container spacing={2} marginTop={2}>
-                            <Grid item xs={3}>Active Campaign : <b>4</b></Grid>
-                            <Grid item xs={3}>Stages : <b>8</b></Grid>
-                            <Grid item xs={3}> Some Insight</Grid>
-                            <Grid item xs={3}>Anothe Insight</Grid>
-                        </Grid>
-                    </CardContent>
-                </Card>
-            </Grid>
-        </Grid>
 
-            <Drawer anchor="right" open={draw} onClose={toggleDrawer(false)}>
-                {DrawerList}
+            {loading ? (
+                <Typography>Loading...</Typography>
+            ) : (
+                pipelines.map((pipeline) => (
+                    <Grid item xs={12} sm={6} key={pipeline.id}>
+                        <Card>
+                            <CardContent>
+                                <Typography variant="h5">{pipeline.name}</Typography>
+                                <Button onClick={() => {
+                                    setSelectedPipeline(pipeline);
+                                    setDrawerOpen(true);
+                                }}>
+                                    View
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    </Grid>
+                ))
+            )}
+
+            <Drawer anchor="right" open={drawerOpen} onClose={toggleDrawer(false)}>
+                {selectedPipeline && (
+                    <div style={{ padding: 16, width: 300 }}>
+                        <Typography variant="h6">{selectedPipeline.name}</Typography>
+                        <Typography>{selectedPipeline.description}</Typography>
+                    </div>
+                )}
             </Drawer>
-            {/* create Pipeline Dialog */}
 
-            <Dialog open={open} onClose={handleClose} aria-labelledby='form-dialog-title'>
-                <DialogTitle id='form-dialog-title'>Subscribe</DialogTitle>
+            <Dialog open={open} onClose={handleClose} fullWidth maxWidth="md">
+                <DialogTitle>Create a New Pipeline</DialogTitle>
                 <DialogContent>
-                    <DialogContentText className='mbe-3'>
-                        To subscribe to this website, please enter your email address here. We will send updates occasionally.
-                    </DialogContentText>
-                    <TextField id='name' autoFocus fullWidth type='email' label='Email Address' />
+                    <form onSubmit={handleSubmit}>
+                        <Grid container spacing={2}>
+                            <Grid item xs={12}>
+                                <TextField
+                                    name="name"
+                                    label="Pipeline Name"
+                                    fullWidth
+                                    required
+                                    value={pipelineData.name}
+                                    onChange={handleInputChange}
+                                />
+                            </Grid>
+                            <Grid item xs={12}>
+                                <TextField
+                                    name="description"
+                                    label="Pipeline Description"
+                                    fullWidth
+                                    multiline
+                                    rows={3}
+                                    value={pipelineData.description}
+                                    onChange={handleInputChange}
+                                />
+                            </Grid>
+                            <Grid item xs={12}>
+                                <Typography variant="h6">Stages</Typography>
+                                <DndContext
+                                    collisionDetection={closestCenter}
+                                    onDragEnd={handleDragEnd}
+                                >
+                                    <SortableContext
+                                        items={pipelineData.stages.map((stage) => stage.id)}
+                                        strategy={verticalListSortingStrategy}
+                                    >
+                                        {pipelineData.stages.map((stage, index) => (
+                                            <SortableItem
+                                                key={stage.id}
+                                                id={stage.id}
+                                                index={index}
+                                                stage={stage}
+                                                onChange={(e) => handleStageChange(index, e)}
+                                                removeStage={() => removeStage(index)}
+                                            />
+                                        ))}
+                                    </SortableContext>
+                                </DndContext>
+                            </Grid>
+                            <Grid item xs={12}>
+                                <Button onClick={addStage} variant="outlined">
+                                    Add Stage
+                                </Button>
+                            </Grid>
+                            <Grid item xs={12}>
+                                <Button type="submit" variant="contained" color="primary">
+                                    Create Pipeline
+                                </Button>
+                            </Grid>
+                        </Grid>
+                    </form>
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={handleClose} variant='outlined' color='secondary'>
-                        Disagree
-                    </Button>
-                    <Button onClick={handleClose} variant='contained'>
-                        Agree
+                    <Button onClick={handleClose} variant="outlined" color="secondary">
+                        Cancel
                     </Button>
                 </DialogActions>
             </Dialog>
-
-
-        </>
+        </Grid>
     );
 };
 
-export default Pipeline
+export default PipelineManager;

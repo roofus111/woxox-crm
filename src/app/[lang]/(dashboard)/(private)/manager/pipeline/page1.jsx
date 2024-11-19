@@ -119,33 +119,34 @@ const Pipeline = () => {
         </Box>
     );
     return (
-        <><Grid container spacing={2}>
-            <Grid xs={12} item display={'flex'} justifyContent={'space-between'}>
-                <div>
-                    <h1>Pipeline</h1>
-                </div>
-                <div>
-                    <Button variant='outlined' onClick={handleClickOpen}>Create Pipeline</Button>
-                </div>
+        <>
+            <Grid container spacing={2}>
+                <Grid xs={12} item display={'flex'} justifyContent={'space-between'}>
+                    <div>
+                        <h1>Pipeline</h1>
+                    </div>
+                    <div>
+                        <Button variant='outlined' onClick={handleClickOpen}>Create Pipeline</Button>
+                    </div>
+                </Grid>
+                <Grid item marginTop={10} xs={8}>
+                    <Card>
+                        <CardContent>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <div><h3>Pipe1</h3></div>
+                                <div> <Button onClick={toggleDrawer("right", true)}>View</Button></div>
+                            </div>
+                            <Divider />
+                            <Grid container spacing={2} marginTop={2}>
+                                <Grid item xs={3}>Active Campaign : <b>4</b></Grid>
+                                <Grid item xs={3}>Stages : <b>8</b></Grid>
+                                <Grid item xs={3}> Some Insight</Grid>
+                                <Grid item xs={3}>Anothe Insight</Grid>
+                            </Grid>
+                        </CardContent>
+                    </Card>
+                </Grid>
             </Grid>
-            <Grid item marginTop={10} xs={8}>
-                <Card>
-                    <CardContent>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <div><h3>Pipe1</h3></div>
-                            <div> <Button onClick={toggleDrawer("right", true)}>View</Button></div>
-                        </div>
-                        <Divider />
-                        <Grid container spacing={2} marginTop={2}>
-                            <Grid item xs={3}>Active Campaign : <b>4</b></Grid>
-                            <Grid item xs={3}>Stages : <b>8</b></Grid>
-                            <Grid item xs={3}> Some Insight</Grid>
-                            <Grid item xs={3}>Anothe Insight</Grid>
-                        </Grid>
-                    </CardContent>
-                </Card>
-            </Grid>
-        </Grid>
 
             <Drawer anchor="right" open={draw} onClose={toggleDrawer(false)}>
                 {DrawerList}

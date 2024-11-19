@@ -124,6 +124,7 @@ const UserDetails = props => {
 
     try {
       const promises = [];
+      console.log(formData);
 
       if (formData.notes !== '') {
         promises.push(
@@ -199,6 +200,10 @@ const UserDetails = props => {
         notes: followupData.notes,
         assignedTo: assign
       }
+      console.log(
+        formData
+      );
+
       console.log(body)
       const token = localStorage.getItem('token')
       // Example API call to submit the form
@@ -216,7 +221,6 @@ const UserDetails = props => {
           position: 'bottom-right'
         })
         handleClose2()
-        handleReset2() // Reset form after successful submission
       } else {
         toast.error('An error occurred. Please try again.', {
           position: 'bottom-right'
@@ -463,6 +467,34 @@ const UserDetails = props => {
   const formatLabel = (label) => {
     return label.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
   };
+
+  const handleNotPicked = async () => {
+
+    try {
+      const data = {
+        leadId: userData.leadId,
+        action: 'notPicked',
+      }
+      const token = localStorage.getItem('token')
+      // Example API call to submit the form
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leadactivity/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      })
+      const result = await response.json()
+      handleClose()
+    }
+    catch (error) {
+      toast.error('An error occurred. Please try again.', {
+        position: 'bottom-right'
+      })
+    }
+
+  }
   return (
     <>
       <Dialog fullScreen open={open} onClose={handleClose} aria-labelledby='form-dialog-title'>
@@ -564,7 +596,7 @@ const UserDetails = props => {
           </Card>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClose} variant='contained' color='error'>
+          <Button onClick={handleNotPicked} variant='contained' color='error'>
             Not Picked
           </Button>
           <Button onClick={handleSubmit} variant='contained' disabled={loading}>

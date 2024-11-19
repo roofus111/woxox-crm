@@ -2,7 +2,7 @@
 "use client"
 import classnames from 'classnames'
 
-
+// import { Assignment, CalendarToday, Notes, Person, Phone, Email } from '@material-ui/icons';
 import { useState, useEffect } from "react";
 // Component Imports
 import NavToggle from './NavToggle'
@@ -17,7 +17,12 @@ import io from 'socket.io-client';
 import { verticalLayoutClasses } from '@layouts/utils/layoutClasses'
 import { ToastContainer, toast } from "react-toastify";
 import { useSession } from 'next-auth/react'
+
+import Dialog from '@mui/material/Dialog'
+import DialogTitle from '@mui/material/DialogTitle'
+import { Avatar, DialogContent, Divider, Grid, Typography } from '@mui/material';
 // Vars
+
 const shortcuts = [
   {
     url: '/apps/calendar',
@@ -105,7 +110,9 @@ const notifications = [
 ]
 
 const NavbarContent = () => {
+  const [alertData, setAlertData] = useState(null);
   const { data: session } = useSession()
+  const [open, setOpen] = useState(false);
   useEffect(() => {
     const socket = io('http://localhost:8000', {
       // Reconnect automatically
@@ -120,7 +127,10 @@ const NavbarContent = () => {
     });
 
     socket.on('followUpAlert', function (data) {
-      toast(`Reminder: ${data.message}`);
+      setAlertData(data); // Store the data in state
+      setOpen(true);
+      console.log(data);
+
     });
 
     socket.on('welcome', function (data) {
@@ -142,9 +152,88 @@ const NavbarContent = () => {
     };
   }, [session?.user?.id]); // Dependencies ensure effect runs only if userID changes
 
+  const handleClose = () => {
+    setOpen(false);
+  };
 
   return (
     <div className={classnames(verticalLayoutClasses.navbarContent, 'flex items-center justify-between gap-4 is-full')}>
+      <Dialog aria-labelledby='simple-dialog-title' open={open} onClose={handleClose}>
+        <DialogTitle id='simple-dialog-title'>📅 Follow-Up Alert</DialogTitle>
+        <DialogContent>
+          {alertData && (
+            <div>
+              <Typography variant="h6" gutterBottom>
+                {alertData.message}
+              </Typography>
+
+              <Divider style={{ margin: '16px 0' }} />
+
+              {/* Displaying follow-up details in a Grid layout */}
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle1" color="textSecondary">
+                    {/* <Assignment style={{ verticalAlign: 'middle', marginRight: 8 }} /> */}
+                    <strong>Lead ID:</strong> {alertData.details.leadId}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle1" color="textSecondary">
+                    {/* <Assignment style={{ verticalAlign: 'middle', marginRight: 8 }} /> */}
+                    <strong>Company ID:</strong> {alertData.details.company}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle1" color="textSecondary">
+                    {/* <CalendarToday style={{ verticalAlign: 'middle', marginRight: 8 }} /> */}
+                    <strong>Status:</strong> {alertData.details.status}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle1" color="textSecondary">
+                    {/* <Notes style={{ verticalAlign: 'middle', marginRight: 8 }} /> */}
+                    <strong>Notes:</strong> {alertData.details.notes}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle1" color="textSecondary">
+                    {/* <CalendarToday style={{ verticalAlign: 'middle', marginRight: 8 }} /> */}
+                    <strong>Follow-Up Date:</strong> {new Date(alertData.details.followUpDate).toLocaleString()}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle1" color="textSecondary">
+                    {/* <CalendarToday style={{ verticalAlign: 'middle', marginRight: 8 }} /> */}
+                    <strong>Next Follow-Up Date:</strong> {new Date(alertData.details.nextFollowUpDate).toLocaleString()}
+                  </Typography>
+                </Grid>
+              </Grid>
+
+              <Divider style={{ margin: '16px 0' }} />
+
+              {/* Displaying assigned person's info */}
+              <Grid container spacing={2} alignItems="center">
+                <Grid item>
+                  <Avatar>{alertData.details.assignedTo.firstName[0]}</Avatar>
+                </Grid>
+                <Grid item xs>
+                  <Typography variant="h6">{`${alertData.details.assignedTo.firstName} ${alertData.details.assignedTo.lastName}`}</Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    {/* <Email style={{ verticalAlign: 'middle', marginRight: 8 }} /> */}
+                    {alertData.details.assignedTo.email}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    {/* <Phone style={{ verticalAlign: 'middle', marginRight: 8 }} /> */}
+                    {alertData.details.assignedTo.phone}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+
       <div className='flex items-center gap-[7px]'>
         <NavToggle />
         {/* <NavSearch /> */}

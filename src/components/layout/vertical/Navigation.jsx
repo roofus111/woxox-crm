@@ -24,8 +24,9 @@ import { getLocalizedUrl } from '@/utils/i18n'
 
 // Style Imports
 import navigationCustomStyles from '@core/styles/vertical/navigationCustomStyles'
-import UserVerticalMenu from './UserVerticalMenu'
-
+import UserVerticalMenu from './FinanceVerticalMenu'
+import FinanceVerticalMenu from './FinanceVerticalMenu'
+import PipelineVerticalMenu from './PipelineVerticalMenu'
 const StyledBoxForShadow = styled('div')(({ theme }) => ({
   top: 60,
   left: -8,
@@ -142,9 +143,14 @@ const Navigation = props => {
       <StyledBoxForShadow ref={shadowRef} />
       {user == 'user' ? (
         <UserVerticalMenu dictionary={dictionary} scrollMenu={scrollMenu} />
-      ) : (
-        <VerticalMenu dictionary={dictionary} scrollMenu={scrollMenu} />
-      )}
+      ) : user == 'pipeline' ? (
+        <PipelineVerticalMenu dictionary={dictionary} scrollMenu={scrollMenu} />
+      ) :
+        user == 'finance' ? (
+          <FinanceVerticalMenu dictionary={dictionary} scrollMenu={scrollMenu} />
+        ) : (
+          <VerticalMenu dictionary={dictionary} scrollMenu={scrollMenu} />
+        )}
     </VerticalNav>
   )
 }

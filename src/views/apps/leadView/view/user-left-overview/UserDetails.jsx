@@ -469,7 +469,6 @@ const UserDetails = props => {
   };
 
   const handleNotPicked = async () => {
-
     try {
       const data = {
         leadId: userData.leadId,
@@ -486,6 +485,7 @@ const UserDetails = props => {
         body: JSON.stringify(data)
       })
       const result = await response.json()
+      updateData({ refresh: true });
       handleClose()
     }
     catch (error) {

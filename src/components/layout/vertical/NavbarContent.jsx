@@ -20,7 +20,7 @@ import { useSession } from 'next-auth/react'
 
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
-import { Avatar, DialogContent, Divider, Grid, Typography } from '@mui/material';
+import { Avatar, DialogContent, Divider, Grid, Typography, Button } from '@mui/material';
 // Vars
 
 const shortcuts = [
@@ -174,13 +174,7 @@ const NavbarContent = () => {
                 <Grid item xs={12} sm={6}>
                   <Typography variant="subtitle1" color="textSecondary">
                     {/* <Assignment style={{ verticalAlign: 'middle', marginRight: 8 }} /> */}
-                    <strong>Lead ID:</strong> {alertData.details.leadId}
-                  </Typography>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle1" color="textSecondary">
-                    {/* <Assignment style={{ verticalAlign: 'middle', marginRight: 8 }} /> */}
-                    <strong>Company ID:</strong> {alertData.details.company}
+                    <strong>Customer Name:</strong> {alertData.details.leadId.name}
                   </Typography>
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -189,7 +183,7 @@ const NavbarContent = () => {
                     <strong>Status:</strong> {alertData.details.status}
                   </Typography>
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid item xs={12} sm={12}>
                   <Typography variant="subtitle1" color="textSecondary">
                     {/* <Notes style={{ verticalAlign: 'middle', marginRight: 8 }} /> */}
                     <strong>Notes:</strong> {alertData.details.notes}
@@ -198,13 +192,7 @@ const NavbarContent = () => {
                 <Grid item xs={12} sm={6}>
                   <Typography variant="subtitle1" color="textSecondary">
                     {/* <CalendarToday style={{ verticalAlign: 'middle', marginRight: 8 }} /> */}
-                    <strong>Follow-Up Date:</strong> {new Date(alertData.details.followUpDate).toLocaleString()}
-                  </Typography>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle1" color="textSecondary">
-                    {/* <CalendarToday style={{ verticalAlign: 'middle', marginRight: 8 }} /> */}
-                    <strong>Next Follow-Up Date:</strong> {new Date(alertData.details.nextFollowUpDate).toLocaleString()}
+                    <strong>Created At:</strong> {new Date(alertData.details.followUpDate).toLocaleString()}
                   </Typography>
                 </Grid>
               </Grid>
@@ -222,10 +210,10 @@ const NavbarContent = () => {
                     {/* <Email style={{ verticalAlign: 'middle', marginRight: 8 }} /> */}
                     {alertData.details.assignedTo.email}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    {/* <Phone style={{ verticalAlign: 'middle', marginRight: 8 }} /> */}
-                    {alertData.details.assignedTo.phone}
-                  </Typography>
+                </Grid>
+                <Grid item xs>
+                  <Button>Reschedule</Button>
+                  <Button>View</Button>
                 </Grid>
               </Grid>
             </div>

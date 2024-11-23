@@ -1,7 +1,7 @@
 
 "use client"
 import classnames from 'classnames'
-
+import './style.css'
 // import { Assignment, CalendarToday, Notes, Person, Phone, Email } from '@material-ui/icons';
 import { useState, useEffect } from "react";
 // Component Imports
@@ -20,8 +20,11 @@ import { useSession } from 'next-auth/react'
 
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
-import { Avatar, DialogContent, Divider, Grid, Typography, Button } from '@mui/material';
+import { Avatar, DialogContent, Divider, Grid, Typography, Button, DialogActions } from '@mui/material';
 // Vars
+import DatePicker from "react-datepicker";
+import zIndex from '@mui/material/styles/zIndex';
+import CustomInput from '@/views/apps/leadView/view/user-left-overview/CustomInput';
 
 const shortcuts = [
   {
@@ -155,7 +158,18 @@ const NavbarContent = () => {
   const handleClose = () => {
     setOpen(false);
   };
+  const [openDialog, setOpenDialog] = useState(false); // Control dialog visibility
+  const [selectedDate, setSelectedDate] = useState(null); // Store the selected date
 
+  const handleOpenDialog = () => setOpenDialog(true);
+  const handleCloseDialog = () => setOpenDialog(false);
+
+  const handleReschedule = () => {
+    if (selectedDate) {
+      onReschedule(selectedDate); // Call parent or API to update date
+    }
+    handleCloseDialog();
+  };
   return (
     <div className={classnames(verticalLayoutClasses.navbarContent, 'flex items-center justify-between gap-4 is-full')}>
       <Dialog aria-labelledby='simple-dialog-title' open={open} onClose={handleClose}>
@@ -202,19 +216,55 @@ const NavbarContent = () => {
               {/* Displaying assigned person's info */}
               <Grid container spacing={2} alignItems="center">
                 <Grid item>
-                  <Avatar>{alertData.details.assignedTo.firstName[0]}</Avatar>
+                  <Avatar>
+                    {alertData?.details?.assignedTo?.firstName?.[0] || "?"}
+                  </Avatar>
                 </Grid>
                 <Grid item xs>
-                  <Typography variant="h6">{`${alertData.details.assignedTo.firstName} ${alertData.details.assignedTo.lastName}`}</Typography>
+                  <Typography variant="h6">
+                    {`${alertData?.details?.assignedTo?.firstName || "Unknown"} ${alertData?.details?.assignedTo?.lastName || ""}`}
+                  </Typography>
                   <Typography variant="body2" color="textSecondary">
-                    {/* <Email style={{ verticalAlign: 'middle', marginRight: 8 }} /> */}
-                    {alertData.details.assignedTo.email}
+                    {alertData?.details?.assignedTo?.email || "No email available"}
                   </Typography>
                 </Grid>
-                <Grid item xs>
-                  <Button>Reschedule</Button>
-                  <Button>View</Button>
+                <Grid item>
+                  <Button variant="outlined" color="primary" onClick={handleOpenDialog}>
+                    Reschedule
+                  </Button>
+                  <Button variant="contained" color="secondary">
+                    View
+                  </Button>
                 </Grid>
+
+                {/* Reschedule Dialog */}
+                <Dialog open={openDialog} onClose={handleCloseDialog}>
+                  <DialogTitle>Reschedule Task</DialogTitle>
+                  <DialogContent >
+                    <br />
+                    <DatePicker
+
+                      style={{ zIndex: '3' }}
+                      selected={selectedDate}
+                      onChange={(date) => setSelectedDate(date)}
+                      showTimeSelect
+                      dateFormat="Pp"
+                      placeholderText="Select a new date and time"
+                      className="custom-datepicker"
+                      portalId="datepicker-portal" // Render in portal
+                      popperClassName="custom-datepicker-popper" // Custom class for dropdown
+                      customInput={<CustomInput label='Date & Time' />}
+                    />
+                  </DialogContent>
+                  <DialogActions>
+                    <Button onClick={handleCloseDialog} color="secondary">
+                      Cancel
+                    </Button>
+                    <Button onClick={handleReschedule} color="primary" disabled={!selectedDate}>
+                      Confirm
+                    </Button>
+                  </DialogActions>
+                </Dialog>
               </Grid>
             </div>
           )}

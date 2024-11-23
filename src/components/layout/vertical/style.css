@@ -1,0 +1,14 @@
+.custom-datepicker-popper {
+  z-index: 9999 !important; /* Ensure it's above all other elements */
+  position: absolute !important;
+}
+
+.react-datepicker-popper {
+  z-index: 9999 !important;
+}
+
+.react-datepicker {
+  width: auto;
+  height: auto;
+  z-index: 9999;
+}

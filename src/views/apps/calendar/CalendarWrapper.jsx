@@ -38,7 +38,7 @@ const AppCalendar = () => {
 
   return (
     <>
-      <SidebarLeft
+      {/* <SidebarLeft
         mdAbove={mdAbove}
         dispatch={dispatch}
         calendarApi={calendarApi}
@@ -47,7 +47,7 @@ const AppCalendar = () => {
         leftSidebarOpen={leftSidebarOpen}
         handleLeftSidebarToggle={handleLeftSidebarToggle}
         handleAddEventSidebarToggle={handleAddEventSidebarToggle}
-      />
+      /> */}
       <div className='p-5 pbe-0 flex-grow overflow-visible bg-backgroundPaper rounded'>
         <Calendar
           dispatch={dispatch}

@@ -1,0 +1,15 @@
+.closed-follow-up {
+  background-color: rgba(200, 200, 200, 0.7) !important;
+  color: gray !important;
+  border-left: 5px solid darkgray !important;
+}
+.missed-follow-up {
+  background-color: rgba(255, 116, 92, 0.274) !important;
+  border-left: 5px solid red !important;
+  color: red !important;
+}
+.pending-follow-up {
+  background-color: rgba(15, 226, 233, 0.205) !important;
+  border-left: 5px solid rgb(41, 41, 41) !important;
+  color: rgb(75, 75, 75) !important;
+}

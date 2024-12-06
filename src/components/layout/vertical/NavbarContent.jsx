@@ -1,6 +1,7 @@
 
 "use client"
 import classnames from 'classnames'
+import Link from 'next/link'
 import './style.css'
 // import { Assignment, CalendarToday, Notes, Person, Phone, Email } from '@material-ui/icons';
 import { useState, useEffect } from "react";
@@ -25,7 +26,8 @@ import { Avatar, DialogContent, Divider, Grid, Typography, Button, DialogActions
 import DatePicker from "react-datepicker";
 import zIndex from '@mui/material/styles/zIndex';
 import CustomInput from '@/views/apps/leadView/view/user-left-overview/CustomInput';
-
+import { getLocalizedUrl } from '@/utils/i18n'
+import { useRouter } from 'next/navigation'
 const shortcuts = [
   {
     url: '/apps/calendar',
@@ -113,6 +115,7 @@ const notifications = [
 ]
 
 const NavbarContent = () => {
+  const router = useRouter()
   const [alertData, setAlertData] = useState(null);
   const { data: session } = useSession()
   const [open, setOpen] = useState(false);
@@ -164,9 +167,26 @@ const NavbarContent = () => {
   const handleOpenDialog = () => setOpenDialog(true);
   const handleCloseDialog = () => setOpenDialog(false);
 
-  const handleReschedule = () => {
+  const handleReschedule = async () => {
     if (selectedDate) {
-      onReschedule(selectedDate); // Call parent or API to update date
+      try {
+        const token = localStorage.getItem('token')
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/followups/update/${alertData.details._id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ nextFollowUpDate: selectedDate })
+        })
+        if (response.ok) {
+          toast.success("Successfully rescheduled")
+        } else {
+          toast.error("Something went wrong")
+        }
+      } catch (error) {
+        toast.error("Oops.. Something Went Wrong")
+      }
     }
     handleCloseDialog();
   };
@@ -229,12 +249,13 @@ const NavbarContent = () => {
                   </Typography>
                 </Grid>
                 <Grid item>
-                  <Button variant="outlined" color="primary" onClick={handleOpenDialog}>
+                  <> <Button variant="outlined" color="primary" onClick={handleOpenDialog}>
                     Reschedule
-                  </Button>
-                  <Button variant="contained" color="secondary">
-                    View
-                  </Button>
+                  </Button> <space />
+                    <Button variant='contained' type="button" onClick={() => router.push(getLocalizedUrl(`/${session?.user?.role == 'admin' ? 'manager' : session?.user?.role}/followup`, 'en'))}>
+                      View
+                    </Button> </>
+
                 </Grid>
 
                 {/* Reschedule Dialog */}
@@ -243,8 +264,7 @@ const NavbarContent = () => {
                   <DialogContent >
                     <br />
                     <DatePicker
-
-                      style={{ zIndex: '3' }}
+                      // style={{ zIndex: '9999' }}
                       selected={selectedDate}
                       onChange={(date) => setSelectedDate(date)}
                       showTimeSelect

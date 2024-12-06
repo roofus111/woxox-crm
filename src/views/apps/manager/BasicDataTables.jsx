@@ -3,197 +3,271 @@
 // React Imports
 import { useEffect, useState } from 'react'
 import axios from 'axios'
-import Link from 'next/link'
-import { useParams } from 'next/navigation'
-
-// MUI Imports
 import {
-  Card,
-  CardContent,
-  CardActions,
-  Button,
-  Typography,
-  Grid,
-  Chip,
-  Box,
-  Divider,
   Snackbar,
   Alert,
   CircularProgress,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails
+  Typography,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
 } from '@mui/material'
-
-
-// Utility Imports
+import Link from 'next/link'
+import './follow.css'
+import { useSession } from 'next-auth/react'
+// FullCalendar Imports
+import FullCalendar from '@fullcalendar/react'
+import listPlugin from '@fullcalendar/list'
+import { toast } from 'react-toastify'
 import { getLocalizedUrl } from '@/utils/i18n'
-
-// FollowUpCard Component for each follow-up
-const FollowUpCard = ({ followUp, locale, onClose }) => {
-  const [submitting, setSubmitting] = useState(false)
-
-  // Dynamic Chip color based on status
-  const getStatusColor = status => {
-    switch (status) {
-      case 'Closed':
-        return 'success'
-      case 'Pending':
-        return 'warning'
-      case 'Open':
-        return 'primary'
-      default:
-        return 'default'
-    }
+import { useRouter } from 'next/navigation'
+// Utility Function for Formatting Date
+const formatDate = date => {
+  try {
+    return new Date(date).toISOString().substring(0, 16) // ISO format for date inputs
+  } catch {
+    return ''
   }
-
-  const handleClose = async () => {
-    setSubmitting(true)
-    try {
-      await onClose(followUp._id)
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <Card sx={{ maxWidth: 600, m: 2, boxShadow: 3, borderRadius: 2 }}>
-      <CardContent>
-        <Typography variant="h6" color="primary" gutterBottom sx={{ fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Box sx={{ mr: 2 }}>{followUp.leadId.name}</Box>
-          <Chip size="small" label={followUp.status} color={getStatusColor(followUp.status)} />
-        </Typography>
-        <Divider sx={{ my: 1.5 }} />
-        <Grid container spacing={2}>
-          <Grid item xs={12}>
-            <Typography variant="body2" color="text.secondary">
-              <i className="bi bi-calendar-event" style={{ verticalAlign: 'middle', marginRight: 8 }}></i>
-              Date: <b>{new Date(followUp.nextFollowUpDate).toLocaleString()}</b>
-            </Typography>
-          </Grid>
-          <Divider sx={{ my: 1.5 }} />
-          <Grid item xs={12}>
-            <Typography variant="body2" color="text.secondary">
-              <i className="bi bi-sticky-note" style={{ verticalAlign: 'middle', marginRight: 8 }}></i>
-              Notes: {followUp.notes}
-            </Typography>
-          </Grid>
-        </Grid>
-      </CardContent>
-      <CardActions sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-        {followUp.status !== 'Closed' && (
-          <Button size="small" color="success" variant="contained" onClick={handleClose} disabled={submitting}>
-            {submitting ? <CircularProgress size={20} /> : 'Close'}
-          </Button>
-        )}
-        <Button size="small" color="primary" variant="contained" startIcon={<Box component="i" className="bi bi-pencil-square" />}>
-          <Link href={getLocalizedUrl(`/leads?Userid=${followUp.leadId._id}`, locale)} className="flex">
-            View
-          </Link>
-        </Button>
-      </CardActions>
-    </Card>
-  )
 }
 
-// Main Component
 const BasicDataTables = () => {
   const [data, setData] = useState([])
-  const [error, setError] = useState(null)
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' })
-  const { lang: locale } = useParams()
-
-  // Fetch data on mount
-  useEffect(() => {
-    const fetchData = async () => {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        setError('No authorization token found.')
-        setLoading(false)
-        return
-      }
-
-      try {
-        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/followups/`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        setData(response.data)
-      } catch (error) {
-        setError('Failed to fetch data.')
-      } finally {
-        setLoading(false)
-      }
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [selectedEvent, setSelectedEvent] = useState(null)
+  const [rescheduleDate, setRescheduleDate] = useState('')
+  const [actionLoading, setActionLoading] = useState(false)
+  const { data: session } = useSession()
+  // Fetch Follow-Up Data
+  const fetchData = async () => {
+    setLoading(true)
+    const token = localStorage.getItem('token')
+    if (!token) {
+      setSnackbar({ open: true, message: 'No authorization token found.', severity: 'error' })
+      setLoading(false)
+      return
     }
+
+    try {
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/followups/`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      setData(response.data)
+      console.log(response.data);
+
+    } catch {
+      setSnackbar({ open: true, message: 'Failed to fetch follow-ups.', severity: 'error' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
     fetchData()
   }, [])
 
-  // Close FollowUp Handler
-  const handleCloseFollowUp = async id => {
+  // Handle Completion of Follow-Up
+  const handleCompleteFollowUp = async id => {
+    setActionLoading(true)
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/followups/update/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ status: 'Closed' })
-      })
-
-      if (response.ok) {
-        setData(prevData => prevData.map(followUp => (followUp._id === id ? { ...followUp, status: 'Closed' } : followUp)))
-        setSnackbar({ open: true, message: 'Marked as Done', severity: 'success' })
-      } else {
-        const errorData = await response.json()
-        setSnackbar({ open: true, message: errorData.message || 'An error occurred. Please try again.', severity: 'error' })
-      }
-    } catch (error) {
-      setSnackbar({ open: true, message: 'An error occurred. Please try again.', severity: 'error' })
+      await axios.put(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/followups/update/${id}`,
+        { status: 'Closed' },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      setData(prevData => prevData.map(item => (item._id === id ? { ...item, status: 'Closed' } : item)))
+      setSnackbar({ open: true, message: 'Follow-up marked as completed.', severity: 'success' })
+    } catch {
+      setSnackbar({ open: true, message: 'Failed to complete follow-up.', severity: 'error' })
+    } finally {
+      setActionLoading(false)
+      setDialogOpen(false)
     }
   }
 
-  // Filter and sort data
-  const pendingFollowUps = data
-    .filter(followUp => followUp.status !== 'Closed')
-    .sort((a, b) => new Date(a.nextFollowUpDate) - new Date(b.nextFollowUpDate))
+  // Handle Rescheduling Follow-Up
+  const handleRescheduleFollowUp = async id => {
+    setActionLoading(true)
+    try {
+      const token = localStorage.getItem('token')
+      await axios.put(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/followups/update/${id}`,
+        { nextFollowUpDate: rescheduleDate },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      setData(prevData => prevData.map(item => (item._id === id ? { ...item, nextFollowUpDate: rescheduleDate } : item)))
+      setSnackbar({ open: true, message: 'Follow-up rescheduled successfully.', severity: 'success' })
+    } catch {
+      setSnackbar({ open: true, message: 'Failed to reschedule follow-up.', severity: 'error' })
+    } finally {
+      setActionLoading(false)
+      setDialogOpen(false)
+    }
+  }
 
-  const archivedFollowUps = data
-    .filter(followUp => followUp.status === 'Closed')
-    .sort((a, b) => new Date(b.nextFollowUpDate) - new Date(a.nextFollowUpDate))
+  // Open Dialog for Event Actions
+  const handleEventClick = ({ event }) => {
+    if (event.extendedProps.status === 'Closed') return
+    setSelectedEvent(event)
+    setRescheduleDate(formatDate(event.start))
+    setDialogOpen(true)
+  }
 
   // Handle Snackbar Close
   const handleSnackbarClose = () => setSnackbar({ ...snackbar, open: false })
 
-  if (loading) return <Typography>Loading...</Typography>
-  if (error) return <Typography color="error">{error}</Typography>
+  if (loading) return <CircularProgress />
+  const now = new Date();
 
+
+  // const handleSubmit = async id => {
+  //   try {
+  //     const token = localStorage.getItem('token')
+  //     // Example API call to submit the form
+  //     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/followups/update/${id}`, {
+  //       method: 'PUT',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         Authorization: `Bearer ${token}`
+  //       },
+  //       body: JSON.stringify({ status: 'Closed' })
+  //     })
+
+  //     const data = await response.json()
+
+  //     if (response.ok) {
+  //       setItems((prevItems) =>
+  //         prevItems.map((item) =>
+  //           item.id === id ? { ...item, ...newValues } : item
+  //         )
+  //       );
+  //       toast.success('Marked as Done')
+  //     } else {
+  //       toast.error(data.message || 'An error occurred. Please try again.')
+  //     }
+  //   } catch (error) {
+  //     toast.error('An error occurred. Please try again.')
+  //   }
+  // }
   return (
     <>
-      <Typography variant="h5" gutterBottom>Pending Follow-ups</Typography>
-      {pendingFollowUps.map(followUp => (
-        <FollowUpCard key={followUp._id} followUp={followUp} locale={locale} onClose={handleCloseFollowUp} />
-      ))}
-      <br />
-      {archivedFollowUps.length > 0 && (
-        <Accordion style={{ width: '100%' }}>
-          <AccordionSummary expandIcon={<i class="ri-arrow-right-double-fill"></i>}>
-            <Typography variant="h6">Archived Follow-ups</Typography>
-          </AccordionSummary>
-          <AccordionDetails>
-            {archivedFollowUps.map(followUp => (
-              <FollowUpCard key={followUp._id} followUp={followUp} locale={locale} onClose={() => { }} />
-            ))}
-          </AccordionDetails>
-        </Accordion>
-      )}
+      <Typography variant="h4" gutterBottom>Follow-ups</Typography>
+      <FullCalendar
+        height="auto"
+        plugins={[listPlugin]}
+        initialView="listWeek"
+        events={data.map((followUp) => ({
+          id: followUp._id,
+          title: `${followUp.leadId.name} - ${followUp.notes}`,
+          start: followUp.nextFollowUpDate,
+          extendedProps: {
+            status: followUp.status == 'Pending' && new Date(followUp.nextFollowUpDate) < now ? 'Missed' : followUp.status,
+          },
+        }))}
+
+        eventClassNames={({ event }) => {
+          switch (event.extendedProps.status) {
+            case 'Closed':
+              return 'closed-follow-up';
+            case 'Missed':
+              return 'missed-follow-up';
+            case 'Pending':
+              return 'pending-follow-up';
+            default:
+              return '';
+          }
+        }}
+        eventContent={(eventInfo) => {
+          return (
+            <div className="event-content" style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>
+                {eventInfo.event.title}{" "}
+                {eventInfo.event.extendedProps.status !== "Closed" ? (
+                  <Button color='success' onClick={() => handleCompleteFollowUp(eventInfo.event.id)} >
+                    <i className="ri-checkbox-circle-fill"></i>
+                  </Button>
+                ) : null}
+              </span>
+
+              <div>
+                {eventInfo.event.extendedProps.status !== "Closed" ? (
+                  <Button onClick={() => handleEventClick(eventInfo)}>Reshedule</Button>
+                ) : null}
+                <Button type="button" onClick={() => router.push(getLocalizedUrl(`/${session?.user?.role == 'admin' ? 'manager' : session?.user?.role}/leads?Userid=${eventInfo.event.id}`, 'en'))}>
+                  View
+                </Button></div>
+
+            </div>
+          );
+        }}
+        // eventClick={handleEventClick}
+        headerToolbar={{
+          left: 'title',
+          center: '',
+          right: 'today,prev,next',
+        }}
+        locale="en"
+        ref={(calendarRef) => {
+          if (calendarRef) {
+            setTimeout(() => {
+              const titleElement = document.querySelector('.fc-toolbar-title');
+              if (titleElement) {
+                titleElement.style.fontSize = '1rem'; // Decrease font size
+                titleElement.style.fontWeight = 'Bold'; // Optional: Adjust font weight
+              }
+            }, 0);
+          }
+        }}
+      />
+
+
+      {/* Dialog for Actions */}
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
+        <DialogTitle>Reschedule</DialogTitle>
+        <DialogContent>
+          {/* <Typography>Lead: {selectedEvent?.title}</Typography> */}
+          <TextField
+            label="Reschedule Date"
+            type="datetime-local"
+            value={rescheduleDate}
+            onChange={e => setRescheduleDate(e.target.value)}
+            fullWidth
+            margin="normal"
+          />
+        </DialogContent>
+        <DialogActions>
+          {/* <Button
+            color="success"
+            onClick={() => handleCompleteFollowUp(selectedEvent?.id)}
+            disabled={actionLoading}
+          >
+            {actionLoading ? <CircularProgress size={20} /> : 'Complete Follow-Up'}
+          </Button> */}
+          <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
+          <Button
+            color="primary"
+            onClick={() => handleRescheduleFollowUp(selectedEvent?.id)}
+            disabled={actionLoading}
+          >
+            {actionLoading ? <CircularProgress size={20} /> : 'Reschedule'}
+          </Button>
+
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar */}
       <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={handleSnackbarClose}>
         <Alert onClose={handleSnackbarClose} severity={snackbar.severity} sx={{ width: '100%' }}>
           {snackbar.message}
         </Alert>
       </Snackbar>
     </>
-
   )
 }
 

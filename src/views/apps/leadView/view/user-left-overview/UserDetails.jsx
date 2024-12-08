@@ -347,7 +347,15 @@ const UserDetails = props => {
     setAnchorEl(null);
   };
 
+  const [confirmPopOpen, setConfirmPopOpen] = useState(false)
+
+  const handleConfirmPopOpen = () => setConfirmPopOpen(true)
+
+  const handleConfirmPopClose = () => setConfirmPopOpen(false)
   const handleStatusChange = async (newStatus) => {
+    if (newStatus == 'Converted') {
+      handleConfirmPopOpen()
+    }
     try {
       const token = localStorage.getItem('token')
       if (!token) {
@@ -792,11 +800,24 @@ const UserDetails = props => {
         </DialogActions> */}
       </Dialog>
 
+      <Dialog id='popper' open={confirmPopOpen} onClose={handleConfirmPopClose} aria-labelledby='form-dialog-title'>
+        <DialogTitle id='form-dialog-title'>Confirm Sales</DialogTitle>
+        <DialogContent>
+          <h1>Sales Confirmed</h1>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleConfirmPopClose} variant='outlined' color='secondary'>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit2} variant='contained'>
+            Submit
+          </Button>
+        </DialogActions>
+      </Dialog>
 
 
 
       <Card>
-
         <CardMedia image={data?.coverImg} className='bs-[150px] bg-primary'>
           <Box display={'flex'} justifyContent={'flex-end'} height={'100%'} alignItems={'flex-end'} width={'100%'}>
             {userData.assigned || update ?

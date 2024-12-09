@@ -21,7 +21,8 @@ import {
     List,
     ListItem,
     Chip,
-    ListItemText
+    ListItemText,
+    MenuItem
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import axios from 'axios';
@@ -266,10 +267,30 @@ const Campaign = () => {
             <Dialog open={open} onClose={handleClose} aria-labelledby="form-dialog-title">
                 <DialogTitle id="form-dialog-title">Create Campaign</DialogTitle>
                 <DialogContent>
-                    <DialogContentText>
-                        Enter the details for your new campaign below.
-                    </DialogContentText>
-                    <TextField id="name" autoFocus fullWidth label="Campaign Name" />
+                    <TextField className='p-2' id="name" name='name' autoFocus fullWidth label="Campaign Name" />
+                    <TextField
+                        fullWidth
+                        className='p-2'
+                        id="outlined-multiline-static"
+                        label="Description"
+                        multiline
+                        rows={4}
+                        name='description'
+                    />
+                    <TextField
+                        className='p-2'
+                        fullWidth
+                        select
+                        label="Choose Pipeline"
+                        name="Pipeline"
+                    // value={formData.gender}
+                    // onChange={handleChange}
+                    >
+                        <MenuItem value="">Select</MenuItem>
+                        <MenuItem value="Male">Male</MenuItem>
+                        <MenuItem value="Female">Female</MenuItem>
+                        <MenuItem value="Other">Other</MenuItem>
+                    </TextField>
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleClose} variant="outlined" color="secondary">

@@ -1,4 +1,4 @@
-// Next Imports
+"use client"
 import { useParams } from 'next/navigation'
 
 // MUI Imports
@@ -62,6 +62,16 @@ const VerticalMenu = ({ dictionary, scrollMenu }) => {
         renderExpandedMenuItemIcon={{ icon: <i className='ri-circle-fill' /> }}
         menuSectionStyles={menuSectionStyles(verticalNavOptions, theme)}
       >
+        <SubMenu
+          label={'Customers'}
+          icon={<i className='ri-home-smile-line' />}
+        // suffix={<Chip label='5' size='small' color='error' />}
+        >
+          <MenuItem href={`/${locale}/manager/customer`}>Contacts</MenuItem>
+          {/* <MenuItem href={`/${locale}/manager/customer/addcustomer`}>Add</MenuItem> */}
+          {/* <MenuItem href={`/${locale}/manager/leadcampaign`}>Campaign</MenuItem> */}
+          {/* <MenuItem href={`/${locale}/manager/followup`}>follow Up</MenuItem> */}
+        </SubMenu>
         <SubMenu
           label={'Leads'}
           icon={<i className='ri-home-smile-line' />}

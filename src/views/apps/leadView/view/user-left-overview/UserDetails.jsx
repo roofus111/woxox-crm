@@ -803,7 +803,16 @@ const UserDetails = props => {
       <Dialog id='popper' open={confirmPopOpen} onClose={handleConfirmPopClose} aria-labelledby='form-dialog-title'>
         <DialogTitle id='form-dialog-title'>Confirm Sales</DialogTitle>
         <DialogContent>
-          <h1>Sales Confirmed</h1>
+          <Typography variant='h4'>{userData?.firstName}</Typography>
+          <TextField
+            fullWidth
+            multiline
+            minRows={3}
+            id='outlined-textarea'
+            placeholder='Placeholder'
+            label='Add Notes'
+            onChange={e => setFormData({ ...formData, notes: e.target.value })}
+          />
         </DialogContent>
         <DialogActions>
           <Button onClick={handleConfirmPopClose} variant='outlined' color='secondary'>

@@ -27,8 +27,9 @@ import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
-import DialogContentText from '@mui/material/DialogContentText'
+import { DialogContentText, Select, MenuItem, InputLabel } from '@mui/material'
 import { toast } from 'react-toastify'
+import axios from 'axios'
 
 const Leads = () => {
   // States
@@ -40,7 +41,7 @@ const Leads = () => {
     phone: ''
   })
   const [uploadData, setUploadData] = useState({
-    campaign: '',
+    campaignid: '',
     source: ''
   })
 
@@ -106,7 +107,7 @@ const Leads = () => {
 
   const handleReset = () => {
     setFormData({
-      campaign: '',
+      campaignid: '',
       source: '',
       name: '',
       email: '',
@@ -162,7 +163,7 @@ const Leads = () => {
 
       // Assuming files is an array with a single file
       formData.append('file', files[0]) // Upload the first file
-      formData.append('campaign', uploadData.campaign)
+      formData.append('campaignid', uploadData.campaignid)
       formData.append('source', uploadData.source)
 
       // Example API call to submit the form
@@ -198,6 +199,22 @@ const Leads = () => {
       })
     }
   }
+  const [campaigns, setCampaigns] = useState([])
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/campaign/getcampaign`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+      .then(response => {
+        setCampaigns(response.data) // Update data if component is still mounted
+        console.log(response.data)
+      })
+      .catch(error => {
+        console.error('Failed to fetch data:', error)
+      })
+  }, [open])
 
   return (
     <>
@@ -213,14 +230,32 @@ const Leads = () => {
             {/* To subscribe to this website, please enter your email address here. We will send updates occasionally. */}
           </DialogContentText>
           <Grid container spacing={5}>
-            <Grid item xs={12} sm={6}>
-              <TextField
+            <Grid item xs={12} sm={12}>
+              {/* <TextField
                 fullWidth
                 label='Campaign'
                 value={uploadData.campaign}
                 placeholder='Campaign'
                 onChange={e => setUploadData({ ...uploadData, campaign: e.target.value })}
-              />
+              /> */}
+              <InputLabel id="campaign-select-label">Campaign</InputLabel>
+              <Select
+                fullWidth
+                style={{ color: 'black' }}
+                labelId="campaign-select-label"
+                id="campaign-select"
+                value={uploadData.campaign}
+                onChange={(e) => setUploadData({ ...uploadData, campaignid: e.target.value })}
+              >
+                <MenuItem value="" disabled>
+                  Choose Campaign
+                </MenuItem>
+                {campaigns.map((campaign, index) => (
+                  <MenuItem key={index} value={campaign._id}>
+                    {campaign.name}
+                  </MenuItem>
+                ))}
+              </Select>
             </Grid>
 
             <Grid item xs={12} sm={12}>

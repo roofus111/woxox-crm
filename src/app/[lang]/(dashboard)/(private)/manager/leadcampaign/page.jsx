@@ -27,8 +27,10 @@ import {
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import Leads from '../addleads/page';
-
+import { getLocalizedUrl } from '@/utils/i18n'
+import { useRouter } from 'next/navigation'
 const Campaign = () => {
+    const router = useRouter()
     const [open, setOpen] = useState(false);
     const [draw, setDraw] = useState(false);
     const [campaign, setCampaign] = useState([]);
@@ -247,7 +249,7 @@ const Campaign = () => {
                                     <Divider />
                                     <Grid container spacing={1} mt={2} justifyContent={'flex-end'}>
                                         <Button onClick={handleClickOpen2}>Add Leads</Button>
-                                        <Button onClick={toggleDrawer(true)}>View</Button>
+                                        <Button onClick={() => router.push(getLocalizedUrl(`/manager/leads/${item._id}`, 'en'))}>View</Button>
                                     </Grid>
                                 </CardContent>
                             </Card>

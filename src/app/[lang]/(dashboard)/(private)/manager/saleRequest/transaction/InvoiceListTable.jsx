@@ -209,12 +209,12 @@ const InvoiceListTable = ({ invoiceData }) => {
         header: 'Customer',
         cell: ({ row }) => (
           <div className='flex items-center gap-3'>
-            {getAvatar({ avatar: row.original.avatar, name: row.original.leadId.name })}
+            {getAvatar({ avatar: row.original.avatar, name: row.original.leadId?.name })}
             <div className='flex flex-col'>
               <Typography className='font-medium' color='text.primary'>
-                {row.original.leadId.name}
+                {row.original.leadId?.name}
               </Typography>
-              <Typography variant='body2'>{row.original.leadId.email}</Typography>
+              <Typography variant='body2'>{row.original.leadId?.email}</Typography>
             </div>
           </div>
         )

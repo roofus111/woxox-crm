@@ -21,6 +21,7 @@ import InputLabel from '@mui/material/InputLabel'
 import Select from '@mui/material/Select'
 import MenuItem from '@mui/material/MenuItem'
 import Tooltip from '@mui/material/Tooltip'
+import AddCard from '@views/apps/manager/invoice/add/AddCard'
 import TablePagination from '@mui/material/TablePagination'
 
 // Third-party Imports
@@ -106,6 +107,7 @@ const InvoiceListTable = ({ invoiceData }) => {
   const [data, setData] = useState([])
   const [filteredData, setFilteredData] = useState(data)
   const [globalFilter, setGlobalFilter] = useState('')
+  const [showAddCard, setShowAddCard] = useState(false);
 
 
   useEffect(() => {
@@ -312,6 +314,10 @@ const InvoiceListTable = ({ invoiceData }) => {
     }
   }
 
+  const handleButtonClick = () => {
+    setShowAddCard(true); // Show the AddCard component when the button is clicked.
+  };
+
   useEffect(() => {
     const filteredData = data?.filter(invoice => {
       if (status && invoice.invoiceStatus.toLowerCase().replace(/\s+/g, '-') !== status) return false
@@ -329,8 +335,12 @@ const InvoiceListTable = ({ invoiceData }) => {
           variant='contained'
           component={Link}
           startIcon={<i className='ri-add-line' />}
+
+          // href={getLocalizedUrl('apps/invoice/add', locale)}
           href={getLocalizedUrl('apps/invoice/add', locale)}
           className='max-sm:is-full'
+          onClick={handleButtonClick}
+
         >
           Create Invoice
         </Button>

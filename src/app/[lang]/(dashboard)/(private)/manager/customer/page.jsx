@@ -19,7 +19,7 @@ import {
     DialogTitle,
     Paper,
 } from "@mui/material";
-import AddCustomerForm from "@/views/apps/customer/addcustomer";
+import AddCustomerForm from "@/views/apps/customer/Addcustomer";
 const Customer = () => {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState(null);

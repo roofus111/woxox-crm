@@ -40,7 +40,11 @@ const Campaign = () => {
     // Open/Close Handlers
     const handleClickOpen = () => setOpen(true);
     const handleClose = () => setOpen(false);
-    const handleClickOpen2 = () => setOpen2(true);
+    const [pass, setPass] = useState(true);
+    const handleClickOpen2 = (item) => {
+        setOpen2(true)
+        setPass(item)
+    }
     const handleClose2 = () => setOpen2(false);
 
     const [formData, setFormData] = useState({
@@ -334,7 +338,7 @@ const Campaign = () => {
 
                                     <Divider />
                                     <Grid container spacing={1} mt={2} justifyContent={'flex-end'}>
-                                        <Button onClick={handleClickOpen2}>Add Leads</Button>
+                                        <Button onClick={() => { handleClickOpen2(item) }}>Add Leads</Button>
                                         <Button onClick={() => router.push(getLocalizedUrl(`/manager/leads/${item._id}`, 'en'))}>View</Button>
                                     </Grid>
                                 </CardContent>
@@ -405,7 +409,7 @@ const Campaign = () => {
             <Dialog maxWidth open={open2} onClose={handleClose2} aria-labelledby="form-dialog-title">
                 <DialogContent>
                     <DialogContentText>
-                        <Leads />
+                        <Leads campid={pass} />
                     </DialogContentText>
                 </DialogContent>
             </Dialog>

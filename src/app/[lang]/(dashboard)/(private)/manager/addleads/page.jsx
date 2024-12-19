@@ -31,10 +31,12 @@ import { DialogContentText, Select, MenuItem, InputLabel } from '@mui/material'
 import { toast } from 'react-toastify'
 import axios from 'axios'
 
-const Leads = () => {
-  // States
+const Leads = ({ campid }) => {
+  console.log(campid);
+
   const [formData, setFormData] = useState({
     campaign: '',
+    campaignid: "",
     source: '',
     name: '',
     email: '',
@@ -134,7 +136,7 @@ const Leads = () => {
   const { getRootProps, getInputProps } = useDropzone({
     multiple: false,
     accept: {
-      'application/vnd.ms-excel': ['.xls']
+      'application/vnd.ms-excel': ['.xls', '.xlxs']
     },
     onDrop: acceptedFiles => {
       const file = acceptedFiles[0]
@@ -216,6 +218,18 @@ const Leads = () => {
       })
   }, [open])
 
+  useEffect(() => {
+    if (campid) {
+      setFormData(prevFormData => ({
+        ...prevFormData,
+        campaignid: campid._id,
+      }));
+      setUploadData(prevFormData => ({
+        ...prevFormData,
+        campaignid: campid._id,
+      }));
+    }
+  }, [campid]);
   return (
     <>
       <Box margin={5} display={'flex'} justifyContent={'flex-end'}>
@@ -238,7 +252,7 @@ const Leads = () => {
                 placeholder='Campaign'
                 onChange={e => setUploadData({ ...uploadData, campaign: e.target.value })}
               /> */}
-              <InputLabel id="campaign-select-label">Campaign</InputLabel>
+              {/* <InputLabel id="campaign-select-label">Campaign</InputLabel>
               <Select
                 fullWidth
                 style={{ color: 'black' }}
@@ -255,7 +269,32 @@ const Leads = () => {
                     {campaign.name}
                   </MenuItem>
                 ))}
-              </Select>
+              </Select> */}
+              {campid ? <TextField
+                disabled
+                fullWidth
+                label='Campaign'
+                value={campid.name}
+              /> :
+                <>  <InputLabel id="campaign-select-label">Campaign</InputLabel>
+                  <Select
+                    fullWidth
+                    style={{ color: 'black' }}
+                    labelId="campaign-select-label"
+                    id="campaign-select"
+                    value={uploadData.campaignid}
+                    onChange={(e) => setUploadData({ ...uploadData, campaignid: e.target.value })}
+                  >
+                    <MenuItem value="" disabled>
+                      Choose Campaign
+                    </MenuItem>
+                    {campaigns.map((campaign, index) => (
+                      <MenuItem key={index} value={campaign._id}>
+                        {campaign.name}
+                      </MenuItem>
+                    ))}
+                  </Select> </>}
+
             </Grid>
 
             <Grid item xs={12} sm={12}>
@@ -328,13 +367,29 @@ const Leads = () => {
                 </Typography>
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField
+                {campid ? <TextField
+                  disabled
                   fullWidth
                   label='Campaign'
-                  placeholder='Campaign Name'
-                  value={formData.campaign}
-                  onChange={e => setFormData({ ...formData, campaign: e.target.value })}
-                />
+                  value={campid.name}
+                /> : <Select
+                  fullWidth
+                  style={{ color: 'black' }}
+                  labelId="campaign-select-label"
+                  id="campaign-select"
+                  value={formData.campaignid}
+                  onChange={e => setFormData({ ...formData, campaignid: e.target.value })}
+                >
+                  <MenuItem value="" disabled>
+                    Choose Campaign
+                  </MenuItem>
+                  {campaigns.map((campaign, index) => (
+                    <MenuItem key={index} value={campaign._id}>
+                      {campaign.name}
+                    </MenuItem>
+                  ))}
+                </Select>}
+
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField

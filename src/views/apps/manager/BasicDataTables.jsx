@@ -155,6 +155,28 @@ const BasicDataTables = () => {
   //     toast.error('An error occurred. Please try again.')
   //   }
   // }
+  const listDayFormat = {
+    month: 'long',
+    year: 'numeric',
+    day: 'numeric',
+    weekday: 'long',
+  };
+
+  const formatDateOverride = (date) => {
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) {
+      return 'Today';
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString(undefined, listDayFormat);
+    }
+  };
+
+
   return (
     <>
       <Typography variant="h4" gutterBottom>Follow-ups</Typography>
@@ -209,9 +231,17 @@ const BasicDataTables = () => {
         // eventClick={handleEventClick}
         headerToolbar={{
           left: 'title',
-          center: '',
+          center: 'listMonth,listWeek,listDay,listYear',
           right: 'today,prev,next',
         }}
+        buttonText={{
+          listMonth: 'Month', // Label for the "Month" view button
+          listWeek: 'Week',  // Label for the "Week" view button
+          listDay: 'Day',
+          listYear: 'Year'   // Label for the "Day" view button
+        }}
+
+        dayHeaderContent={(args) => formatDateOverride(args.date)}
         locale="en"
         ref={(calendarRef) => {
           if (calendarRef) {

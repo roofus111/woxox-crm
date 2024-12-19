@@ -218,7 +218,7 @@ const Transactions = (props) => {
                     </Typography>
                     <div className='flex items-center gap-2'>
                       <i className='ri-flag-line text-base text-textSecondary' />
-                      <Typography variant='body2'>{item.campaign}</Typography>
+                      <Typography variant='body2'>{item.campaign ? item.campaign : item.campaignid?.name}</Typography>
                     </div>
                   </div>
                   <Chip label={item.status} color={item.chipColor} size='small' variant='tonal' />

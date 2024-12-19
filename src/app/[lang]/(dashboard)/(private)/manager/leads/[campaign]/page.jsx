@@ -27,7 +27,8 @@ import {
 } from '@mui/material'
 import { toast } from 'react-toastify'
 import axios from 'axios'
-
+import { getLocalizedUrl } from '@/utils/i18n'
+import { useRouter } from 'next/navigation'
 
 const ITEM_HEIGHT = 48
 const ITEM_PADDING_TOP = 8
@@ -41,6 +42,7 @@ const MenuProps = {
 }
 const DynamicPage = () => {
     const params = useParams()
+    const router = useRouter()
     const campaignId = params.campaign
     const [data, setData] = useState([])
     const [selected, setSelected] = useState([])
@@ -48,6 +50,7 @@ const DynamicPage = () => {
     const [searchTerm, setSearchTerm] = useState('')
     const [sortConfig, setSortConfig] = useState({ field: '', direction: 'asc' })
     const [filterStatus, setFilterStatus] = useState('')
+    const [campaignData, setCampaignData] = useState({})
 
     const fetch = async () => {
         setLoading(true)
@@ -70,6 +73,7 @@ const DynamicPage = () => {
             })
             if (response.status === 200) {
                 setData(response.data)
+                setCampaignData(response.data[0]?.campaignid)
             } else {
                 toast.error('Unexpected response from the server.')
             }
@@ -115,7 +119,10 @@ const DynamicPage = () => {
     const handleFilter = e => {
         setFilterStatus(e.target.value)
     }
-
+    const [assign, setAssign] = useState('')
+    const handleAssignee = e => {
+        setAssign(e.target.value)
+    }
     const handleView = id => {
         // Replace with the actual logic for handling the view action
         toast.info(`Viewing details for lead ID: ${id}`)
@@ -156,6 +163,48 @@ const DynamicPage = () => {
             }
 
             toast.success(response.data)
+            handleClose()
+            fetch()
+        } catch (error) {
+            // Handle errors from Axios, including network errors and server errors
+            if (error.response) {
+                // Server responded with a status code outside the range of 2xx
+                toast.error(error.response.data.message || 'Error occurred.')
+            } else if (error.request) {
+                // Request was made, but no response was received
+                toast.error('No response from server.')
+            } else {
+                // Something else went wrong in setting up the request
+                toast.error(error.message || 'An unexpected error occurred.')
+            }
+        }
+    }
+    const handleSubmit2 = async (e) => {
+        e.preventDefault()
+
+        try {
+            const token = localStorage.getItem('token')
+
+
+            const response = await axios.put(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/leads/assign-multiple/${assign}`,
+                { leadIds: selected }, // Ensure the body structure matches expected API input
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            )
+
+            // Check if the request was successful
+            if (response.status !== 200) {
+                toast.error(response.data.message || 'Unknown error occurred.')
+                return // Stop further execution in case of HTTP error
+            }
+            toast.success(response.data)
+            handleClose2()
+            fetch()
         } catch (error) {
             // Handle errors from Axios, including network errors and server errors
             if (error.response) {
@@ -173,6 +222,11 @@ const DynamicPage = () => {
     const [open, setOpen] = useState(false)
     const handleClose = () => setOpen(false)
     const handleClickOpen = () => setOpen(true)
+
+    const [open2, setOpen2] = useState(false)
+    const handleClose2 = () => setOpen2(false)
+    const handleClickOpen2 = () => setOpen2(true)
+
     const [assigner, setAssigner] = useState([])
 
     useEffect(() => {
@@ -195,26 +249,29 @@ const DynamicPage = () => {
 
 
     return (
-        <><Box sx={{ padding: 4 }}>
-            <h1>Lead Information {campaignId}</h1>
-
+        <><><Box sx={{ padding: 4 }}>
+            <h1>Campaign : {campaignData.name}</h1>
+            <p>{campaignData.description}</p>
+            <br />
             <Box sx={{ marginBottom: 2, display: 'flex', gap: 2 }}>
                 <TextField label='Search' variant='outlined' value={searchTerm} onChange={handleSearch} fullWidth />
                 <FormControl fullWidth>
                     <InputLabel>Status</InputLabel>
                     <Select value={filterStatus} onChange={handleFilter} label='Status'>
                         <MenuItem value=''>All</MenuItem>
-                        <MenuItem value='Contacted'>Contacted</MenuItem>``
-                        <MenuItem value='Follow-up'>Follow-up</MenuItem>
+                        <MenuItem value='New'>New</MenuItem>``
+                        <MenuItem value='Contacted'>Contacted</MenuItem>
                         <MenuItem value='Interested'>Interested</MenuItem>
+                        <MenuItem value='Not Interested'>Not Interested</MenuItem>``
+                        <MenuItem value='Converted'>Converted</MenuItem>
                     </Select>
                 </FormControl>
                 {selected.length === 0 ? (
                     <Button onClick={handleClickOpen}>Assign Unassigned</Button>
                 ) : (
                     <>
-                        <Button onClick={onUnassigned}>Delete</Button>
-                        <Button onClick={onUnassigned}>Assign Selected Leads</Button>
+                        <Button>Delete</Button>
+                        <Button onClick={handleClickOpen2}>Assign Selected Leads</Button>
                     </>
                 )}
             </Box>
@@ -264,7 +321,7 @@ const DynamicPage = () => {
                                     </TableCell>
                                     <TableCell>{lead.status}</TableCell>
                                     <TableCell>
-                                        <Button variant='contained' color='primary' onClick={() => handleView(lead._id)}>
+                                        <Button variant='contained' color='primary' onClick={() => router.push(getLocalizedUrl(`/manager/leads/byid/${lead._id}`, 'en'))}>
                                             View
                                         </Button>
                                     </TableCell>
@@ -310,6 +367,30 @@ const DynamicPage = () => {
                         Disagree
                     </Button>
                     <Button onClick={handleSubmit} variant='contained'>
+                        Agree
+                    </Button>
+                </DialogActions>
+            </Dialog></><Dialog open={open2} onClose={handleClose2} aria-labelledby='form-dialog-title'>
+                <DialogTitle id='form-dialog-title'>Assign leads</DialogTitle>
+                <DialogContent>
+                    <div>
+                        <Typography className='mbe-2 font-medium' color='text.primary'>
+                            Select counsellors
+                        </Typography>
+                        <FormControl fullWidth>
+                            <Select value={assign} onChange={handleAssignee}>
+                                {assigner.map((item) => {
+                                    return <MenuItem value={item._id}>{item.firstName + " " + item.lastName}</MenuItem>
+                                })}
+                            </Select>
+                        </FormControl>
+                    </div>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleClose2} variant='outlined' color='secondary'>
+                        Disagree
+                    </Button>
+                    <Button onClick={handleSubmit2} variant='contained'>
                         Agree
                     </Button>
                 </DialogActions>

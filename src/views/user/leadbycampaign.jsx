@@ -268,7 +268,7 @@ const Transactions = (props) => {
                   {item.name}
                 </Typography>
                 <Typography variant="body2" color="textSecondary">
-                  {item.campaign}
+                {item.campaign ? item.campaign : item.campaignid?.name}
                 </Typography>
               </Box>
             </Box>

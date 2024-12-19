@@ -34,6 +34,7 @@ const Campaign = () => {
     const [open, setOpen] = useState(false);
     const [draw, setDraw] = useState(false);
     const [campaign, setCampaign] = useState([]);
+    const [pipeline, setPipeline] = useState([]);
     const [loading, setLoading] = useState(true);
     const [open2, setOpen2] = useState(false);
     // Open/Close Handlers
@@ -41,6 +42,49 @@ const Campaign = () => {
     const handleClose = () => setOpen(false);
     const handleClickOpen2 = () => setOpen2(true);
     const handleClose2 = () => setOpen2(false);
+
+    const [formData, setFormData] = useState({
+        name: '',
+        description: '',
+        pipeline: '',
+    });
+
+    const handleSubmit = async () => {
+        console.log('Form Data:', formData); // Replace with your API call or other logic
+
+        try {
+            const token = localStorage.getItem('token')
+            // Example API call to submit the form
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/campaign/createcampaign`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify(formData)
+            })
+
+            const data = await response.json()
+
+            if (response.ok) {
+                toast.success('Lead submitted successfully!')
+                fetchCampaign()
+            } else {
+                toast.error(data.message || 'An error occurred. Please try again.')
+            }
+        } catch (error) {
+            toast.error('An error occurred. Please try again.')
+        }
+        handleClose();
+    };
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData({
+            ...formData,
+            [name]: value,
+        });
+    };
 
     const toggleDrawer = (open) => (event) => {
         if (event.type === 'keydown' && (event.key === 'Tab' || event.key === 'Shift')) return;
@@ -89,9 +133,51 @@ const Campaign = () => {
             setLoading(false);
         }
     };
+    const fetchPipeline = async () => {
+        setLoading(true);
+        const token = localStorage.getItem('token');
+
+        if (!token) {
+            toast.error('Authorization token is missing.');
+            setLoading(false);
+            return;
+        }
+
+        if (!process.env.NEXT_PUBLIC_API_URL) {
+            toast.error('API URL is not configured.');
+            setLoading(false);
+            return;
+        }
+
+        try {
+            const response = await axios.get(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/pipelines/getpipeline`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            if (response.status === 200) {
+                setPipeline(response.data);
+                console.log(response.data);
+            } else {
+                toast.error('Unexpected response from the server.');
+            }
+        } catch (error) {
+            if (error.response) {
+                const { status, data } = error.response;
+                toast.error(`Error ${status}: ${data?.message || 'Failed to fetch pipeline.'}`);
+            } else if (error.request) {
+                toast.error('No response received from the server.');
+            } else {
+                toast.error(`Error: ${error.message}`);
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
         fetchCampaign();
+        fetchPipeline();
     }, []);
 
 
@@ -269,36 +355,48 @@ const Campaign = () => {
             <Dialog open={open} onClose={handleClose} aria-labelledby="form-dialog-title">
                 <DialogTitle id="form-dialog-title">Create Campaign</DialogTitle>
                 <DialogContent>
-                    <TextField className='p-2' id="name" name='name' autoFocus fullWidth label="Campaign Name" />
+                    <TextField
+                        className="p-2"
+                        id="name"
+                        name="name"
+                        autoFocus
+                        fullWidth
+                        label="Campaign Name"
+                        value={formData.name}
+                        onChange={handleChange}
+                    />
                     <TextField
                         fullWidth
-                        className='p-2'
+                        className="p-2"
                         id="outlined-multiline-static"
                         label="Description"
                         multiline
                         rows={4}
-                        name='description'
+                        name="description"
+                        value={formData.description}
+                        onChange={handleChange}
                     />
                     <TextField
-                        className='p-2'
+                        className="p-2"
                         fullWidth
                         select
                         label="Choose Pipeline"
-                        name="Pipeline"
-                    // value={formData.gender}
-                    // onChange={handleChange}
+                        name="pipeline"
+                        value={formData.pipeline}
+                        onChange={handleChange}
                     >
-                        <MenuItem value="">Select</MenuItem>
-                        <MenuItem value="Male">Male</MenuItem>
-                        <MenuItem value="Female">Female</MenuItem>
-                        <MenuItem value="Other">Other</MenuItem>
+                        {pipeline.map((item) => (
+                            <MenuItem key={item._id} value={item._id}>
+                                {item.name}
+                            </MenuItem>
+                        ))}
                     </TextField>
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleClose} variant="outlined" color="secondary">
                         Cancel
                     </Button>
-                    <Button onClick={handleClose} variant="contained">
+                    <Button onClick={handleSubmit} variant="contained" color="primary">
                         Create
                     </Button>
                 </DialogActions>

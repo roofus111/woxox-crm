@@ -96,10 +96,6 @@ const Leads = () => {
 
   return (
     <>
-      <Box>
-        <Button onClick={handleClickOpen}>Assign Leads</Button>
-      </Box>
-
       <MeetingSchedule user={data} />
 
       <Dialog open={open} onClose={handleClose} aria-labelledby='form-dialog-title'>

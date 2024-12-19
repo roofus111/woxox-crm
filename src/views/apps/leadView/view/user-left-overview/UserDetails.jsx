@@ -78,7 +78,8 @@ const UserDetails = props => {
     modify: props.data.updatedAt,
     assigned: props.data.assignedTo,
     profile: props.data.profile,
-    moreData: props.data.additionalFields
+    moreData: props.data.additionalFields,
+    campaignid: props.data.campaignid
   }
   const [open, setOpen] = useState(false)
 
@@ -834,7 +835,11 @@ const UserDetails = props => {
                 <Tooltip title={getTooltipTitle()}>
                   <Box display={'flex'}>
                     {/* <Avatar onClick={toggleBox} src='/images/avatars/4.png' /> */}
-                    <Avatar sx={{ bgcolor: "yellow" }} onClick={toggleBox} >{userData ? userData.assigned?.firstName?.substring(0, 2).toUpperCase() : '??'}</Avatar>
+                    <Avatar sx={{ bgcolor: "yellow" }} onClick={toggleBox}>
+                      {userData?.assigned?.firstName
+                        ? userData.assigned.firstName.substring(0, 2).toUpperCase()
+                        : '??'}
+                    </Avatar>
                     {isOpen && (
                       <IconButton onClick={handleClickOpenAssign} aria-label='capture screenshot' style={{ color: 'white' }} size='small'>
                         <i className='ri-user-search-fill text-xl' />
@@ -853,14 +858,14 @@ const UserDetails = props => {
         <CardContent className='flex justify-center flex-col items-center gap-6 md:items-end md:flex-row !pt-0 md:justify-start'>
           <div className='flex rounded-bs-xl mbs-[-30px] mli-[-5px] border-[5px] border-be-0 border-backgroundPaper bg-backgroundPaper '>
             {/* <img height={120} width={120} src='/images/avatars/1.png' className='rounded' alt='Profile Background' /> */}
-            <Avatar sx={{ width: 120, height: 120, fontSize: 50, bgcolor: "#DC4D01", color: 'white' }} className='rounded'>{userData ? userData.firstName.substring(0, 2).toUpperCase() : '??'}</Avatar>
+            <Avatar sx={{ width: 120, height: 120, fontSize: 50, bgcolor: "#DC4D01", color: 'white' }} className='rounded'>{userData ? userData.firstName?.substring(0, 2).toUpperCase() : '??'}</Avatar>
           </div>
           <div className='flex is-full flex-wrap justify-start flex-col items-center sm:flex-row sm:justify-between sm:items-end gap-5'>
             <div className='flex flex-col items-center sm:items-start gap-2'>
               <Typography variant='h4'>{userData?.firstName}</Typography>
               <div className='flex flex-wrap gap-6 gap-y-3 justify-center sm:justify-normal min-bs-[38px]'>
                 <div className='flex items-center gap-2'>
-                  <Chip icon={<i className='ri-megaphone-line'></i>} label={userData.campaign} variant='tonal' size='small' />
+                  <Chip icon={<i className='ri-megaphone-line'></i>} label={userData.campaign ? userData.campaign : userData.campaignid.name} variant='tonal' size='small' />
                 </div>
                 {/* <div className='flex items-center gap-2'>
                   <Chip label={userData.source} variant='tonal' size='small' />

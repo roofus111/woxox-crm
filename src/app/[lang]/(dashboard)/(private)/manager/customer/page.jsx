@@ -1,19 +1,12 @@
 "use client";
 import React, { useState } from "react";
-import IconButton from '@mui/material/IconButton';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
+import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import ReceiptIcon from '@mui/icons-material/Receipt';
-import FileIcon from '@mui/icons-material/InsertDriveFile';
-import DownloadIcon from '@mui/icons-material/Download';
 
 import {
     Drawer,
     Box,
     Typography,
-    Button,
     List,
     ListItem,
     ListItemText,
@@ -320,7 +313,7 @@ const Customer = () => {
                                 <TableCell>{customer.email}</TableCell>
                                 <TableCell>{customer.phone}</TableCell>
                                 <TableCell>
-                                    <IconButton
+                                    <Button
                                         onClick={() => handleOpenDrawer(customer)} // Use handleOpenDrawer instead of handleCloseDrawer
                                         sx={{
                                             borderColor: "#007BFF",
@@ -336,10 +329,10 @@ const Customer = () => {
                                             mx: 1,
                                         }}
                                     >
-                                        <VisibilityIcon sx={{ fontSize: 24 }} />
-                                    </IconButton>
+                                        <i class="ri-eye-line" sx={{ fontSize: 24 }} />
+                                    </Button>
 
-                                    <IconButton
+                                    <Button
                                         onClick={() => console.log("Edit customer")}
                                         sx={{
                                             borderColor: "green",
@@ -355,10 +348,10 @@ const Customer = () => {
                                             mx: 2,
                                         }}
                                     >
-                                        <EditIcon sx={{ fontSize: 20 }} />
-                                    </IconButton>
+                                        <i class="ri-edit-line" sx={{ fontSize: 20 }} />
+                                    </Button>
 
-                                    <IconButton
+                                    <Button
                                         onClick={() => console.log("Delete customer")}
                                         sx={{
                                             borderColor: "#DC3545",
@@ -374,8 +367,8 @@ const Customer = () => {
                                             mx: 1,
                                         }}
                                     >
-                                        <DeleteIcon sx={{ fontSize: 20 }} />
-                                    </IconButton>
+                                        <i class="ri-delete-bin-line" sx={{ fontSize: 20 }} />
+                                    </Button>
                                 </TableCell>
 
                             </TableRow>
@@ -681,7 +674,7 @@ const Customer = () => {
                                             {/* Left Side */}
                                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                    <ReceiptIcon sx={{ color: '#007bff', fontSize: 40 }} />
+                                                    <i class="ri-receipt-fill" sx={{ color: '#007bff', fontSize: 40 }} />
                                                     <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#007bff' }}>
                                                         Invoice
                                                     </Typography>
@@ -737,9 +730,9 @@ const Customer = () => {
                                                     >
                                                         View
                                                     </Button>
-                                                    <IconButton>
-                                                        <DownloadIcon /> {/* Download Icon */}
-                                                    </IconButton>
+                                                    <Button>
+                                                        <i class="ri-download-line" /> {/* Download Icon */}
+                                                    </Button>
                                                 </Box>
                                             </Box>
                                         </CardContent>
@@ -754,20 +747,20 @@ const Customer = () => {
                                     <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         {/* Left side: File icon and File name */}
                                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                            <FileIcon sx={{ marginRight: 1 }} /> {/* Dummy file icon */}
+                                            <i class="ri-folder-add-line" sx={{ marginRight: 1 }} /> {/* Dummy file icon */}
                                             <Typography variant="body2">Document1.pdf</Typography> {/* Dummy file name */}
                                         </Box>
                                         {/* Right side: Icons for View, Delete, and Download */}
                                         <Box sx={{ display: 'flex', gap: 1, }}>
-                                            <IconButton>
-                                                <VisibilityIcon /> {/* View Icon */}
-                                            </IconButton>
-                                            <IconButton>
-                                                <DeleteIcon /> {/* Delete Icon */}
-                                            </IconButton>
-                                            <IconButton>
-                                                <DownloadIcon /> {/* Download Icon */}
-                                            </IconButton>
+                                            <Button>
+                                                <i class="ri-eye-line" /> {/* View Icon */}
+                                            </Button>
+                                            <Button>
+                                            <i class="ri-delete-bin-line"></i> {/* Delete Icon */}
+                                            </Button>
+                                            <Button>
+                                            <i class="ri-download-line"></i> {/* Download Icon */}
+                                            </Button>
                                         </Box>
                                     </CardContent>
                                 </Card>
@@ -777,7 +770,7 @@ const Customer = () => {
                                     <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         {/* Left side: File icon and File name */}
                                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                            <FileIcon sx={{ marginRight: 1 }} /> {/* Dummy file icon */}
+                                            <i class="ri-folder-add-line" sx={{ marginRight: 1 }} /> {/* Dummy file icon */}
                                             <Typography variant="body2">Image1.jpg</Typography> {/* Dummy file name */}
                                         </Box>
                                         {/* Right side: Upload button */}

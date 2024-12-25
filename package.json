@@ -16,7 +16,7 @@
         "removeI18n": "tsx src/remove-translation-scripts/index.js"
     },
     "dependencies": {
-        "@auth/prisma-adapter": "2.4.1",
+        "@auth/prisma-adapter": "^2.7.4",
         "@dnd-kit/core": "^6.1.0",
         "@dnd-kit/sortable": "^8.0.0",
         "@emoji-mart/data": "1.2.1",
@@ -65,8 +65,8 @@
         "mapbox-gl": "3.5.2",
         "moment": "^2.30.1",
         "negotiator": "0.6.3",
-        "next": "14.2.5",
-        "next-auth": "4.24.7",
+        "next": "^14.2.21",
+        "next-auth": "^4.24.11",
         "pdfjs-dist": "^3.11.174",
         "react": "18.3.1",
         "react-apexcharts": "1.4.1",

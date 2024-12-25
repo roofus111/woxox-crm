@@ -1,6 +1,6 @@
 'use client'
 import React, { useState, useEffect, useRef } from 'react'
-import { Grid, Data } from "@mui/material"
+import { Grid } from "@mui/material"
 import { DataProvider } from '@/contexts/DataContext'
 import UserLeftOverview from '@views/apps/leadView/view/user-left-overview'
 import UserRight from '@views/apps/leadView/view/user-right'

@@ -5,6 +5,7 @@
 
 # Lock files
 /package-lock.json
+package-lock.json
 /yarn.lock
 
 # Testing outputs

@@ -52,7 +52,7 @@ const UserActivityTimeLine = ({ id }) => {
     }
 
     axios
-      .get(`https://app.canbridge.in/api/leadactivity/${id}`, {
+      .get(`${process.env.NEXT_PUBLIC_API_URL}/api/leadactivity/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -89,7 +89,7 @@ const UserActivityTimeLine = ({ id }) => {
               <TimelineItem key={index}>
                 <TimelineSeparator>
                   <TimelineDot
-                    color={item.action === 'note_added' ? `info` : item.action === 'followUp' ? `warning` : 'success'}
+                    color={item.action === 'note_added' ? `info` : item.action === 'followUp' ? `warning` : item.action === 'notPicked' ? `error` : 'success'}
                   />
                   <TimelineConnector />
                 </TimelineSeparator>
@@ -102,7 +102,7 @@ const UserActivityTimeLine = ({ id }) => {
                           ? `${item.userId.name} created a new followup`
                           : item.action === 'status_change'
                             ? `${item.userId.name}  Closed a followup`
-                            : 'Other Title '}
+                            : item.action === 'notPicked' ? `${item.userId.name}  tried to contact` : 'Other Title '}
                     </Typography>
                     <Typography variant='caption'>
                       <Moment fromNow>{item.timestamp}</Moment>
@@ -116,11 +116,14 @@ const UserActivityTimeLine = ({ id }) => {
                     []
                   ) : item.action === 'status_change' ? (
                     []
-                  ) : (
-                    <Typography padding={3} bgcolor={'#fffeee'} className='mbe-2'>
-                      {item.details}
-                    </Typography>
-                  )}
+                  ) : item.action === 'notPicked' ? (
+                    []
+                  ) :
+                    (
+                      <Typography padding={3} bgcolor={'#fffeee'} className='mbe-2'>
+                        {item.details}
+                      </Typography>
+                    )}
 
                   {/* <div className='flex items-center gap-2.5 is-fit bg-actionHover rounded-lg plb-[5px] pli-2.5'>
                     <img height={20} alt='invoice.pdf' src='/images/icons/pdf-document.png' />

@@ -48,7 +48,7 @@ const Transactions = (props) => {
       return
     }
     const response = await fetch(
-      `https://app.canbridge.in/api/leads/leads/${userId}`,
+      `${process.env.NEXT_PUBLIC_API_URL}/api/leads/leads/${userId}`,
       {
         headers: { Authorization: `Bearer ${token}` }
       }
@@ -143,8 +143,8 @@ const Transactions = (props) => {
 
     // const qualification = encodeURIComponent(props.campaign)
     const response = await fetch(
-      // `https://app.canbridge.in/api/leads/getleads/${props.campaign}`,
-      `https://app.canbridge.in/api/leads/search?page=${page}&search=${encodeURIComponent(searchTerm)}&status=${encodeURIComponent(status)}&assignedTo=${encodeURIComponent(assignee)}&campaign=${props.campaign}`,
+      // `${process.env.NEXT_PUBLIC_API_URL}/api/leads/getleads/${props.campaign}`,
+      `${process.env.NEXT_PUBLIC_API_URL}/api/leads/search?page=${page}&search=${encodeURIComponent(searchTerm)}&status=${encodeURIComponent(status)}&assignedTo=${encodeURIComponent(assignee)}&campaign=${props.campaign}`,
       {
         headers: { Authorization: `Bearer ${token}` }
       }
@@ -268,7 +268,7 @@ const Transactions = (props) => {
                   {item.name}
                 </Typography>
                 <Typography variant="body2" color="textSecondary">
-                  {item.campaign}
+                {item.campaign ? item.campaign : item.campaignid?.name}
                 </Typography>
               </Box>
             </Box>

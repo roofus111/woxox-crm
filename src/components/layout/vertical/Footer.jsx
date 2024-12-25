@@ -5,11 +5,9 @@ import FooterContent from './FooterContent'
 import UserFooterContent from './UserFooterContent';
 
 const Footer = (user) => {
-  console.log(user);
-
   return (
     <LayoutFooter>
-      {user != 'user' ? <UserFooterContent /> : <FooterContent />}
+      {user.user == 'user' ? <UserFooterContent /> : <FooterContent />}
     </LayoutFooter>
   )
 }

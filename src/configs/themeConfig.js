@@ -19,6 +19,8 @@ const themeConfig = {
   templateName: 'WOXOX',
   homePageUrl: '/dashboards/crm',
   userHomePageUrl: '/home',
+  financeHomePageUrl: '/finance',
+  pipelineHomePageUrl: '/pipeline',
   settingsCookieName: 'TastyCookies',
   mode: 'light', // 'system', 'light', 'dark'
   skin: 'default', // 'default', 'bordered'

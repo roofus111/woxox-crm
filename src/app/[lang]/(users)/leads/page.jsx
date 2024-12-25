@@ -11,7 +11,7 @@ const Leads = ({ params }) => {
   useEffect(() => {
     const token = localStorage.getItem('token')
     axios
-      .get('https://app.canbridge.in/api/user-profiles', {
+      .get(`${process.env.NEXT_PUBLIC_API_URL}/api/user-profiles`, {
         headers: {
           Authorization: `Bearer ${token}`
         }

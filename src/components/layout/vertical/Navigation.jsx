@@ -25,7 +25,8 @@ import { getLocalizedUrl } from '@/utils/i18n'
 // Style Imports
 import navigationCustomStyles from '@core/styles/vertical/navigationCustomStyles'
 import UserVerticalMenu from './UserVerticalMenu'
-
+import FinanceVerticalMenu from './FinanceVerticalMenu'
+import PipelineVerticalMenu from './PipelineVerticalMenu'
 const StyledBoxForShadow = styled('div')(({ theme }) => ({
   top: 60,
   left: -8,
@@ -108,7 +109,14 @@ const Navigation = props => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.layout])
+  const menuComponents = {
+    user: UserVerticalMenu,
+    pipeline: PipelineVerticalMenu,
+    finance: FinanceVerticalMenu,
+    default: VerticalMenu,
+  };
 
+  const MenuComponent = menuComponents[user] || menuComponents.default;
   return (
     // eslint-disable-next-line lines-around-comment
     // Sidebar Vertical Menu
@@ -140,11 +148,9 @@ const Navigation = props => {
         )}
       </NavHeader>
       <StyledBoxForShadow ref={shadowRef} />
-      {user == 'user' ? (
-        <UserVerticalMenu dictionary={dictionary} scrollMenu={scrollMenu} />
-      ) : (
-        <VerticalMenu dictionary={dictionary} scrollMenu={scrollMenu} />
-      )}
+
+
+      <MenuComponent dictionary={dictionary} scrollMenu={scrollMenu} />;
     </VerticalNav>
   )
 }

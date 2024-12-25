@@ -21,14 +21,19 @@ export default async function AuthGuard({ children, locale, requiredRole }) {
   const session = await getServerSession(authOptions)
   console.log(session, `requiredRole : ${requiredRole}`)
   const userHomePage = getLocalizedUrl(themeConfig.userHomePageUrl, 'en')
+  const financeHomePageUrl = getLocalizedUrl(themeConfig.financeHomePageUrl, 'en')
+  const pipelineHomePageUrl = getLocalizedUrl(themeConfig.pipelineHomePageUrl, 'en')
   if (!session) {
     return <AuthRedirect lang={locale} />
   }
-
   // Check if the user has the required role
   if (requiredRole && session.user.role !== requiredRole) {
     if (session.user.role === 'user') {
       redirect(userHomePage)
+    } else if (session.user.role === 'finance') {
+      redirect(financeHomePageUrl)
+    } else if (session.user.role === 'pipeline') {
+      redirect(pipelineHomePageUrl)
     } else {
       return <NotFound />
     }

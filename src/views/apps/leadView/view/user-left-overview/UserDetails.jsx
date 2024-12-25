@@ -78,7 +78,8 @@ const UserDetails = props => {
     modify: props.data.updatedAt,
     assigned: props.data.assignedTo,
     profile: props.data.profile,
-    moreData: props.data.additionalFields
+    moreData: props.data.additionalFields,
+    campaignid: props.data.campaignid
   }
   const [open, setOpen] = useState(false)
 
@@ -124,10 +125,11 @@ const UserDetails = props => {
 
     try {
       const promises = [];
+      console.log(formData);
 
       if (formData.notes !== '') {
         promises.push(
-          fetch('https://app.canbridge.in/api/leadactivity', {
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leadactivity`, {
             method: 'POST',
             headers,
             body: JSON.stringify({
@@ -141,7 +143,7 @@ const UserDetails = props => {
 
       if (userData.status === 'New') {
         promises.push(
-          fetch(`https://app.canbridge.in/api/leads/${userData.leadId}/status`, {
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leads/${userData.leadId}/status`, {
             method: 'PUT',
             headers,
             body: JSON.stringify({ status: "Contacted" }) // Corrected JSON structure
@@ -199,10 +201,14 @@ const UserDetails = props => {
         notes: followupData.notes,
         assignedTo: assign
       }
+      console.log(
+        formData
+      );
+
       console.log(body)
       const token = localStorage.getItem('token')
       // Example API call to submit the form
-      const response = await fetch('https://app.canbridge.in/api/followups/', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/followups/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -215,7 +221,7 @@ const UserDetails = props => {
         toast.success('New Follow Up added', {
           position: 'bottom-right'
         })
-        handleReset2() // Reset form after successful submission
+        handleClose2()
       } else {
         toast.error('An error occurred. Please try again.', {
           position: 'bottom-right'
@@ -273,7 +279,7 @@ const UserDetails = props => {
     formData.append('docName', docData.docName)
     formData.append('leadId', userData.leadId)
     try {
-      const response = await fetch('https://app.canbridge.in/api/leads/upload', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leads/upload`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}` // Only include Authorization, no need for Content-Type
@@ -297,7 +303,7 @@ const UserDetails = props => {
   useEffect(() => {
     const token = localStorage.getItem('token')
     axios
-      .get('https://app.canbridge.in/api/user-profiles', {
+      .get(`${process.env.NEXT_PUBLIC_API_URL}/api/user-profiles`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -342,7 +348,15 @@ const UserDetails = props => {
     setAnchorEl(null);
   };
 
+  const [confirmPopOpen, setConfirmPopOpen] = useState(false)
+
+  const handleConfirmPopOpen = () => setConfirmPopOpen(true)
+
+  const handleConfirmPopClose = () => setConfirmPopOpen(false)
   const handleStatusChange = async (newStatus) => {
+    if (newStatus == 'Converted') {
+      handleConfirmPopOpen()
+    }
     try {
       const token = localStorage.getItem('token')
       if (!token) {
@@ -350,7 +364,7 @@ const UserDetails = props => {
 
         return
       }
-      const response = await fetch(`https://app.canbridge.in/api/leads/${userData.leadId}/status`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leads/${userData.leadId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -408,7 +422,7 @@ const UserDetails = props => {
 
         return
       }
-      const response = await fetch(`https://app.canbridge.in/api/leads/assignlead/${userData.leadId}/${value}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leads/assignlead/${userData.leadId}/${value}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -462,6 +476,34 @@ const UserDetails = props => {
   const formatLabel = (label) => {
     return label.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
   };
+
+  const handleNotPicked = async () => {
+    try {
+      const data = {
+        leadId: userData.leadId,
+        action: 'notPicked',
+      }
+      const token = localStorage.getItem('token')
+      // Example API call to submit the form
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leadactivity/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      })
+      const result = await response.json()
+      updateData({ refresh: true });
+      handleClose()
+    }
+    catch (error) {
+      toast.error('An error occurred. Please try again.', {
+        position: 'bottom-right'
+      })
+    }
+
+  }
   return (
     <>
       <Dialog fullScreen open={open} onClose={handleClose} aria-labelledby='form-dialog-title'>
@@ -563,7 +605,7 @@ const UserDetails = props => {
           </Card>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClose} variant='contained' color='error'>
+          <Button onClick={handleNotPicked} variant='contained' color='error'>
             Not Picked
           </Button>
           <Button onClick={handleSubmit} variant='contained' disabled={loading}>
@@ -759,11 +801,33 @@ const UserDetails = props => {
         </DialogActions> */}
       </Dialog>
 
+      <Dialog id='popper' open={confirmPopOpen} onClose={handleConfirmPopClose} aria-labelledby='form-dialog-title'>
+        <DialogTitle id='form-dialog-title'>Confirm Sales</DialogTitle>
+        <DialogContent>
+          <Typography variant='h4'>{userData?.firstName}</Typography>
+          <TextField
+            fullWidth
+            multiline
+            minRows={3}
+            id='outlined-textarea'
+            placeholder='Placeholder'
+            label='Add Notes'
+            onChange={e => setFormData({ ...formData, notes: e.target.value })}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleConfirmPopClose} variant='outlined' color='secondary'>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit2} variant='contained'>
+            Submit
+          </Button>
+        </DialogActions>
+      </Dialog>
 
 
 
       <Card>
-
         <CardMedia image={data?.coverImg} className='bs-[150px] bg-primary'>
           <Box display={'flex'} justifyContent={'flex-end'} height={'100%'} alignItems={'flex-end'} width={'100%'}>
             {userData.assigned || update ?
@@ -771,7 +835,11 @@ const UserDetails = props => {
                 <Tooltip title={getTooltipTitle()}>
                   <Box display={'flex'}>
                     {/* <Avatar onClick={toggleBox} src='/images/avatars/4.png' /> */}
-                    <Avatar sx={{ bgcolor: "yellow" }} onClick={toggleBox} >{userData ? userData.assigned?.firstName?.substring(0, 2).toUpperCase() : '??'}</Avatar>
+                    <Avatar sx={{ bgcolor: "yellow" }} onClick={toggleBox}>
+                      {userData?.assigned?.firstName
+                        ? userData.assigned.firstName.substring(0, 2).toUpperCase()
+                        : '??'}
+                    </Avatar>
                     {isOpen && (
                       <IconButton onClick={handleClickOpenAssign} aria-label='capture screenshot' style={{ color: 'white' }} size='small'>
                         <i className='ri-user-search-fill text-xl' />
@@ -790,14 +858,14 @@ const UserDetails = props => {
         <CardContent className='flex justify-center flex-col items-center gap-6 md:items-end md:flex-row !pt-0 md:justify-start'>
           <div className='flex rounded-bs-xl mbs-[-30px] mli-[-5px] border-[5px] border-be-0 border-backgroundPaper bg-backgroundPaper '>
             {/* <img height={120} width={120} src='/images/avatars/1.png' className='rounded' alt='Profile Background' /> */}
-            <Avatar sx={{ width: 120, height: 120, fontSize: 50, bgcolor: "#DC4D01", color: 'white' }} className='rounded'>{userData ? userData.firstName.substring(0, 2).toUpperCase() : '??'}</Avatar>
+            <Avatar sx={{ width: 120, height: 120, fontSize: 50, bgcolor: "#DC4D01", color: 'white' }} className='rounded'>{userData ? userData.firstName?.substring(0, 2).toUpperCase() : '??'}</Avatar>
           </div>
           <div className='flex is-full flex-wrap justify-start flex-col items-center sm:flex-row sm:justify-between sm:items-end gap-5'>
             <div className='flex flex-col items-center sm:items-start gap-2'>
               <Typography variant='h4'>{userData?.firstName}</Typography>
               <div className='flex flex-wrap gap-6 gap-y-3 justify-center sm:justify-normal min-bs-[38px]'>
                 <div className='flex items-center gap-2'>
-                  <Chip icon={<i className='ri-megaphone-line'></i>} label={userData.campaign} variant='tonal' size='small' />
+                  <Chip icon={<i className='ri-megaphone-line'></i>} label={userData.campaign ? userData.campaign : userData.campaignid.name} variant='tonal' size='small' />
                 </div>
                 {/* <div className='flex items-center gap-2'>
                   <Chip label={userData.source} variant='tonal' size='small' />

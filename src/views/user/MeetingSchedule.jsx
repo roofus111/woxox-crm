@@ -116,7 +116,7 @@ const Transactions = (props) => {
       return
     }
     const response = await fetch(
-      `https://app.canbridge.in/api/leads/search?page=${page}&search=${encodeURIComponent(searchTerm)}&status=${encodeURIComponent(status)}&assignedTo=${encodeURIComponent(assignee)}`,
+      `${process.env.NEXT_PUBLIC_API_URL}/api/leads/search?page=${page}&search=${encodeURIComponent(searchTerm)}&status=${encodeURIComponent(status)}&assignedTo=${encodeURIComponent(assignee)}`,
       {
         headers: { Authorization: `Bearer ${token}` }
       }
@@ -218,7 +218,7 @@ const Transactions = (props) => {
                     </Typography>
                     <div className='flex items-center gap-2'>
                       <i className='ri-flag-line text-base text-textSecondary' />
-                      <Typography variant='body2'>{item.campaign}</Typography>
+                      <Typography variant='body2'>{item.campaign ? item.campaign : item.campaignid?.name}</Typography>
                     </div>
                   </div>
                   <Chip label={item.status} color={item.chipColor} size='small' variant='tonal' />

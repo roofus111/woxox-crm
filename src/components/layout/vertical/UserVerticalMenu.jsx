@@ -48,7 +48,7 @@ const UserVerticalMenu = ({ dictionary, scrollMenu }) => {
   useEffect(() => {
     const token = localStorage.getItem('token')
     axios
-      .get('https://app.canbridge.in/api/leads/getcampaign', {
+      .get(`${process.env.NEXT_PUBLIC_API_URL}/api/leads/getcampaign`, {
         headers: {
           Authorization: `Bearer ${token}`
         }

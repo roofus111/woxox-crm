@@ -55,11 +55,11 @@ const Calendar = props => {
   // calendarOptions(Props)
   const calendarOptions = {
     events: calendarStore.events,
-    plugins: [interactionPlugin, dayGridPlugin, timeGridPlugin, listPlugin],
+    plugins: [listPlugin, interactionPlugin, dayGridPlugin, timeGridPlugin],
     initialView: 'dayGridMonth',
     headerToolbar: {
       start: 'sidebarToggle, prev, next, title',
-      end: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
+      end: 'listMonth,dayGridMonth,timeGridWeek,timeGridDay'
     },
     views: {
       week: {

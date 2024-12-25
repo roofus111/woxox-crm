@@ -27,20 +27,23 @@ import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
-import DialogContentText from '@mui/material/DialogContentText'
+import { DialogContentText, Select, MenuItem, InputLabel } from '@mui/material'
 import { toast } from 'react-toastify'
+import axios from 'axios'
 
-const Leads = () => {
-  // States
+const Leads = ({ campid }) => {
+  console.log(campid);
+
   const [formData, setFormData] = useState({
     campaign: '',
+    campaignid: "",
     source: '',
     name: '',
     email: '',
     phone: ''
   })
   const [uploadData, setUploadData] = useState({
-    campaign: '',
+    campaignid: '',
     source: ''
   })
 
@@ -80,7 +83,7 @@ const Leads = () => {
     try {
       const token = localStorage.getItem('token')
       // Example API call to submit the form
-      const response = await fetch('https://app.canbridge.in/api/leads', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leads`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -106,7 +109,7 @@ const Leads = () => {
 
   const handleReset = () => {
     setFormData({
-      campaign: '',
+      campaignid: '',
       source: '',
       name: '',
       email: '',
@@ -133,7 +136,7 @@ const Leads = () => {
   const { getRootProps, getInputProps } = useDropzone({
     multiple: false,
     accept: {
-      'application/vnd.ms-excel': ['.xls']
+      'application/vnd.ms-excel': ['.xls', '.xlxs']
     },
     onDrop: acceptedFiles => {
       const file = acceptedFiles[0]
@@ -162,11 +165,11 @@ const Leads = () => {
 
       // Assuming files is an array with a single file
       formData.append('file', files[0]) // Upload the first file
-      formData.append('campaign', uploadData.campaign)
+      formData.append('campaignid', uploadData.campaignid)
       formData.append('source', uploadData.source)
 
       // Example API call to submit the form
-      const response = await fetch('https://app.canbridge.in/api/excel/upload', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/excel/upload`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}` // Only include Authorization, no need for Content-Type
@@ -198,7 +201,35 @@ const Leads = () => {
       })
     }
   }
+  const [campaigns, setCampaigns] = useState([])
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/campaign/getcampaign`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+      .then(response => {
+        setCampaigns(response.data) // Update data if component is still mounted
+        console.log(response.data)
+      })
+      .catch(error => {
+        console.error('Failed to fetch data:', error)
+      })
+  }, [open])
 
+  useEffect(() => {
+    if (campid) {
+      setFormData(prevFormData => ({
+        ...prevFormData,
+        campaignid: campid._id,
+      }));
+      setUploadData(prevFormData => ({
+        ...prevFormData,
+        campaignid: campid._id,
+      }));
+    }
+  }, [campid]);
   return (
     <>
       <Box margin={5} display={'flex'} justifyContent={'flex-end'}>
@@ -213,14 +244,57 @@ const Leads = () => {
             {/* To subscribe to this website, please enter your email address here. We will send updates occasionally. */}
           </DialogContentText>
           <Grid container spacing={5}>
-            <Grid item xs={12} sm={6}>
-              <TextField
+            <Grid item xs={12} sm={12}>
+              {/* <TextField
                 fullWidth
                 label='Campaign'
                 value={uploadData.campaign}
                 placeholder='Campaign'
                 onChange={e => setUploadData({ ...uploadData, campaign: e.target.value })}
-              />
+              /> */}
+              {/* <InputLabel id="campaign-select-label">Campaign</InputLabel>
+              <Select
+                fullWidth
+                style={{ color: 'black' }}
+                labelId="campaign-select-label"
+                id="campaign-select"
+                value={uploadData.campaign}
+                onChange={(e) => setUploadData({ ...uploadData, campaignid: e.target.value })}
+              >
+                <MenuItem value="" disabled>
+                  Choose Campaign
+                </MenuItem>
+                {campaigns.map((campaign, index) => (
+                  <MenuItem key={index} value={campaign._id}>
+                    {campaign.name}
+                  </MenuItem>
+                ))}
+              </Select> */}
+              {campid ? <TextField
+                disabled
+                fullWidth
+                label='Campaign'
+                value={campid.name}
+              /> :
+                <>  <InputLabel id="campaign-select-label">Campaign</InputLabel>
+                  <Select
+                    fullWidth
+                    style={{ color: 'black' }}
+                    labelId="campaign-select-label"
+                    id="campaign-select"
+                    value={uploadData.campaignid}
+                    onChange={(e) => setUploadData({ ...uploadData, campaignid: e.target.value })}
+                  >
+                    <MenuItem value="" disabled>
+                      Choose Campaign
+                    </MenuItem>
+                    {campaigns.map((campaign, index) => (
+                      <MenuItem key={index} value={campaign._id}>
+                        {campaign.name}
+                      </MenuItem>
+                    ))}
+                  </Select> </>}
+
             </Grid>
 
             <Grid item xs={12} sm={12}>
@@ -293,13 +367,29 @@ const Leads = () => {
                 </Typography>
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField
+                {campid ? <TextField
+                  disabled
                   fullWidth
                   label='Campaign'
-                  placeholder='Campaign Name'
-                  value={formData.campaign}
-                  onChange={e => setFormData({ ...formData, campaign: e.target.value })}
-                />
+                  value={campid.name}
+                /> : <Select
+                  fullWidth
+                  style={{ color: 'black' }}
+                  labelId="campaign-select-label"
+                  id="campaign-select"
+                  value={formData.campaignid}
+                  onChange={e => setFormData({ ...formData, campaignid: e.target.value })}
+                >
+                  <MenuItem value="" disabled>
+                    Choose Campaign
+                  </MenuItem>
+                  {campaigns.map((campaign, index) => (
+                    <MenuItem key={index} value={campaign._id}>
+                      {campaign.name}
+                    </MenuItem>
+                  ))}
+                </Select>}
+
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField

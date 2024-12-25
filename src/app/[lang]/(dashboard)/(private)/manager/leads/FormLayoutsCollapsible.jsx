@@ -178,6 +178,7 @@ const FormLayoutsCollapsible = ({ props, handleClose }) => {
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
+                disabled
                 fullWidth
                 label='Phone'
                 value={cardData.phone}

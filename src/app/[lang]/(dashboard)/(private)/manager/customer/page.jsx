@@ -377,7 +377,6 @@ const Customer = () => {
                 </Table>
             </TableContainer>
 
-            {/* Customer Details Drawer */}
             <Drawer
                 anchor="right"
                 open={drawerOpen}
@@ -385,104 +384,126 @@ const Customer = () => {
                 PaperProps={{
                     sx: {
                         width: {
-                            xs: "100%", // Full width on small screens (phones)
-                            sm: "400px", // Fixed width for small devices
-                            md: "50%", // 50% width on medium devices (tablets)
+                            xs: "100%", // Full width for extra-small devices
+                            sm: "90%",  // 90% for small devices
+                            md: "50%",  // Half width for medium devices
+                            lg: "40%",  // 40% for larger devices
                         },
-                        padding: { xs: 2, sm: 3 }, // Adjust padding for small and medium screens
-                        backgroundColor: "linear-gradient(135deg, #f8f9fa, #e9ecef)",
-                        boxShadow: "0px 4px 20px rgba(0, 0, 0, 0.1)",
-                        borderTopLeftRadius: "16px",
-                        borderBottomLeftRadius: "16px",
+                        padding: { xs: 2, sm: 3 },
+                        background: "linear-gradient(135deg, #ffffff, #f8f9fa)", // Subtle premium gradient
+                        boxShadow: "0px 8px 30px rgba(0, 0, 0, 0.2)", // Stronger shadow for depth
+                        borderRadius: { xs: 0, sm: "16px 0 0 16px" }, // Rounded corners only on larger screens
                     },
                 }}
             >
                 <Box>
+                    {/* Top Section */}
                     <Box
                         sx={{
-                            width: '100%', // Full width
-                            position: 'relative', // For positioning child elements
-                            overflow: 'hidden',
+                            backgroundColor: "#007bff", // Premium blue background
+                            color: "white",
+                            padding: { xs: 2, sm: 3 },
+                            display: "flex",
+                            flexDirection: "column",
+                            justifyContent: "center",
+                            alignItems: "center",
+                            position: "relative",
+                            height: { xs: "120px", sm: "140px" },
                         }}
                     >
-                        {/* Top Section (Blue Background) */}
-                        <Box
-                            sx={{
-                                backgroundColor: '#007bff', // Blue background
-                                color: 'white',
-                                padding: 3,
-                                display: 'flex',
-                                justifyContent: 'center', // Center horizontally
-                                alignItems: 'center', // Center vertically
-                                height: '100px', // Adjust height to your needs
-                                position: 'relative',
-                                width: '100%',
-                            }}
-                        >
-                            {/* Profile Image or First Letter */}
-                            {selectedCustomer?.profileImage ? (
-                                <Avatar
-                                    src={selectedCustomer.profileImage}
-                                    alt={selectedCustomer.name}
+                        {selectedCustomer?.profileImage ? (
+                            <Avatar
+                                src={selectedCustomer.profileImage}
+                                alt={selectedCustomer.name}
+                                sx={{
+                                    width: { xs: 80, sm: 100 },
+                                    height: { xs: 80, sm: 100 },
+                                    border: "3px solid #28a745",
+                                    boxShadow: "0 4px 10px rgba(0, 0, 0, 0.3)", // Premium shadow
+                                    position: "absolute",
+                                    top: { xs: "calc(100% + 10px)", sm: "50%" },
+                                    transform: "translateY(-50%)",
+                                }}
+                            />
+                        ) : (
+                            <Avatar
+                                sx={{
+                                    width: { xs: 80, sm: 100 },
+                                    height: { xs: 80, sm: 100 },
+                                    backgroundColor: "#28a745",
+                                    fontSize: { xs: 24, sm: 32 },
+                                    fontWeight: "bold",
+                                    color: "white",
+                                    position: "absolute",
+                                    top: { xs: "calc(100% + 10px)", sm: "50%" },
+                                    transform: "translateY(-50%)",
+                                }}
+                            >
+                                {selectedCustomer?.name?.charAt(0)}
+                            </Avatar>
+                        )}
+                    </Box>
+
+                    {/* Customer Details */}
+                    <Box
+                        sx={{
+                            backgroundColor: "white",
+                            padding: { xs: 2, sm: 4 },
+                            textAlign: "center",
+                            borderRadius: { sm: "0 0 16px 16px" },
+                        }}
+                    >
+                        <Grid container spacing={2}>
+                            {/* Name Section */}
+                            <Grid item xs={3} sm={4}>
+                                <Typography
+                                    variant="body1"
                                     sx={{
-                                        width: 100,
-                                        height: 100,
-                                        border: '2px solid #28a745', // Green border for premium
-                                        position: 'absolute', // Positioning to the middle vertically
-                                        top: '50%', // 50% from the top
-                                        marginTop: '50px',
-                                        transform: 'translateY(-50%)', // Center the avatar vertically
-                                    }}
-                                />
-                            ) : (
-                                <Avatar
-                                    sx={{
-                                        width: 100,
-                                        height: 100,
-                                        backgroundColor: '#28a745', // Green background for premium
-                                        fontSize: 56,
-                                        fontWeight: 'bold',
-                                        color: "white",
-                                        position: 'absolute',
-                                        top: '50%',
-                                        marginTop: '50px',
-                                        marginLeft: '-570px',
-                                        transform: 'translateY(-50%)', // Center the avatar vertically
+                                        color: "#495057",
+                                        fontWeight: "bold",
+                                        fontSize: { xs: "0.9rem", sm: "1rem" },
+                                        textAlign: "center",
                                     }}
                                 >
-                                    {selectedCustomer?.name?.charAt(0)} {/* First letter of the name */}
-                                </Avatar>
-                            )}
-                        </Box>
-
-                        {/* Bottom Section (White Background) */}
-                        <Box
-                            sx={{
-                                backgroundColor: 'white',
-                                padding: 3,
-                                textAlign: 'center', // Centered text alignment
-                                paddingTop: 4, // Add padding to space the content down
-                            }}
-                        >
-                            <Grid container spacing={3}>
-                                {/* Left: Customer Name */}
-                                <Grid item xs={6}>
-                                    <Typography variant="body2" sx={{ color: '#495057', fontWeight: 'bold', marginLeft: "36px", fontSize: "1.2rem", }}>
-                                        {selectedCustomer?.name}
-                                    </Typography>
-                                    <Chip label="Chip outlined" variant="contained" sx={{ marginLeft: "50px", height: "23px" }} />
-                                </Grid>
-                                {/* Right: Email and Phone */}
-                                <Grid item xs={6}>
-                                    <Typography variant="body2" sx={{ color: '#495057', marginLeft: "96px", }}>
-                                        Email: {selectedCustomer?.email}
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ color: '#495057', marginLeft: "96px", textAlign: "center" }}>
-                                        Phone: {selectedCustomer?.phone || 'No phone available'}
-                                    </Typography>
-                                </Grid>
+                                    {selectedCustomer?.name}
+                                </Typography>
+                                <Chip
+                                    label="Premium"
+                                    variant="outlined"
+                                    sx={{
+                                        marginTop: 1,
+                                        fontSize: "0.8rem",
+                                        color: "#007bff",
+                                        borderColor: "#007bff",
+                                        height: "24px",
+                                    }}
+                                />
                             </Grid>
-                        </Box>
+
+                            {/* Email & Phone */}
+                            <Grid item xs={12} sm={8}>
+                                <Typography
+                                    variant="body2"
+                                    sx={{
+                                        color: "#495057",
+                                        fontSize: "0.8rem",
+                                        textAlign: { xs: "center", sm: "right" },
+                                    }}
+                                >
+                                    Email: {selectedCustomer?.email}
+                                </Typography>
+                                <Typography
+                                    variant="body2"
+                                    sx={{
+                                        color: "#495057",
+                                        fontSize: "0.8rem",
+                                        textAlign: { xs: "center", sm: "right" },
+                                    }}
+                                >
+                                    Phone: {selectedCustomer?.phone || "Not available"}
+                                </Typography>
+                            </Grid>
+                        </Grid>
                     </Box>
 
                     {/* User Details (Name, Email, Phone, Address) - Horizontal Row */}
@@ -582,7 +603,7 @@ const Customer = () => {
 
                                 <Box sx={{ marginTop: 2, display: 'flex', justifyContent: 'space-between' }}>
                                     <Button variant="outlined" onClick={handleEdit}>
-                                        Edit
+                                    <i class="ri-edit-line" sx={{ fontSize: 20 }} />
                                     </Button>
                                     {isEditable && (
                                         <Button variant="contained" onClick={handleSave}>
@@ -599,9 +620,11 @@ const Customer = () => {
                                         key={lead.id}
                                         sx={{
                                             width: '100%',
-                                            //  border: '1px solid #ccc',  // Thin gray border
+                                             border: '0.5px solid #ccc',  // Thin gray border
                                             borderRadius: 2,
                                             padding: 2,
+                                            cursor: 'pointer',
+                                            boxShadow: 'none',
                                             transition: 'all 0.3s',
                                             '&:hover': { boxShadow: 3 },
                                         }}
@@ -612,7 +635,7 @@ const Customer = () => {
                                                 <Typography variant="body2" sx={{ color: '#6c757d' }}>
                                                     Created Date: {lead.createdDate}
                                                 </Typography>
-                                                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#007bff' }}>
+                                                <Typography variant="h6" sx={{ fontWeight: 'semibold', color: '#000' }}>
                                                     {lead.campaignName}
                                                 </Typography>
                                                 <Typography variant="body2" sx={{ color: '#495057' }}>
@@ -640,7 +663,7 @@ const Customer = () => {
                                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                         {/* Assigned to text */}
                                                         <Box sx={{ display: 'flex', gap: 1, }}>
-                                                            <Typography variant="body2" sx={{ color: '#495057', fontWeight: 'bold' }}>
+                                                            <Typography variant="body2" sx={{ color: '#495057', fontWeight: 'semibold' }}>
 
                                                                 Assigned to:<Avatar
                                                                     src={lead.assignedTo.avatar}
@@ -658,7 +681,7 @@ const Customer = () => {
                                 ))}
 
                                 {/* Invoice Data */}
-                                {invoiceData.map((invoice) => (
+                                {/* {invoiceData.map((invoice) => (
                                     <Card
                                         key={invoice.id}
                                         sx={{
@@ -670,9 +693,9 @@ const Customer = () => {
                                             '&:hover': { boxShadow: 3 },
                                         }}
                                     >
-                                        <CardContent sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <CardContent sx={{ display: 'flex', justifyContent: 'space-between' }}> */}
                                             {/* Left Side */}
-                                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                            {/* <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                     <i class="ri-receipt-fill" sx={{ color: '#007bff', fontSize: 40 }} />
                                                     <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#007bff' }}>
@@ -691,59 +714,13 @@ const Customer = () => {
                                             </Box>
 
                                             {/* Right Side */}
-                                            <Box
-                                                sx={{
-                                                    display: 'flex',
-                                                    flexDirection: 'column',
-                                                    alignItems: 'flex-end',
-                                                    gap: 1,
-                                                }}
-                                            >
-                                                <Chip
-                                                    label={invoice.paymentStatus}
-                                                    color={
-                                                        invoice.paymentStatus === 'Paid'
-                                                            ? 'success'
-                                                            : 'warning'
-                                                    }
-                                                    sx={{ fontWeight: 'bold', marginBottom: 1 }}
-                                                />
-                                                <Typography
-                                                    variant="body2"
-                                                    sx={{ fontWeight: 'bold', color: '#212529' }}
-                                                >
-                                                    Total: {invoice.totalAmount}
-                                                </Typography>
-                                                <Typography variant="body2" sx={{ color: '#495057' }}>
-                                                    Balance: {invoice.balance}
-                                                </Typography>
-                                                <Box sx={{ display: 'flex', gap: 1, }}>
-                                                    <Button
-                                                        variant="contained"
-                                                        color="primary"
-                                                        size="small"
-                                                        sx={{
-                                                            fontWeight: 'bold',
-                                                            marginTop: 1,
-                                                            textTransform: 'none',
-                                                        }}
-                                                    >
-                                                        View
-                                                    </Button>
-                                                    <Button>
-                                                        <i class="ri-download-line" /> {/* Download Icon */}
-                                                    </Button>
-                                                </Box>
-                                            </Box>
-                                        </CardContent>
-                                    </Card>
-                                ))}
+
                             </Box>
                         )}
                         {tabValue === 2 && (
                             <>
                                 {/* First Card: File Info with Icons (View, Delete, Download) */}
-                                <Card sx={{ width: '100%', padding: 2, marginBottom: 2, border: '1px solid #ccc', borderRadius: 2, '&:hover': { boxShadow: 6 } }}>
+                                <Card sx={{ width: '100%', padding: 2, marginBottom: 2, border: '1px solid #ccc', borderRadius: 2,boxShadow: 'none',cursor: 'pointer', '&:hover': { boxShadow: 3 } }}>
                                     <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         {/* Left side: File icon and File name */}
                                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -766,7 +743,7 @@ const Customer = () => {
                                 </Card>
 
                                 {/* Second Card: File Info with Upload Button */}
-                                <Card sx={{ width: '100%', padding: 2, border: '1px solid #ccc', borderRadius: 2, '&:hover': { boxShadow: 6 } }}>
+                                <Card sx={{ width: '100%', padding: 2,boxShadow: 'none', border: '1px solid #ccc', borderRadius: 2,cursor: 'pointer', '&:hover': { boxShadow: 3 } }}>
                                     <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         {/* Left side: File icon and File name */}
                                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -827,7 +804,7 @@ const Customer = () => {
 
                                         {/* Title and Date Row */}
                                         <Box sx={{ display: "flex", justifyContent: "space-between", width: "70%", marginBottom: "5px" }}>
-                                            <Typography variant="body1" sx={{ fontWeight: "bold", color: "#007bff", marginLeft: "-40px", marginTop: "4px" }}>
+                                            <Typography variant="body1" sx={{ fontWeight: "semibold", color: "#000", marginLeft: "-40px", marginTop: "4px" }}>
                                                 {activity.title || "Title"} {/* Title */}
                                             </Typography>
                                             <Typography variant="body2" sx={{ color: "#495057", paddingLeft: "5px" }}>

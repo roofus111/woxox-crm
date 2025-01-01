@@ -1,6 +1,11 @@
 "use client";
-import React, { useState } from "react";
+
+import Autocomplete from '@mui/material/Autocomplete';
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import axios from "axios";
+import { useRouter } from 'next/navigation';
+
 import {
   Box,
   Typography,
@@ -19,6 +24,8 @@ import {
   DialogTitle,
 } from "@mui/material";
 
+import { useSearchParam } from 'next/navigation';
+
 const TicketSection = () => {
   const [selectedFiles, setSelectedFiles] = useState([]);
 
@@ -31,45 +38,15 @@ const TicketSection = () => {
 
   const allTickets = [
     {
-      id: 1,
-      priority: "High",
-      customer: "John Doe",
-      category: "Billing",
-      subCategory: "Refund",
-      createdDate: "2024-12-20",
-      lastUpdate: "2024-12-21",
-      status: "Completed",
-    },
-    {
-      id: 2,
-      priority: "Medium",
-      customer: "Jane Smith",
-      category: "Technical",
-      subCategory: "Login Issues",
-      createdDate: "2024-12-19",
-      lastUpdate: "2024-12-20",
-      status: "In Progress",
-    },
-    {
-      id: 3,
-      priority: "Low",
-      customer: "Michael Brown",
-      category: "Account",
-      subCategory: "Password Reset",
-      createdDate: "2024-12-18",
-      lastUpdate: "2024-12-19",
-      status: "Pending",
-    },
-    {
-      id: 4,
-      priority: "High",
-      customer: "Sarah Connor",
-      category: "Technical",
-      subCategory: "Network Issues",
-      createdDate: "2024-12-17",
-      lastUpdate: "2024-12-18",
-      status: "Completed",
-    },
+      ticket_id: "ticket_id",
+      priority: "priority",
+      Customer: "Customer",
+      category: "category",
+      sub_category: "sub_category",
+      created_at: "created_at",
+      updated_at: "updated_at",
+      status: "status",
+    }
   ];
 
   const [tickets, setTickets] = useState(allTickets);
@@ -77,21 +54,70 @@ const TicketSection = () => {
   const [sortOrder, setSortOrder] = useState("asc");
   const [openDialog, setOpenDialog] = useState(false); // State to manage dialog open/close
   const [newTicket, setNewTicket] = useState({
-    customer: "",
+    Customer: "",
     subject: "",
     description: "",
     category: "",
-    subCategory: "",
+    sub_category: "",
     priority: "",
     status: "",
     attachments: [],
   });
 
+  const fetchTickets = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios
+        .get("http://localhost:8000/api/ticket/gettickets", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+        .then((response) => {
+          setTickets(response.data);
+        })
+        .catch((error) => {
+          console.error("Error getting tickets", error);
+        });
+    } catch (error) {
+      console.error("Unexpected error:", error);
+    }
+  };
+
+
+  useEffect(() => {
+    fetchTickets();
+  }, []);
+
+
+  const [customers, setCustomers] = useState([]); // Store customers
+
+  // Fetch customers from backend
+  const fetchCustomers = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get("http://localhost:8000/api/customer/getcustomers", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setCustomers(response.data.customers);
+      console.log(response.data) // Assuming response.data is an array of customers
+    } catch (error) {
+      console.error("Error fetching customers:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchTickets();
+    fetchCustomers(); // Fetch customers when component mounts
+  }, []);
+
   // Function to handle sorting by created date
   const handleSort = () => {
     const sortedTickets = [...tickets].sort((a, b) => {
-      const dateA = new Date(a.createdDate);
-      const dateB = new Date(b.createdDate);
+      const dateA = new Date(a.created_at);
+      const dateB = new Date(b.created_at);
       return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
     });
     setTickets(sortedTickets);
@@ -120,37 +146,79 @@ const TicketSection = () => {
   };
 
   // Function to handle file uploads (attachments)
-//   const handleFileChange = (event) => {
-//     setNewTicket((prev) => ({ ...prev, attachments: [...event.target.files] }));
-//   };
+  //   const handleFileChange = (event) => {
+  //     setNewTicket((prev) => ({ ...prev, attachments: [...event.target.files] }));
+  //   };
 
   // Function to submit the new ticket (add it to the tickets list)
-  const handleSubmitTicket = () => {
-    setTickets((prevTickets) => [
-      ...prevTickets,
-      {
-        id: prevTickets.length + 1,
-        ...newTicket,
-        createdDate: new Date().toISOString(),
-        lastUpdate: new Date().toISOString(),
-      },
-    ]);
-    handleCloseDialog(); // Close the dialog after submission
-    setNewTicket({
-      customer: "",
-      subject: "",
-      description: "",
-      category: "",
-      subCategory: "",
-      priority: "",
-      status: "",
-      attachments: [],
-    }); // Reset the form
+  const handleSubmitTicket = async () => {
+    const token = localStorage.getItem("token");
+    const formData = new FormData();
+
+    // Append customer ID
+    formData.append("customerId", newTicket.Customer);
+    formData.append("assignedTo", "66ff7eb29cfb482d716fcbbd");
+    formData.append("subject", "sdfjekjn");
+    formData.append("description", "sdfjek");
+    formData.append("category", "cate");
+    formData.append("sub_category", "subcate");
+    formData.append("priority", "High");
+
+    // Append attachments
+    if (Array.isArray(newTicket.attachments)) {
+      newTicket.attachments.forEach((file) => formData.append("attachments", file));
+    }
+
+    // Debugging: Log formData
+    for (let [key, value] of formData.entries()) {
+      console.log(`${key}:`, value);
+    }
+
+    console.log(JSON.stringify(formData))
+
+    try {
+      const response = await axios.post("http://localhost:8000/api/ticket/create", formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data", // Necessary for FormData
+        },
+      });
+
+      console.log("Ticket created successfully:", response.data);
+
+      // Update tickets state and reset form
+      setTickets((prevTickets) => [
+        ...prevTickets,
+        {
+          id: response.data.ticket._id,
+          ...newTicket,
+          created_at: response.data.ticket.timestamps.created_at,
+          updated_at: response.data.ticket.timestamps.updated_at,
+        },
+      ]);
+
+      handleCloseDialog();
+      setNewTicket({
+        Customer: "",
+        issue_details: {
+          subject: "",
+          description: "",
+          category: "",
+          sub_category: "",
+          priority: "",
+          status: "",
+        },
+        attachments: [],
+      });
+    } catch (error) {
+      console.error("Error adding new ticket:", error.response?.data || error);
+    }
   };
+
 
   const getStatusColor = (status) => {
     switch (status) {
-      case "Completed":
+      case "Open":
         return "#4caf50"; // Green
       case "In Progress":
         return "#ff9800"; // Orange
@@ -178,9 +246,18 @@ const TicketSection = () => {
     ? tickets.filter((ticket) => ticket.status === statusFilter)
     : tickets;
 
+
+  const router = useRouter();
+
+  const handleCardClick = (ticketId) => {
+    router.push(`/en/tickets/details?ticketId=${ticketId}`);
+  };
+
   return (
-    <Box sx={{ p: 4, backgroundColor: "#f9fafb", minHeight: "100vh", border: "1px solid",
-        borderColor: "rgba(229, 231, 235, 1)", borderRadius: "1.5rem",}}>
+    <Box sx={{
+      p: 4, backgroundColor: "#f9fafb", minHeight: "100vh", border: "1px solid",
+      borderColor: "rgba(229, 231, 235, 1)", borderRadius: "1.5rem",
+    }}>
       {/* Top Row: Sort, Filter, and Add Ticket Button */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
         <Box sx={{ display: "flex", gap: 2 }}>
@@ -210,79 +287,75 @@ const TicketSection = () => {
       <Grid container spacing={3}>
         {filteredTickets.map((ticket) => (
           <Grid item xs={12} key={ticket.id}>
-            <Link href={`/tickets/details`} passHref>
-              <Card
-                sx={{
-                  p: 2,
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  border: "1px solid",
-                  borderColor: "rgba(229, 231, 235, 1)", 
-                  borderRadius: "1.5rem",
-                  transition: "transform 0.2s ease-in-out",
-                  cursor: "pointer",
-                  textDecoration: "none",
-                  "&:hover": { transform: "scale(1.03)" },
-                }}
-              >
-                <CardContent sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 1 }}>
-                  {/* Top Row: Ticket ID and Priority */}
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                    <Typography variant="h6" fontWeight="bold" sx={{ color: "#333" }}>
-                      #{ticket.id}
-                    </Typography>
-                    <Box
-                      sx={{
-                        px: 2,
-                        py: 0.5,
-                        backgroundColor: getPriorityColor(ticket.priority),
-                        color: "#fff",
-                        borderRadius: 2,
-                        fontSize: "0.8rem",
-                        fontWeight: "bold",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      {ticket.priority}
-                    </Box>
-                  </Box>
-
-                  {/* Customer and Category Details */}
-                  <Typography variant="body1" sx={{ color: "#757575" }}>
-                    {ticket.customer}
+            <Card
+              sx={{
+                p: 2,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                border: "1px solid",
+                borderColor: "rgba(229, 231, 235, 1)",
+                borderRadius: "1.5rem",
+                transition: "transform 0.2s ease-in-out",
+                cursor: "pointer",
+                textDecoration: "none",
+                "&:hover": { transform: "scale(1.02)" },
+              }}
+              onClick={() => handleCardClick(ticket._id)}
+            >
+              <CardContent sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 1 }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                  <Typography variant="h6" fontWeight="bold" sx={{ color: "#333" }}>
+                    #{ticket.ticket_id}
                   </Typography>
-                  <Typography variant="body2" sx={{ color: "#9e9e9e" }}>
-                    {ticket.category} / {ticket.subCategory}
-                  </Typography>
-                </CardContent>
-
-                {/* Right Section: Dates and Status */}
-                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}>
-                  <Typography variant="body2" sx={{ color: "#9e9e9e" }}>
-                    Created: {ticket.createdDate}
-                  </Typography>
-                 
                   <Box
                     sx={{
-                      px: 3,
-                      py: 1,
-                      backgroundColor: getStatusColor(ticket.status),
+                      px: 2,
+                      py: 0.5,
+                      backgroundColor: getPriorityColor(ticket.issue_details?.priority),
                       color: "#fff",
-                      borderRadius: 3,
+                      borderRadius: 2,
+                      fontSize: "0.8rem",
                       fontWeight: "bold",
                       textTransform: "uppercase",
-                      fontSize: "0.9rem",
                     }}
                   >
-                    {ticket.status}
+                    {ticket.issue_details?.priority}
                   </Box>
-                  <Typography variant="body2" sx={{ color: "#9e9e9e" }}>
-                    Updated: {ticket.lastUpdate}
-                  </Typography>
                 </Box>
-              </Card>
-            </Link>
+
+                <Typography variant="body1" sx={{ color: "#757575" }}>
+                  {ticket.Customer}
+                </Typography>
+                <Typography variant="body2" sx={{ color: "#9e9e9e" }}>
+                  {ticket.issue_details?.category} / {ticket.issue_details?.sub_category}
+                </Typography>
+              </CardContent>
+
+              <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}>
+                <Typography variant="body2" sx={{ color: "#9e9e9e" }}>
+                  Created: {ticket.timestamps?.created_at}
+                </Typography>
+
+                <Box
+                  sx={{
+                    px: 3,
+                    py: 1,
+                    backgroundColor: getStatusColor(ticket.issue_details?.status),
+                    color: "#fff",
+                    borderRadius: 3,
+                    fontWeight: "bold",
+                    textTransform: "uppercase",
+                    fontSize: "0.9rem",
+                  }}
+                >
+                  {ticket.issue_details?.status}
+                </Box>
+                <Typography variant="body2" sx={{ color: "#9e9e9e" }}>
+                  Updated: {ticket.timestamps?.updated_at}
+                </Typography>
+              </Box>
+            </Card>
           </Grid>
         ))}
       </Grid>
@@ -292,20 +365,29 @@ const TicketSection = () => {
         <DialogTitle>Add New Ticket</DialogTitle>
         <DialogContent>
           {/* Customer Input */}
-          <FormControl fullWidth sx={{ mb: 2, mt:2 }}>
-            <InputLabel>Customer</InputLabel>
-            <Select value={newTicket.subCategory} name="subCategory" onChange={handleInputChange} label="Sub-Category">
-              <MenuItem value="Refund">Customer 1</MenuItem>
-              <MenuItem value="Network Issues">Customer 2</MenuItem>
-              <MenuItem value="Password Reset">Customer 3</MenuItem>
-            </Select>
+          <FormControl fullWidth>
+            <Autocomplete
+              options={customers}
+              getOptionLabel={(option) => `${option.firstName} ${option.lastName}`}
+              renderInput={(params) => <TextField {...params} label="Customer" />}
+              onChange={(event, value) =>
+                handleInputChange({
+                  target: {
+                    name: 'Customer',
+                    value: value ? value._id : '',
+                  },
+                })
+              }
+              isOptionEqualToValue={(option, value) => option._id === value}
+            />
           </FormControl>
+
           {/* Subject Input */}
           <TextField
             fullWidth
             label="Subject"
             name="subject"
-            value={newTicket.subject}
+            value={newTicket.issue_details?.subject}
             onChange={handleInputChange}
             sx={{ mb: 2 }}
           />
@@ -314,7 +396,7 @@ const TicketSection = () => {
             fullWidth
             label="Description"
             name="description"
-            value={newTicket.description}
+            value={newTicket.issue_details?.description}
             onChange={handleInputChange}
             sx={{ mb: 2 }}
             multiline
@@ -323,7 +405,7 @@ const TicketSection = () => {
           {/* Category Dropdown */}
           <FormControl fullWidth sx={{ mb: 2 }}>
             <InputLabel>Category</InputLabel>
-            <Select value={newTicket.category} name="category" onChange={handleInputChange} label="Category">
+            <Select value={newTicket.issue_details?.category} name="category" onChange={handleInputChange} label="Category">
               <MenuItem value="Billing">Billing</MenuItem>
               <MenuItem value="Technical">Technical</MenuItem>
               <MenuItem value="Account">Account</MenuItem>
@@ -332,7 +414,7 @@ const TicketSection = () => {
           {/* Sub-Category Dropdown */}
           <FormControl fullWidth sx={{ mb: 2 }}>
             <InputLabel>Sub-Category</InputLabel>
-            <Select value={newTicket.subCategory} name="subCategory" onChange={handleInputChange} label="Sub-Category">
+            <Select value={newTicket.issue_details?.sub_category} name="subCategory" onChange={handleInputChange} label="Sub-Category">
               <MenuItem value="Refund">Refund</MenuItem>
               <MenuItem value="Network Issues">Network Issues</MenuItem>
               <MenuItem value="Password Reset">Password Reset</MenuItem>
@@ -341,7 +423,7 @@ const TicketSection = () => {
           {/* Priority Dropdown */}
           <FormControl fullWidth sx={{ mb: 2 }}>
             <InputLabel>Priority</InputLabel>
-            <Select value={newTicket.priority} name="priority" onChange={handleInputChange} label="Priority">
+            <Select value={newTicket.issue_details?.priority} name="priority" onChange={handleInputChange} label="Priority">
               <MenuItem value="High">High</MenuItem>
               <MenuItem value="Medium">Medium</MenuItem>
               <MenuItem value="Low">Low</MenuItem>
@@ -350,7 +432,7 @@ const TicketSection = () => {
           {/* Status Dropdown */}
           <FormControl fullWidth sx={{ mb: 2 }}>
             <InputLabel>Status</InputLabel>
-            <Select value={newTicket.status} name="status" onChange={handleInputChange} label="Status">
+            <Select value={newTicket.issue_details?.status} name="status" onChange={handleInputChange} label="Status">
               <MenuItem value="Completed">Completed</MenuItem>
               <MenuItem value="In Progress">In Progress</MenuItem>
               <MenuItem value="Pending">Pending</MenuItem>
@@ -365,7 +447,7 @@ const TicketSection = () => {
           {selectedFiles.length > 0 && (
             <Box sx={{ mt: 2 }}>
               <Typography variant="body2" color="textSecondary">
-                
+
               </Typography>
               {selectedFiles.map((fileName, index) => (
                 <Typography key={index} variant="body2" color="textPrimary">

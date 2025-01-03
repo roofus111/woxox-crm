@@ -82,8 +82,9 @@ const TicketSection = () => {
   const fetchTickets = async () => {
     try {
       const token = localStorage.getItem('token');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
       await axios
-        .get("http://localhost:8000/api/ticket/gettickets", {
+        .get(`${apiUrl}/api/ticket/gettickets`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -109,7 +110,8 @@ const TicketSection = () => {
   const fetchCustomers = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:8000/api/customer/getcustomers", {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      const response = await axios.get(`${apiUrl}/api/customer/getcustomers`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

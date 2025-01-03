@@ -33,8 +33,9 @@ export default function TicketDetails() {
 
     const fetchTicketData = async () => {
       try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
         const response = await axios.get(
-          `http://localhost:8000/api/ticket/gettickets/${ticketId}`,
+          `${apiUrl}/api/ticket/gettickets/${ticketId}`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -56,8 +57,9 @@ export default function TicketDetails() {
 
   const handleAddNote = async () => {
     try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
       const response = await axios.post(
-        "http://localhost:8000/api/ticket/createnotes",
+        `${apiUrl}/api/ticket/createnotes`,
         {
           ticketId,
           author: currentUser,

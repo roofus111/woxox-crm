@@ -7,6 +7,7 @@ module.exports = {
   "rules": {
     "jsx-a11y/alt-text": "off",
     "react/display-name": "off",
+    "react/no-unescaped-entities": "off",
     "react/no-children-prop": "off",
     "@next/next/no-img-element": "off",
     "@next/next/no-page-custom-font": "off",

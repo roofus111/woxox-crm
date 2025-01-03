@@ -4,22 +4,43 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { useSession } from 'next-auth/react';  // Importing useSession hook
 import { useSearchParams } from "next/navigation";
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  Grid,
+  MenuItem,
+  Modal,
+  Select,
+  TextField,
+  Typography,
+  Avatar,
+} from "@mui/material";
 
-function formatTimeToHHMM(time) {
-  const date = new Date(time);
-  const hours = date.getHours();
-  const minutes = date.getMinutes();
-  return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
-}
+const formatToTime = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  let hours = date.getHours();
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  
+  // Convert to 12-hour format
+  hours = hours % 12 || 12;
+
+  return `${hours}:${minutes} ${ampm}`; // Format as HH:MM AM/PM
+};
+
+
 
 export default function TicketDetails() {
   const [ticketData, setTicketData] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [note, setNote] = useState("");
-  const { data: session } = useSession();
   const [files, setFiles] = useState([]);
   const [notes, setNotes] = useState([]);
-  
+  const { data: session } = useSession();
   const searchParams = useSearchParams();
   const ticketId = searchParams.get("ticketId");
 
@@ -42,6 +63,7 @@ export default function TicketDetails() {
           }
         );
         if (response.data) {
+          console.log("Ticket Data:", response.data);
           setTicketData(response.data);
           setNotes(response.data.notes || []);
           setFiles(response.data.issue_details.attachments || []);
@@ -56,6 +78,7 @@ export default function TicketDetails() {
 
   const handleAddNote = async () => {
     try {
+      console.log("Adding note with currentUser:", currentUser);
       const response = await axios.post(
         "http://localhost:8000/api/ticket/createnotes",
         {
@@ -71,7 +94,6 @@ export default function TicketDetails() {
       );
 
       if (response.status === 200 || response.status === 201) {
-        // alert("Note successfully added!");
         setNote("");
         setIsModalOpen(false);
         setNotes((prevNotes) => [
@@ -92,6 +114,7 @@ export default function TicketDetails() {
   };
 
   const handleFileDownload = (fileUrl, fileName) => {
+    console.log("Downloading file:", fileName, fileUrl);
     const link = document.createElement("a");
     link.href = fileUrl;
     link.download = fileName;
@@ -123,10 +146,6 @@ export default function TicketDetails() {
     reader.readAsDataURL(blob);
   };
 
-  if (!ticketData) {
-    return <div>Loading...</div>;
-  }
-
   function truncateFileName(name, maxLength) {
     if (name.length <= maxLength) return name;
     const extIndex = name.lastIndexOf(".");
@@ -135,15 +154,114 @@ export default function TicketDetails() {
     return `${baseName.slice(0, maxLength - extension.length - 3)}...${extension}`;
   }
 
+  const [selectedStatus, setSelectedStatus] = useState("Open");
+
+  useEffect(() => {
+    if (ticketData?.issue_details?.status) {
+      setSelectedStatus(ticketData.issue_details.status);
+    }
+  }, [ticketData]);
+
+  const handleStatusChange = async (newStatus) => {
+    console.log("Changing ticket status:", newStatus);
+    try {
+      const response = await axios.put(
+        `http://localhost:8000/api/ticket/tickets/${ticketId}/status`,
+        { status: newStatus },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        setSelectedStatus(newStatus);
+        // alert("Status updated successfully!");
+      } else {
+        alert("Failed to update status. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error updating status:", error);
+      alert("An error occurred while updating the status.");
+    }
+  };
+
+  if (!ticketData) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <div className="flex flex-col lg:flex-row bg-gray-50 min-h-screen p-8 gap-8">
-      {/* Left Section */}
       <div className="flex-1 bg-white rounded-3xl p-8 space-y-8 border border-gray-200">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-800">{ticketData.ticket_id}</h1>
-          <span className="px-4 py-1 bg-gray-500 text-white rounded-full text-sm font-semibold">
-            {ticketData.issue_details?.status}
-          </span>
+          {/* Dynamic rendering of the current user */}
+          {/* <div className="flex items-center gap-4">
+            <Avatar alt={session?.user?.name} src={session?.user?.image} />
+            <Typography variant="body1" className="font-semibold text-gray-800">
+              {session?.user?.name || "Guest"}
+            </Typography>
+          </div> */}
+          <Select
+            value={selectedStatus}
+            onChange={(e) => handleStatusChange(e.target.value)}
+            size="small"
+            sx={{
+              minWidth: 150,
+              fontWeight: "semibold",
+              color: 
+                selectedStatus === "Open"
+                  ? "green"
+                  : selectedStatus === "In Progress"
+                  ? "orange"
+                  : selectedStatus === "Resolved"
+                  ? "blue"
+                  : "red", // Text color based on status
+              // border: "2px solid",
+              borderColor:
+                selectedStatus === "Open"
+                  ? "green"
+                  : selectedStatus === "In Progress"
+                  ? "orange"
+                  : selectedStatus === "Resolved"
+                  ? "blue"
+                  : "red", // Border color based on status
+              backgroundColor:
+                selectedStatus === "Open"
+                  ? "rgba(0, 255, 0, 0.1)"
+                  : selectedStatus === "In Progress"
+                  ? "rgba(255, 165, 0, 0.1)"
+                  : selectedStatus === "Resolved"
+                  ? "rgba(0, 0, 255, 0.1)"
+                  : "rgba(255, 0, 0, 0.1)", // Background color based on status
+              "& .MuiSvgIcon-root": {
+                color:
+                  selectedStatus === "Open"
+                    ? "green"
+                    : selectedStatus === "In Progress"
+                    ? "orange"
+                    : selectedStatus === "Resolved"
+                    ? "blue"
+                    : "red", // Dropdown arrow color based on status
+              },
+            }}
+          >
+            <MenuItem value="Open" sx={{ color: "green", fontWeight: "semibold" }}>
+              Open
+            </MenuItem>
+            <MenuItem value="In Progress" sx={{ color: "orange", fontWeight: "semibold" }}>
+              In Progress
+            </MenuItem>
+            <MenuItem value="Resolved" sx={{ color: "blue", fontWeight: "semibold" }}>
+              Resolved
+            </MenuItem>
+            <MenuItem value="Closed" sx={{ color: "red", fontWeight: "semibold" }}>
+              Closed
+            </MenuItem>
+          </Select>
+
+
         </div>
         <p className="text-gray-600 text-sm">
           {ticketData.issue_details?.category} / {ticketData.issue_details?.sub_category}
@@ -156,7 +274,6 @@ export default function TicketDetails() {
           </p>
         </div>
 
-        {/* Uploaded Files */}
         <div>
           <h2 className="text-lg font-semibold text-gray-800 mb-4">Uploaded Files</h2>
           <div className="grid grid-cols-3 gap-4">
@@ -204,7 +321,6 @@ export default function TicketDetails() {
           </div>
         </div>
 
-        {/* Add Note Button */}
         <button
           className="mt-4 bg-blue-500 text-white py-2 px-6 cursor-pointer rounded-lg hover:shadow-lg transition-all"
           onClick={() => setIsModalOpen(true)}
@@ -212,27 +328,20 @@ export default function TicketDetails() {
           Add Note
         </button>
 
-        {/* Notes Section */}
         <div className="space-y-4">
           {notes.map((noteItem, index) => {
             const isUserNote = noteItem.author === currentUser;
             return (
               <div key={index} className={`flex ${isUserNote ? "justify-end" : "justify-start"}`}>
                 <div
-                  className={`relative w-[80%] p-4 rounded-lg ${
-                    isUserNote ? "bg-blue-100" : "bg-yellow-100"
-                  }`}
+                  className={`relative w-[80%] p-4 rounded-lg ${isUserNote ? "bg-blue-100" : "bg-yellow-100"}`}
                 >
-                  <h3
-                    className={`text-sm font-semibold ${
-                      isUserNote ? "text-blue-800" : "text-yellow-800"
-                    }`}
-                  >
-                    {noteItem.author}
+                  <h3 className={`text-sm font-semibold ${isUserNote ? "text-blue-800" : "text-yellow-800"}`}>
+                    {isUserNote ? "You" : noteItem.author}
                   </h3>
                   <p className="text-gray-700">{noteItem.content}</p>
                   <span className="text-xs text-gray-500">
-                    {formatTimeToHHMM(noteItem.timestamp)}
+                    {formatToTime(noteItem.timestamp)}
                   </span>
                 </div>
               </div>
@@ -241,9 +350,7 @@ export default function TicketDetails() {
         </div>
       </div>
 
-      {/* Right Section: User Profile */}
-        {/* Right Section: User Profile */}
-        <div className="w-full lg:w-1/3 bg-white rounded-3xl border border-gray-200 p-8">
+      <div className="w-full lg:w-1/3 bg-white rounded-3xl border border-gray-200 p-8">
         <h2 className="text-xl font-bold text-gray-800">User Profile</h2>
         <div className="mt-6 w-32 h-32 mx-auto rounded-full overflow-hidden">
           {ticketData.customer?.profilePicture ? (
@@ -271,7 +378,6 @@ export default function TicketDetails() {
         </div>
       </div>
 
-      {/* Modal for Adding Notes */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
           <div className="bg-white rounded-lg p-8 w-96">

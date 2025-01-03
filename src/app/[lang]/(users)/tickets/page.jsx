@@ -29,6 +29,23 @@ import { useSearchParam } from 'next/navigation';
 const TicketSection = () => {
   const [selectedFiles, setSelectedFiles] = useState([]);
 
+  const formatToDateTime = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0'); // Months are zero-based
+    const day = date.getDate().toString().padStart(2, '0');
+    
+    let hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    
+    // Convert to 12-hour format
+    hours = hours % 12 || 12;
+  
+    return `${day}/${month}/${year} ${hours}:${minutes} ${ampm}`; // Format as DD/MM/YYYY HH:MM AM/PM
+  };  
+
   // Handle file change
   const handleFileChange = (event) => {
     const files = event.target.files;
@@ -286,75 +303,95 @@ const TicketSection = () => {
 
       <Grid container spacing={3}>
         {filteredTickets.map((ticket) => (
-          <Grid item xs={12} key={ticket.id}>
-            <Card
-              sx={{
-                p: 2,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                border: "1px solid",
-                borderColor: "rgba(229, 231, 235, 1)",
-                borderRadius: "1.5rem",
-                transition: "transform 0.2s ease-in-out",
-                cursor: "pointer",
-                textDecoration: "none",
-                "&:hover": { transform: "scale(1.02)" },
-              }}
-              onClick={() => handleCardClick(ticket._id)}
-            >
-              <CardContent sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 1 }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                  <Typography variant="h6" fontWeight="bold" sx={{ color: "#333" }}>
-                    #{ticket.ticket_id}
-                  </Typography>
-                  <Box
+            <Grid item xs={12} key={ticket._id}>
+                <Card
                     sx={{
-                      px: 2,
-                      py: 0.5,
-                      backgroundColor: getPriorityColor(ticket.issue_details?.priority),
+                      p: 3,
+                      display: "flex",
+                      flexDirection: { xs: "column", sm: "column", md: "row" }, // Center items on small screens
+                      justifyContent: { xs: "center", sm: "center", md: "space-between" },
+                      alignItems: { xs: "center", sm: "center", md: "flex-start" },
+                      border: "1px solid",
+                      boxShadow: "none",
+                      borderColor: "rgba(229, 231, 235, 1)",
+                      borderRadius: "1.5rem",
+                      textAlign: { xs: "center", sm: "center", md: "left" },
+                      transition: "transform 0.2s ease-in-out",
+                      cursor: "pointer",
+                      "&:hover": { transform: "scale(1.02)" },
+                        }}
+                      onClick={() => handleCardClick(ticket._id)}
+                    >
+                    {/* Left Content */}
+                      <CardContent
+                        sx={{
+                          flex: 1,
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 1,
+                          alignItems: { xs: "center", sm: "center", md: "flex-start" },
+                        }}
+                      >
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                        <Typography variant="h6" fontWeight="bold" sx={{ color: "#333" }}>
+                          #{ticket.ticket_id}
+                        </Typography>
+                        <Box
+                        sx={{
+                        px: 2,
+                        py: 0.5,
+                        backgroundColor: getPriorityColor(ticket.issue_details?.priority),
+                        color: "#fff",
+                        borderRadius: 2,
+                        fontSize: "0.8rem",
+                        fontWeight: "bold",
+                        textTransform: "uppercase",
+                        }}
+                        >
+                          {ticket.issue_details?.priority}
+                        </Box>
+                      </Box>
+                      <Typography variant="body1" sx={{ color: "#757575", fontWeight: "500" }}>
+                        {ticket.Customer}
+                      </Typography>
+                      <Typography variant="body1" sx={{ color: "#757575", fontWeight: "500" }}>
+                        {ticket.customer?.firstName}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: "#9e9e9e" }}>
+                        {ticket.issue_details?.category} / {ticket.issue_details?.sub_category}
+                      </Typography>
+                    </CardContent>
+          
+                    {/* Right Content */}
+                    <Box
+                      sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: { xs: "center", sm: "center", md: "flex-end", marginTop: "20px"},
+                      gap: 1,
+                      }}
+                    >
+                    <Typography variant="body2" sx={{ color: "#9e9e9e" }}>
+                      Created: {formatToDateTime(ticket.timestamps?.created_at)}
+                    </Typography>
+                    <Box
+                      sx={{
+                      px: 4,
+                      py: 1,
+                      backgroundColor: getStatusColor(ticket.issue_details?.status),
                       color: "#fff",
-                      borderRadius: 2,
-                      fontSize: "0.8rem",
+                      borderRadius: 3,
                       fontWeight: "bold",
                       textTransform: "uppercase",
+                      fontSize: "0.9rem",
                     }}
                   >
-                    {ticket.issue_details?.priority}
+                    {ticket.issue_details?.status}
                   </Box>
+                  <Typography variant="body2" sx={{ color: "#9e9e9e" }}>
+                      Updated: {formatToDateTime(ticket.timestamps?.updated_at)}
+                  </Typography>
                 </Box>
-
-                <Typography variant="body1" sx={{ color: "#757575" }}>
-                  {ticket.Customer}
-                </Typography>
-                <Typography variant="body2" sx={{ color: "#9e9e9e" }}>
-                  {ticket.issue_details?.category} / {ticket.issue_details?.sub_category}
-                </Typography>
-              </CardContent>
-
-              <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}>
-                <Typography variant="body2" sx={{ color: "#9e9e9e" }}>
-                  Created: {ticket.timestamps?.created_at}
-                </Typography>
-
-                <Box
-                  sx={{
-                    px: 3,
-                    py: 1,
-                    backgroundColor: getStatusColor(ticket.issue_details?.status),
-                    color: "#fff",
-                    borderRadius: 3,
-                    fontWeight: "bold",
-                    textTransform: "uppercase",
-                    fontSize: "0.9rem",
-                  }}
-                >
-                  {ticket.issue_details?.status}
-                </Box>
-                <Typography variant="body2" sx={{ color: "#9e9e9e" }}>
-                  Updated: {ticket.timestamps?.updated_at}
-                </Typography>
-              </Box>
             </Card>
           </Grid>
         ))}

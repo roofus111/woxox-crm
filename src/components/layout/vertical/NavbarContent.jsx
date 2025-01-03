@@ -1,19 +1,14 @@
 
 "use client"
 import classnames from 'classnames'
-import Link from 'next/link'
 import './style.css'
 // import { Assignment, CalendarToday, Notes, Person, Phone, Email } from '@material-ui/icons';
 import { useState, useEffect } from "react";
 // Component Imports
 import NavToggle from './NavToggle'
-import NavSearch from '@components/layout/shared/search'
-import LanguageDropdown from '@components/layout/shared/LanguageDropdown'
-import ModeDropdown from '@components/layout/shared/ModeDropdown'
-import ShortcutsDropdown from '@components/layout/shared/ShortcutsDropdown'
 import NotificationsDropdown from '@components/layout/shared/NotificationsDropdown'
 import UserDropdown from '@components/layout/shared/UserDropdown'
-import io from 'socket.io-client';
+import { io } from 'socket.io-client';
 // Util Imports
 import { verticalLayoutClasses } from '@layouts/utils/layoutClasses'
 import { ToastContainer, toast } from "react-toastify";
@@ -120,7 +115,7 @@ const NavbarContent = () => {
   const { data: session } = useSession()
   const [open, setOpen] = useState(false);
   useEffect(() => {
-    const socket = io('http://localhost:8000', {
+    const socket = io('https://app.canbridge.in', {
       // Reconnect automatically
       reconnection: true,
       reconnectionDelay: 500,

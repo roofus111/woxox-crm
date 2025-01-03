@@ -1,6 +1,6 @@
 {
     "name": "woxox-crm",
-    "version": "0.0.1",
+    "version": "0.2.0",
     "license": "Commercial",
     "private": true,
     "scripts": {
@@ -16,7 +16,7 @@
         "removeI18n": "tsx src/remove-translation-scripts/index.js"
     },
     "dependencies": {
-        "@auth/prisma-adapter": "2.4.1",
+        "@auth/prisma-adapter": "^2.7.4",
         "@dnd-kit/core": "^6.1.0",
         "@dnd-kit/sortable": "^8.0.0",
         "@emoji-mart/data": "1.2.1",
@@ -59,14 +59,15 @@
         "cmdk": "1.0.0",
         "date-fns": "3.6.0",
         "emoji-mart": "5.6.0",
+        "eslint": "^8.57.1",
         "input-otp": "1.2.4",
         "keen-slider": "6.8.6",
         "lodash.debounce": "^4.0.8",
         "mapbox-gl": "3.5.2",
         "moment": "^2.30.1",
         "negotiator": "0.6.3",
-        "next": "14.2.5",
-        "next-auth": "4.24.7",
+        "next": "^14.2.21",
+        "next-auth": "^4.24.11",
         "pdfjs-dist": "^3.11.174",
         "react": "18.3.1",
         "react-apexcharts": "1.4.1",
@@ -97,7 +98,6 @@
         "autoprefixer": "10.4.19",
         "consola": "3.2.3",
         "dotenv-cli": "7.4.2",
-        "eslint": "8.57.0",
         "eslint-config-next": "14.2.5",
         "eslint-config-prettier": "9.1.0",
         "eslint-plugin-import": "2.29.1",

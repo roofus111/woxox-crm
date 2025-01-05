@@ -88,7 +88,7 @@ const UserVerticalMenu = ({ dictionary, scrollMenu }) => {
         <MenuItem icon={<i className='ri-home-smile-line' />} href={`/${locale}/home`}>
           Home
         </MenuItem>
-        <SubMenu
+        {/* <SubMenu
           label={'Campaigns'}
           icon={<i class="ri-megaphone-line"></i>}
         // suffix={<Chip label='6' size='small' color='error' />}
@@ -97,7 +97,7 @@ const UserVerticalMenu = ({ dictionary, scrollMenu }) => {
             return <MenuItem key={index} href={`/${locale}/leads/${menu}`}>{menu}</MenuItem>
           })}
 
-        </SubMenu>
+        </SubMenu> */}
         <MenuItem icon={<i className='ri-contacts-line' />} href={`/${locale}/leads`}>
           All Leads
         </MenuItem>

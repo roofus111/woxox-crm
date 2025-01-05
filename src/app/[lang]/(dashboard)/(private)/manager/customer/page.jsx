@@ -1,27 +1,24 @@
 "use client";
-import React, { useState } from "react";
-import Button from '@mui/material/Button';
-import Chip from '@mui/material/Chip';
-
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import {
-    Drawer,
-    Box,
-    Typography,
-    List,
-    ListItem,
-    ListItemText,
+    Button,
+    Chip,
     Table,
     TableBody,
     TableCell,
     TableContainer,
     TableHead,
     TableRow,
+    Paper,
+    Checkbox,
+    TableSortLabel,
     Dialog,
+    Drawer,
     DialogContent,
     DialogTitle,
-    Paper,
-    TableSortLabel,
-    Checkbox,
+    Box,
+    Typography,
     Tabs,
     Tab,
     Avatar,
@@ -37,96 +34,17 @@ const Customer = () => {
     const [selectedCustomer, setSelectedCustomer] = useState(null);
     const [sortBy, setSortBy] = useState({ field: null, direction: "asc" });
     const [selectedRows, setSelectedRows] = useState([]);
-
     const [openAddDialog, setOpenAddDialog] = useState(false);
-
-    const customers = [
-        {
-            id: 1,
-            name: "John Doe",
-            email: "johndoe@example.com",
-            phone: "+1 234 567 890",
-            address: "123 Main Street, Springfield",
-            city: "Springfield",
-            state: "Illinois",
-            zip: "62704",
-        },
-        {
-            id: 2,
-            name: "Jane Smith",
-            email: "janesmith@example.com",
-            phone: "+1 987 654 321",
-            address: "456 Elm Street, Shelbyville",
-            city: "Shelbyville",
-            state: "Indiana",
-            zip: "46176",
-        },
-        {
-            id: 3,
-            name: "Alice Johnson",
-            email: "alicej@example.com",
-            phone: "+1 555 123 456",
-            address: "789 Oak Avenue, Capital City",
-            city: "Capital City",
-            state: "Ohio",
-            zip: "43085",
-        },
-    ];
-
-    // Handle sorting
-    const handleSort = (field) => {
-        const isAsc = sortBy.field === field && sortBy.direction === "asc";
-        setSortBy({ field, direction: isAsc ? "desc" : "asc" });
-    };
-
-    const sortedCustomers = [...customers].sort((a, b) => {
-        if (!sortBy.field) return 0;
-        const valueA = a[sortBy.field];
-        const valueB = b[sortBy.field];
-        if (valueA < valueB) return sortBy.direction === "asc" ? -1 : 1;
-        if (valueA > valueB) return sortBy.direction === "asc" ? 1 : -1;
-        return 0;
+    const [customers, setCustomers] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [tabValue, setTabValue] = useState(0);
+    const [formData, setFormData] = useState({
+        input1: "Dummy content 1",
+        input2: "Dummy content 2",
+        input3: "Dummy content 3",
+        input4: "Dummy content 4",
     });
-
-    // Handle row selection
-    const handleRowSelect = (id) => {
-        setSelectedRows((prev) =>
-            prev.includes(id) ? prev.filter((rowId) => rowId !== id) : [...prev, id]
-        );
-    };
-
-    // Handle "Select All" checkbox
-    const handleSelectAll = () => {
-        if (selectedRows.length === customers.length) {
-            setSelectedRows([]);
-        } else {
-            setSelectedRows(customers.map((customer) => customer.id));
-        }
-    };
-
-    // Drawer open and close
-    const handleOpenDrawer = (customer) => {
-        setSelectedCustomer(customer);
-        setDrawerOpen(true);
-    };
-    const handleCloseDrawer = () => {
-        setSelectedCustomer(null);
-        setDrawerOpen(false);
-    };
-
-    const [tabValue, setTabValue] = useState(0); // Default tab is the first one
-    const handleTabChange = (event, newValue) => {
-        setTabValue(newValue);
-    };
-
-    // Placeholder functions for the buttons
-    const handleDownloadInvoice = () => {
-        console.log("Downloading invoice...");
-    };
-
-    const handleViewInvoice = () => {
-        console.log("Viewing invoice...");
-    };
+    const [isEditable, setIsEditable] = useState(false);
 
     const activities = [
         {
@@ -134,61 +52,26 @@ const Customer = () => {
             description: "Finalized project timeline and deliverables.",
             date: "2024-12-15",
             time: "10:30 AM",
-            fileName: "document.pdf",
-            fileType: "document",
         },
         {
             title: "Design Review",
             description: "Reviewed the latest designs and provided feedback.",
             date: "2024-12-14",
             time: "3:00 PM",
-            fileName: "image.jpg",
-            fileType: "image",
-        },
-        {
-            title: "Report Submission",
-            description: "Submitted the annual financial report for approval.",
-            date: "2024-12-13",
-            time: "5:15 PM",
-            fileName: "report.csv",
-            fileType: "document",
         },
     ];
 
-    const [isEditable, setIsEditable] = useState(false);
-
-    // Initialize formData with dummy content
-    const [formData, setFormData] = useState({
-        input1: 'Dummy content 1',
-        input2: 'Dummy content 2',
-        input3: 'Dummy content 3',
-        input4: 'Dummy content 4',
-        input5: 'Dummy content 5',
-        input6: 'Dummy content 6',
-        input7: 'Dummy content 7',
-        input8: 'Dummy content 8',
-    });
-
-
-    // Handle the Edit button click
-    const handleEdit = () => {
-        setIsEditable(true);
-    };
-
-    // Handle input change
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
-    };
-
-    // Handle save button click
-    const handleSave = () => {
-        setIsEditable(false);
-        console.log('Saved data:', formData); // Save logic can go here (e.g., call an API)
-    };
+    const invoiceData = [
+        {
+            id: 1,
+            createdAt: '2024-06-12',
+            billNumber: 'INV-2024-001',
+            refId: 'REF12345',
+            paymentStatus: 'Paid',
+            totalAmount: '₹15,000',
+            balance: '₹0',
+        },
+    ];
 
     const leadsData = [
         {
@@ -217,27 +100,188 @@ const Customer = () => {
         },
     ];
 
-    const invoiceData = [
-        {
-            id: 1,
-            createdAt: '2024-06-12',
-            billNumber: 'INV-2024-001',
-            refId: 'REF12345',
-            paymentStatus: 'Paid',
-            totalAmount: '₹15,000',
-            balance: '₹0',
-        },
-        {
-            id: 2,
-            createdAt: '2024-06-14',
-            billNumber: 'INV-2024-002',
-            refId: 'REF67890',
-            paymentStatus: 'Pending',
-            totalAmount: '₹25,000',
-            balance: '₹5,000',
-        },
-    ];
+    const handleDownloadInvoice = async (invoiceId) => {
+        try {
+            // Simulating an API call to get the invoice file URL
+            const invoiceUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/invoices/download/${invoiceId}`;
+            
+            // Create an anchor element to trigger the download
+            const link = document.createElement("a");
+            link.href = invoiceUrl;  // Set the file URL
+            link.download = `Invoice-${invoiceId}.pdf`;  // Set the default filename
+            link.click();  // Trigger the download
+        } catch (error) {
+            console.error("Error downloading the invoice:", error);
+        }
+    };
+    
 
+    // Fetch customers dynamically
+    const fetchCustomers = async () => {
+        setLoading(true);
+        try {
+            const token = localStorage.getItem("token");
+            const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/customer/getcustomers`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+            console.log("Fetched customers:", response.data);
+            setCustomers(response.data.customers); // Update the state with fetched data
+        } catch (error) {
+            console.error("Error fetching customers:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Function to add a new customer and update the customer list using ...prev
+    const addCustomer = async (customerData) => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.post(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/customer/createcustomer`,
+                customerData,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+            console.log('Customer added successfully:', response.data);
+
+            // Update customers list using spread operator to retain previous state
+            setCustomers((prevCustomers) => [
+                ...prevCustomers, // Keep previous customers
+                response.data, // Add the newly created customer
+            ]);
+            handleCloseDialog(); // Close the dialog after successful submission
+        } catch (error) {
+            console.error('Error adding customer:', error);
+        }
+    }; 
+
+
+    const [openEditDialog, setOpenEditDialog] = useState(false);
+
+    const updateCustomer = async (id, updatedData) => {
+        try {
+            const token = localStorage.getItem('token');
+            await axios.put(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/customer/updatecustomer/${_id}`,
+                updatedData,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+            setCustomers((prev) =>
+                prev.map((customer) =>
+                    customer._id === id ? { ...customer, ...updatedData } : customer
+                )
+            );
+            setOpenEditDialog(false); // Close the dialog after successful update
+        } catch (error) {
+            console.error("Error updating customer:", error);
+        }
+    };
+    
+
+    // Delete a customer
+    const deleteCustomer = async (_id) => {
+        try {
+            const token = localStorage.getItem('token');
+            await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/api/customer/deletecustomer/${_id}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+            setCustomers((prev) => prev.filter((customer) => customer._id !== _id)); // Use _id to filter customers
+        } catch (error) {
+            console.error("Error deleting customer:", error);
+        }
+    };
+
+    useEffect(() => {
+        fetchCustomers(); // Fetch data when the component mounts
+    }, []);
+
+    // Handle Tab Change
+    const handleTabChange = (event, newValue) => {
+        setTabValue(newValue);
+    };
+
+    // Handle Input Change
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData((prev) => ({
+            ...prev,
+            [name]: value,
+        }));
+    };
+
+    // Handle Save
+    const handleSave = () => {
+        setIsEditable(false);
+        console.log("Saved data:", formData); // Save logic can go here
+    };
+
+    // Handle Edit
+    const handleEdit = (customer) => {
+        setSelectedCustomer(customer); // Set the selected customer data in state
+        setOpenEditDialog(true); // Open the edit dialog
+    };
+    
+
+    // Function to open the dialog
+    const handleOpenDialog = () => {
+    setOpenAddDialog(true);
+    };
+    
+    // Function to close the dialog
+    const handleCloseDialog = () => {
+        setOpenAddDialog(false);
+    };
+
+    // Handle sorting
+    const handleSort = (field) => {
+        const isAsc = sortBy.field === field && sortBy.direction === "asc";
+        setSortBy({ field, direction: isAsc ? "desc" : "asc" });
+    };
+
+    const sortedCustomers = Array.isArray(customers) ? [...customers].sort((a, b) => {
+        if (!sortBy.field) return 0;
+        const valueA = a[sortBy.field];
+        const valueB = b[sortBy.field];
+        if (valueA < valueB) return sortBy.direction === "asc" ? -1 : 1;
+        if (valueA > valueB) return sortBy.direction === "asc" ? 1 : -1;
+        return 0;
+    }) : [];      // Handle row selection
+    const handleRowSelect = (id) => {
+        setSelectedRows((prev) =>
+            prev.includes(id) ? prev.filter((rowId) => rowId !== id) : [...prev, id]
+        );
+    };
+
+    // Handle "Select All" checkbox
+    const handleSelectAll = () => {
+        if (selectedRows.length === customers.length) {
+            setSelectedRows([]);
+        } else {
+            setSelectedRows(customers.map((customer) => customer.id));
+        }
+    };
+
+    // Drawer open and close
+    const handleOpenDrawer = (customer) => {
+        setSelectedCustomer(customer);
+        setDrawerOpen(true);
+    };
+    const handleCloseDrawer = () => {
+        setSelectedCustomer(null);
+        setDrawerOpen(false);
+    };
 
     const handleViewLead = (id) => console.log(`Viewing lead with ID: ${id}`);
     const handleEditLead = (id) => console.log(`Editing lead with ID: ${id}`);
@@ -245,10 +289,10 @@ const Customer = () => {
     return (
         <div>
             {/* Add Customer Dialog */}
-            <Dialog open={openAddDialog} onClose={() => setOpenAddDialog(false)} fullWidth maxWidth="sm">
+            <Dialog open={openAddDialog} onClose={handleCloseDialog} fullWidth maxWidth="sm">
                 <DialogTitle>Add New Customer</DialogTitle>
                 <DialogContent>
-                    <AddCustomerForm />
+                    <AddCustomerForm setOpenAddDialog={setOpenAddDialog} addCustomer={addCustomer} />
                 </DialogContent>
             </Dialog>
 
@@ -309,7 +353,7 @@ const Customer = () => {
                                         onChange={() => handleRowSelect(customer.id)}
                                     />
                                 </TableCell>
-                                <TableCell>{customer.name}</TableCell>
+                                <TableCell>{customer.firstName} {customer.lastName}</TableCell>
                                 <TableCell>{customer.email}</TableCell>
                                 <TableCell>{customer.phone}</TableCell>
                                 <TableCell>
@@ -333,7 +377,7 @@ const Customer = () => {
                                     </Button>
 
                                     <Button
-                                        onClick={() => console.log("Edit customer")}
+                                        onClick={() => handleEdit(customer)} // Open edit dialog and pass customer data
                                         sx={{
                                             borderColor: "green",
                                             color: "green",
@@ -352,7 +396,7 @@ const Customer = () => {
                                     </Button>
 
                                     <Button
-                                        onClick={() => console.log("Delete customer")}
+                                        onClick={() => deleteCustomer(customer._id)} // Call deleteCustomer with customer id
                                         sx={{
                                             borderColor: "#DC3545",
                                             color: "#DC3545",
@@ -375,6 +419,20 @@ const Customer = () => {
                         ))}
                     </TableBody>
                 </Table>
+                <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)} fullWidth maxWidth="sm">
+                <DialogTitle>Edit Customer</DialogTitle>
+                <DialogContent>
+                    {selectedCustomer && (
+                        <AddCustomerForm
+                            customer={selectedCustomer} // Pass the selected customer data to the form
+                            setOpenAddDialog={setOpenEditDialog}
+                            addCustomer={addCustomer} // You can reuse the addCustomer function for updating
+                            isEdit={true} // Flag to indicate this is an edit form
+                            updateCustomer={updateCustomer} // Pass the update function
+                        />
+                    )}
+                </DialogContent>
+            </Dialog>
             </TableContainer>
 
             <Drawer
@@ -414,7 +472,7 @@ const Customer = () => {
                         {selectedCustomer?.profileImage ? (
                             <Avatar
                                 src={selectedCustomer.profileImage}
-                                alt={selectedCustomer.name}
+                                alt={selectedCustomer.firsrName}
                                 sx={{
                                     width: { xs: 80, sm: 100 },
                                     height: { xs: 80, sm: 100 },
@@ -439,7 +497,7 @@ const Customer = () => {
                                     transform: "translateY(-50%)",
                                 }}
                             >
-                                {selectedCustomer?.name?.charAt(0)}
+                                {selectedCustomer?.firstName?.charAt(0)}
                             </Avatar>
                         )}
                     </Box>
@@ -465,7 +523,7 @@ const Customer = () => {
                                         textAlign: "center",
                                     }}
                                 >
-                                    {selectedCustomer?.name}
+                                    {selectedCustomer?.firstName} {selectedCustomer?.lastName}
                                 </Typography>
                                 <Chip
                                     label="Premium"

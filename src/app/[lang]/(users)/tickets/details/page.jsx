@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import axios from "axios";
-import { useSession } from 'next-auth/react';  // Importing useSession hook
+import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 
 function formatTimeToHHMM(time) {
@@ -19,14 +19,11 @@ export default function TicketDetails() {
   const { data: session } = useSession();
   const [files, setFiles] = useState([]);
   const [notes, setNotes] = useState([]);
-  
-  const searchParams = useSearchParams();
-  const ticketId = searchParams.get("ticketId");
 
-  // Console log the session and current user
-  console.log("Session Data:", session);
+  const searchParams = useSearchParams();
+  const ticketId = useMemo(() => searchParams.get("ticketId"), [searchParams]);
+
   const currentUser = session?.user?.id;
-  console.log("Current User ID:", currentUser);
 
   useEffect(() => {
     if (!ticketId) return;
@@ -73,7 +70,6 @@ export default function TicketDetails() {
       );
 
       if (response.status === 200 || response.status === 201) {
-        // alert("Note successfully added!");
         setNote("");
         setIsModalOpen(false);
         setNotes((prevNotes) => [
@@ -84,46 +80,34 @@ export default function TicketDetails() {
             timestamp: new Date().toISOString(),
           },
         ]);
-      } else {
-        alert("Failed to add the note. Please try again.");
       }
     } catch (error) {
       console.error("Error adding note:", error);
-      alert("An error occurred while adding the note.");
     }
-  };
-
-  const handleFileDownload = (fileUrl, fileName) => {
-    const link = document.createElement("a");
-    link.href = fileUrl;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   useEffect(() => {
-    files.forEach(async (file, index) => {
-      if (!file.preview && file.fileType.startsWith("image/")) {
-        await loadImagePreview(file, index);
-      }
-    });
-  }, [files]);
-
-  const loadImagePreview = async (file, index) => {
-    let blob = file;
-    if (typeof file.fileUrl === "string") {
-      const response = await fetch(file.fileUrl);
-      blob = await response.blob();
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      files[index].preview = e.target.result;
-      setFiles([...files]);
+    const loadPreviews = async () => {
+      const updatedFiles = await Promise.all(
+        files.map(async (file) => {
+          if (!file.preview && file.fileType?.startsWith("image/")) {
+            const response = await fetch(file.fileUrl);
+            const blob = await response.blob();
+            const reader = new FileReader();
+            const preview = await new Promise((resolve) => {
+              reader.onload = (e) => resolve(e.target.result);
+              reader.readAsDataURL(blob);
+            });
+            return { ...file, preview };
+          }
+          return file;
+        })
+      );
+      setFiles(updatedFiles);
     };
-    reader.readAsDataURL(blob);
-  };
+
+    if (files.length) loadPreviews();
+  }, [files]);
 
   if (!ticketData) {
     return <div>Loading...</div>;
@@ -143,9 +127,9 @@ export default function TicketDetails() {
       <div className="flex-1 bg-white rounded-3xl p-8 space-y-8 border border-gray-200">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-800">{ticketData.ticket_id}</h1>
-          <span className="px-4 py-1 bg-gray-500 text-white rounded-full text-sm font-semibold">
+          {/* <span className="px-4 py-1 bg-gray-500 text-white rounded-full text-sm font-semibold">
             {ticketData.issue_details?.status}
-          </span>
+          </span> */}
         </div>
         <p className="text-gray-600 text-sm">
           {ticketData.issue_details?.category} / {ticketData.issue_details?.sub_category}
@@ -217,20 +201,17 @@ export default function TicketDetails() {
         {/* Notes Section */}
         <div className="space-y-4">
           {notes.map((noteItem, index) => {
-            const isUserNote = noteItem.author === currentUser;
+            // Compare the author of the note with the current user
+            const isUserNote = noteItem.author._id == currentUser; // Check if the note is by the current user
+            const receiverName = ticketData.customer?.firstName;
+
             return (
               <div key={index} className={`flex ${isUserNote ? "justify-end" : "justify-start"}`}>
                 <div
-                  className={`relative w-[80%] p-4 rounded-lg ${
-                    isUserNote ? "bg-blue-100" : "bg-yellow-100"
-                  }`}
+                  className={`relative w-[80%] p-4 rounded-lg ${isUserNote ? "bg-blue-100" : "bg-yellow-100"}`}
                 >
-                  <h3
-                    className={`text-sm font-semibold ${
-                      isUserNote ? "text-blue-800" : "text-yellow-800"
-                    }`}
-                  >
-                    {noteItem.author}
+                  <h3 className={`text-sm font-semibold ${isUserNote ? "text-blue-800" : "text-yellow-800"}`}>
+                    {isUserNote ? "You" : noteItem.author.firstName + " " + noteItem.author.lastName}
                   </h3>
                   <p className="text-gray-700">{noteItem.content}</p>
                   <span className="text-xs text-gray-500">
@@ -241,9 +222,8 @@ export default function TicketDetails() {
             );
           })}
         </div>
-      </div>
+        </div>
 
-      {/* Right Section: User Profile */}
         {/* Right Section: User Profile */}
         <div className="w-full lg:w-1/3 bg-white rounded-3xl border border-gray-200 p-8">
         <h2 className="text-xl font-bold text-gray-800">User Profile</h2>

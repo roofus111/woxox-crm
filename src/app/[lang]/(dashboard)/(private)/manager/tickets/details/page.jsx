@@ -79,13 +79,22 @@ export default function TicketDetails() {
 
   const handleAddNote = async () => {
     try {
-      console.log("Adding note with currentUser:", currentUser);
+      // Ensure currentUser is a valid string
+      const author = String(currentUser); // Force currentUser to be a string
+      if (!author) {
+        console.error("Invalid currentUser:", currentUser);
+        alert("Invalid user information. Please log in again.");
+        return;
+      }
+  
+      console.log("Adding note with currentUser:", author);
       const apiUrl = process.env.NEXT_PUBLIC_API_URL;
       const response = await axios.post(
         `${apiUrl}/api/ticket/createnotes`,
         {
           ticketId,
-          author: currentUser,
+          author : currentUser,
+          receiver: ticketData.customer?._id, // Assuming receiver is customer, so using their ID
           content: note,
         },
         {
@@ -94,14 +103,15 @@ export default function TicketDetails() {
           },
         }
       );
-
+  
       if (response.status === 200 || response.status === 201) {
         setNote("");
         setIsModalOpen(false);
         setNotes((prevNotes) => [
           ...prevNotes,
           {
-            author: currentUser,
+            author : currentUser,
+            receiver: ticketData.customer?._id,
             content: note,
             timestamp: new Date().toISOString(),
           },
@@ -111,9 +121,13 @@ export default function TicketDetails() {
       }
     } catch (error) {
       console.error("Error adding note:", error);
+      if (error.response) {
+        console.error("API Error Response:", error.response.data);
+      }
       alert("An error occurred while adding the note.");
     }
   };
+  
 
   const handleFileDownload = (fileUrl, fileName) => {
     console.log("Downloading file:", fileName, fileUrl);
@@ -331,27 +345,31 @@ export default function TicketDetails() {
           Add Note
         </button>
 
-        <div className="space-y-4">
-          {notes.map((noteItem, index) => {
-            const isUserNote = noteItem.author === currentUser;
-            return (
-              <div key={index} className={`flex ${isUserNote ? "justify-end" : "justify-start"}`}>
-                <div
-                  className={`relative w-[80%] p-4 rounded-lg ${isUserNote ? "bg-blue-100" : "bg-yellow-100"}`}
-                >
-                  <h3 className={`text-sm font-semibold ${isUserNote ? "text-blue-800" : "text-yellow-800"}`}>
-                    {isUserNote ? "You" : noteItem.author}
-                  </h3>
-                  <p className="text-gray-700">{noteItem.content}</p>
-                  <span className="text-xs text-gray-500">
-                    {formatToTime(noteItem.timestamp)}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
+<div className="space-y-4">
+  {notes.map((noteItem, index) => {
+    const isUserNote = noteItem.author._id === currentUser;
+    const receiverName = noteItem.receiver === ticketData.customer?._id 
+      ? ticketData.customer?.firstName 
+      : "Unknown Receiver"; // Set the receiver name accordingly
+
+    return (
+      <div key={index} className={`flex ${isUserNote ? "justify-end" : "justify-start"}`}>
+        <div
+          className={`relative w-[80%] p-4 rounded-lg ${isUserNote ? "bg-blue-100" : "bg-yellow-100"}`}
+        >
+          <h3 className={`text-sm font-semibold ${isUserNote ? "text-blue-800" : "text-yellow-800"}`}>
+            {isUserNote ? "You" : noteItem.author.firstName+" "+noteItem.author.lastName}
+          </h3>
+          <p className="text-gray-700">{noteItem.content}</p>
+          <span className="text-xs text-gray-500">
+            {formatToTime(noteItem.timestamp)}
+          </span>
         </div>
       </div>
+    );
+  })}
+</div>
+</div>
 
       <div className="w-full lg:w-1/3 bg-white rounded-3xl border border-gray-200 p-8">
         <h2 className="text-xl font-bold text-gray-800">User Profile</h2>

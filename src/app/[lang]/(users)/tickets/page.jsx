@@ -176,7 +176,7 @@ const TicketSection = () => {
 
     // Append customer ID
     formData.append("customerId", newTicket.Customer);
-    formData.append("assignedTo", "66ff7eb29cfb482d716fcbbd");
+    // formData.append("assignedTo", "66ff7eb29cfb482d716fcbbd");
     formData.append("subject", "sdfjekjn");
     formData.append("description", "sdfjek");
     formData.append("category", "cate");
@@ -287,7 +287,7 @@ const TicketSection = () => {
           </Button>
 
           {/* Filter Dropdown */}
-          <FormControl sx={{ minWidth: 120 }}>
+          {/* <FormControl sx={{ minWidth: 120 }}>
             <InputLabel></InputLabel>
             <Select value={statusFilter} onChange={handleFilter} label="Filter by Status" displayEmpty>
               <MenuItem value="">All</MenuItem>
@@ -295,7 +295,7 @@ const TicketSection = () => {
               <MenuItem value="In Progress">In Progress</MenuItem>
               <MenuItem value="Pending">Pending</MenuItem>
             </Select>
-          </FormControl>
+          </FormControl> */}
         </Box>
 
         {/* Add Ticket Button */}
@@ -377,7 +377,7 @@ const TicketSection = () => {
                     <Typography variant="body2" sx={{ color: "#9e9e9e" }}>
                       Created: {formatToDateTime(ticket.timestamps?.created_at)}
                     </Typography>
-                    <Box
+                    {/* <Box
                       sx={{
                       px: 4,
                       py: 1,
@@ -390,7 +390,7 @@ const TicketSection = () => {
                     }}
                   >
                     {ticket.issue_details?.status}
-                  </Box>
+                  </Box> */}
                   <Typography variant="body2" sx={{ color: "#9e9e9e" }}>
                       Updated: {formatToDateTime(ticket.timestamps?.updated_at)}
                   </Typography>
@@ -470,14 +470,14 @@ const TicketSection = () => {
             </Select>
           </FormControl>
           {/* Status Dropdown */}
-          <FormControl fullWidth sx={{ mb: 2 }}>
+          {/* <FormControl fullWidth sx={{ mb: 2 }}>
             <InputLabel>Status</InputLabel>
             <Select value={newTicket.issue_details?.status} name="status" onChange={handleInputChange} label="Status">
               <MenuItem value="Completed">Completed</MenuItem>
               <MenuItem value="In Progress">In Progress</MenuItem>
               <MenuItem value="Pending">Pending</MenuItem>
             </Select>
-          </FormControl>
+          </FormControl> */}
           {/* Attachments */}
           <Button variant="outlined" component="label">
             Upload Attachments

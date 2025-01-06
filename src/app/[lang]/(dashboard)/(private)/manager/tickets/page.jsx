@@ -208,7 +208,7 @@ const TicketSection = () => {
     <Button variant="contained" onClick={handleSort}>
       Sort {sortOrder === "asc" ? <i className="ri-arrow-up-s-line"></i> : <i className="ri-arrow-down-s-line"></i>}
     </Button>
-    <FormControl sx={{ minWidth: 120 }}>
+    {/* <FormControl sx={{ minWidth: 120 }}>
       <InputLabel></InputLabel>
       <Select value={statusFilter} onChange={handleFilter} displayEmpty>
         <MenuItem value="">All</MenuItem>
@@ -217,7 +217,7 @@ const TicketSection = () => {
         <MenuItem value="Closed">Closed</MenuItem>
         <MenuItem value="Resolved">Resolved</MenuItem>
       </Select>
-    </FormControl>
+    </FormControl> */}
   </Box>
 
     {/* Tickets Section */}
@@ -295,7 +295,7 @@ const TicketSection = () => {
                 gap: 1,
               }}
             >
-              <Box
+              {/* <Box
                 sx={{
                   px: 4,
                   py: 1,
@@ -308,7 +308,7 @@ const TicketSection = () => {
                 }}
               >
                 {ticket.issue_details?.status}
-              </Box>
+              </Box> */}
               <Typography variant="body2" sx={{ color: "#9e9e9e" }}>
                 Updated: {formatToDateTime(ticket.timestamps?.updated_at)}
               </Typography>

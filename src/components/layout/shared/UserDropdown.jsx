@@ -111,6 +111,8 @@ const UserDropdown = () => {
     }
 
     try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
       const token = localStorage.getItem('token'); // Retrieve token from localStorage (or use another method)
 
       if (!token) {
@@ -120,7 +122,7 @@ const UserDropdown = () => {
 
       // Send a request to the backend to verify the current password and update the password
       const response = await axios.post(
-        'http://localhost:8000/api/change-password',
+        `${apiUrl}/api/change-password`,
         {
           currentPassword, // Send the current password for verification
           newPassword, // Send the new password

@@ -122,7 +122,7 @@ const Transactions = (props) => {
       }
     )
     const newData = await response.json()
-    console.log(newData.leads)
+    console.log("new lead added", newData.leads)
 
     if (page === 1) {
       setLoading(false)
@@ -164,7 +164,6 @@ const Transactions = (props) => {
       toast.error("UserID detected");
     }
   }, [userId]);
-
 
   return (
     <>

@@ -28,6 +28,7 @@ import {
     CardContent,
 } from "@mui/material";
 import AddCustomerForm from "@/views/apps/customer/Addcustomer";
+import { state } from "@formkit/drag-and-drop";
 
 const Customer = () => {
     const [drawerOpen, setDrawerOpen] = useState(false);
@@ -38,13 +39,11 @@ const Customer = () => {
     const [customers, setCustomers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [tabValue, setTabValue] = useState(0);
-    const [formData, setFormData] = useState({
-        input1: "Dummy content 1",
-        input2: "Dummy content 2",
-        input3: "Dummy content 3",
-        input4: "Dummy content 4",
-    });
+    const [formData, setFormData] = useState({});
+    const [error, setError] = useState(null);
+
     const [isEditable, setIsEditable] = useState(false);
+    const [customerId, setCustomerId] = useState("");
 
     const activities = [
         {
@@ -72,6 +71,12 @@ const Customer = () => {
             balance: '₹0',
         },
     ];
+
+    const handleViewInvoice = () => {
+        // Set the invoice details and open the modal
+        setInvoiceDetails(invoiceData[0]); // Use the first item from the array
+        setOpenModal(true);
+    };
 
     const leadsData = [
         {
@@ -164,28 +169,129 @@ const Customer = () => {
 
     const [openEditDialog, setOpenEditDialog] = useState(false);
 
-    const updateCustomer = async (id, updatedData) => {
-        try {
-            const token = localStorage.getItem('token');
-            await axios.put(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/customer/updatecustomer/${_id}`,
-                updatedData,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
-            );
-            setCustomers((prev) =>
-                prev.map((customer) =>
-                    customer._id === id ? { ...customer, ...updatedData } : customer
-                )
-            );
-            setOpenEditDialog(false); // Close the dialog after successful update
-        } catch (error) {
-            console.error("Error updating customer:", error);
-        }
+    useEffect(() => {
+
+        if (!customerId) return;
+
+        const fetchCustomerData = async () => {
+            setLoading(true);
+            setError(null);
+
+            try {
+                const token = localStorage.getItem("token");
+                const response = await axios.get(
+                    `${process.env.NEXT_PUBLIC_API_URL}/api/customer/getcustomer/${customerId}`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                    }
+                );
+
+                const customer = response.data.customer;
+
+                const flattenedData = {
+                    ...customer,
+                    ...customer.address,
+                };
+
+                delete flattenedData.address;
+                setFormData(flattenedData);
+            } catch (error) {
+                console.error("Error fetching customer data:", error);
+                setError("Failed to fetch customer data", error.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchCustomerData();
+    }, [customerId]);
+
+    const handleChange = (event) => {
+        const { name, value } = event.target;
+        setFormData((prevState) => ({
+            ...prevState,
+            [name]: value,
+        }));
     };
+
+        // Handle "Edit" button click
+        const handleEdit = () => {
+            setIsEditable(true); // Enable the fields for editing
+        };
+
+        const handleSave = async () => {
+            try {
+                const token = localStorage.getItem("token");
+
+                const updatedData = {
+                    ...formData,
+                    address: {
+                        street: formData.street,
+                        city: formData.city,
+                        state: formData.state,
+                        postalCode: formData.postalCode,
+                        country: formData.country,
+                    },
+                };
+
+                delete updatedData.street;
+                delete updatedData.city;
+                delete updatedData.state;
+                delete updatedData.postalCode;
+                delete updatedData.country;
+
+                await axios.put(
+                    `${process.env.NEXT_PUBLIC_API_URL}/api/customer/updatecustomer/${customerId}`,
+                    updatedData,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                    }
+                );
+
+                setIsEditable(false); // Disable the fields after saving
+            } catch (error) {
+                console.error("Error updating customer:", error);
+            }
+        }
+
+        const handleOpenEditDialog = (id) => {
+            setCustomerId(id);
+            setOpenEditDialog(true);
+        };
+    
+        const handleCloseEditDialog = () => {
+            setOpenEditDialog(false);
+            setCustomerId("");
+            setFormData({});
+            setIsEditable(false);
+        };
+
+    // const updateCustomer = async (id, updatedData) => {
+    //     try {
+    //         const token = localStorage.getItem('token');
+    //         await axios.put(
+    //             `${process.env.NEXT_PUBLIC_API_URL}/api/customer/updatecustomer/${_id}`,
+    //             updatedData,
+    //             {
+    //                 headers: {
+    //                     Authorization: `Bearer ${token}`,
+    //                 },
+    //             }
+    //         );
+    //         setCustomers((prev) =>
+    //             prev.map((customer) =>
+    //                 customer._id === id ? { ...customer, ...updatedData } : customer
+    //             )
+    //         );
+    //         setOpenEditDialog(false); // Close the dialog after successful update
+    //     } catch (error) {
+    //         console.error("Error updating customer:", error);
+    //     }
+    // };
     
 
     // Delete a customer
@@ -211,28 +317,6 @@ const Customer = () => {
     const handleTabChange = (event, newValue) => {
         setTabValue(newValue);
     };
-
-    // Handle Input Change
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
-    };
-
-    // Handle Save
-    const handleSave = () => {
-        setIsEditable(false);
-        console.log("Saved data:", formData); // Save logic can go here
-    };
-
-    // Handle Edit
-    const handleEdit = (customer) => {
-        setSelectedCustomer(customer); // Set the selected customer data in state
-        setOpenEditDialog(true); // Open the edit dialog
-    };
-    
 
     // Function to open the dialog
     const handleOpenDialog = () => {
@@ -286,13 +370,22 @@ const Customer = () => {
     const handleViewLead = (id) => console.log(`Viewing lead with ID: ${id}`);
     const handleEditLead = (id) => console.log(`Editing lead with ID: ${id}`);
 
+    const refreshCustomers = () => {
+        fetchCustomers(); // Call fetchCustomers to reload the customer list
+    };
+
     return (
         <div>
             {/* Add Customer Dialog */}
             <Dialog open={openAddDialog} onClose={handleCloseDialog} fullWidth maxWidth="sm">
                 <DialogTitle>Add New Customer</DialogTitle>
                 <DialogContent>
-                    <AddCustomerForm setOpenAddDialog={setOpenAddDialog} addCustomer={addCustomer} />
+                <AddCustomerForm
+                    setOpenDialog={setOpenAddDialog}
+                    isEdit={isEditable}
+                    selectedCustomer={selectedCustomer}
+                    refreshCustomers={refreshCustomers}  // Ensure this is passed properly
+                    />
                 </DialogContent>
             </Dialog>
 
@@ -320,9 +413,9 @@ const Customer = () => {
                             </TableCell>
                             <TableCell>
                                 <TableSortLabel
-                                    active={sortBy.field === "name"}
-                                    direction={sortBy.field === "name" ? sortBy.direction : "asc"}
-                                    onClick={() => handleSort("name")}
+                                    active={sortBy.field === "firstName"}
+                                    direction={sortBy.field === "firstName" ? sortBy.direction : "asc"}
+                                    onClick={() => handleSort("firstName")}
                                 >
                                     <strong>Name</strong>
                                 </TableSortLabel>
@@ -376,7 +469,7 @@ const Customer = () => {
                                         <i class="ri-eye-line" sx={{ fontSize: 24 }} />
                                     </Button>
 
-                                    <Button
+                                    {/* <Button
                                         onClick={() => handleEdit(customer)} // Open edit dialog and pass customer data
                                         sx={{
                                             borderColor: "green",
@@ -393,7 +486,7 @@ const Customer = () => {
                                         }}
                                     >
                                         <i class="ri-edit-line" sx={{ fontSize: 20 }} />
-                                    </Button>
+                                    </Button> */}
 
                                     <Button
                                         onClick={() => deleteCustomer(customer._id)} // Call deleteCustomer with customer id
@@ -414,7 +507,6 @@ const Customer = () => {
                                         <i class="ri-delete-bin-line" sx={{ fontSize: 20 }} />
                                     </Button>
                                 </TableCell>
-
                             </TableRow>
                         ))}
                     </TableBody>
@@ -427,8 +519,6 @@ const Customer = () => {
                             customer={selectedCustomer} // Pass the selected customer data to the form
                             setOpenAddDialog={setOpenEditDialog}
                             addCustomer={addCustomer} // You can reuse the addCustomer function for updating
-                            isEdit={true} // Flag to indicate this is an edit form
-                            updateCustomer={updateCustomer} // Pass the update function
                         />
                     )}
                 </DialogContent>
@@ -626,51 +716,50 @@ const Customer = () => {
 
                     {/* Display content based on active tab */}
                     <Box
-                        sx={{
-                            paddingTop: 2,
-                            overflowY: "auto", // Ensure scrolling for content if it's long
-                            maxHeight: "60vh", // Limit the height of the content to avoid overflow
-                        }}
-                    >
-                        {tabValue === 0 && (
-                            <Box sx={{ width: '100%', padding: 2, border: '1px solid #ccc', borderRadius: 1 }}>
+                    sx={{
+                        paddingTop: 2,
+                        overflowY: "auto", // Ensure scrolling for content if it's long
+                        maxHeight: "60vh", // Limit the height of the content to avoid overflow
+                    }}
+                >
+                    {tabValue === 0 && (
+                                <Box sx={{ width: '100%', padding: 2, border: '1px solid #ccc', borderRadius: 1 }}>
+                                <Typography variant="h6">Customer ID: {formData._id || "Loading..."}</Typography>
                                 <Typography variant="h6">Basic Information</Typography>
-                                <br />
-                                <Box sx={{ marginTop: 2 }}>
-                                    <Grid container spacing={2}>
-                                        {Object.keys(formData).map((key, index) => (
-                                            <Grid item xs={6} key={index}>
-                                                <TextField
-                                                    label={`Input ${index + 1}`}
-                                                    variant="outlined"
-                                                    fullWidth
-                                                    // disabled={!isEditable} // Disable if not editable
-                                                    value={formData[key]} // Access key directly
-                                                    onChange={handleChange}
-                                                    name={key}
-                                                    sx={{ marginBottom: 2 }}
-                                                    InputProps={{
-                                                        // Disable the faded gray when the input is disabled
-                                                        readOnly: !isEditable, // Keeps the field editable if 'isEditable' is true
-                                                    }}
-                                                />
-                                            </Grid>
-                                        ))}
-                                    </Grid>
-                                </Box>
-
-                                <Box sx={{ marginTop: 2, display: 'flex', justifyContent: 'space-between' }}>
-                                    <Button variant="outlined" onClick={handleEdit}>
-                                    <i class="ri-edit-line" sx={{ fontSize: 20 }} />
-                                    </Button>
-                                    {isEditable && (
-                                        <Button variant="contained" onClick={handleSave}>
-                                            Save
-                                        </Button>
-                                    )}
+                                <Box sx={{ padding: 2 }}>
+                                    {/* Render form fields dynamically */}
+                                    {Object.entries(formData).map(([key, value]) => (
+                                        key !== "_id" && (
+                                        <TextField
+                                            key={key}
+                                            label={key.replace(/([A-Z])/g, ' $1').toUpperCase()} // Formatting the label
+                                            name={key}
+                                            value={value}
+                                            onChange={handleChange}
+                                            fullWidth
+                                            disabled={!isEditable}
+                                            sx={{ marginBottom: 2 }}
+                                        />
+                                        )
+                                    ))}
+                                    
+                                    {/* Edit/Save Buttons */}
+                                    <Box sx={{ marginTop: 2, display: 'flex', justifyContent: 'space-between' }}>
+                                        {!isEditable && (
+                                            <Button variant="outlined" onClick={handleEdit}>
+                                                <i className="ri-edit-line" style={{ fontSize: 20 }} />
+                                            </Button>
+                                        )}
+                                        {isEditable && (
+                                            <Button variant="contained" onClick={handleSave}>
+                                                Save
+                                            </Button>
+                                        )}
+                                    </Box>
                                 </Box>
                             </Box>
                         )}
+
                         {tabValue === 1 && (
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, padding: 2 }}>
                                 {leadsData.map((lead) => (

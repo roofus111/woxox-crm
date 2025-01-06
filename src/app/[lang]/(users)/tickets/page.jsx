@@ -25,26 +25,16 @@ import {
 } from "@mui/material";
 
 import { useSearchParam } from 'next/navigation';
+import moment from 'moment';
 
 const TicketSection = () => {
   const [selectedFiles, setSelectedFiles] = useState([]);
 
-  const formatToDateTime = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, '0'); // Months are zero-based
-    const day = date.getDate().toString().padStart(2, '0');
-    
-    let hours = date.getHours();
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    
-    // Convert to 12-hour format
-    hours = hours % 12 || 12;
+  const formatToRelativeTime = (dateString) => {
+    if (!dateString) return "Invalid date";
+    return moment(dateString).fromNow(); // Returns relative time
+  };
   
-    return `${day}/${month}/${year} ${hours}:${minutes} ${ampm}`; // Format as DD/MM/YYYY HH:MM AM/PM
-  };  
 
   // Handle file change
   const handleFileChange = (event) => {
@@ -69,18 +59,22 @@ const TicketSection = () => {
   const [tickets, setTickets] = useState(allTickets);
   const [statusFilter, setStatusFilter] = useState("");
   const [sortOrder, setSortOrder] = useState("asc");
+  const [error, setError] = useState("");
   const [openDialog, setOpenDialog] = useState(false); // State to manage dialog open/close
   const [newTicket, setNewTicket] = useState({
     Customer: "",
-    subject: "",
-    description: "",
-    category: "",
-    sub_category: "",
-    priority: "",
-    status: "",
+    issue_details: {
+      subject: "",
+      description: "",
+      category: "",
+      sub_category: "",
+      priority: "",
+      status: "",
+    },
     attachments: [],
   });
-
+  
+  
   const fetchTickets = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -159,11 +153,24 @@ const TicketSection = () => {
   };
 
   // Function to handle form field changes
-  const handleInputChange = (event) => {
-    const { name, value } = event.target;
-    setNewTicket((prev) => ({ ...prev, [name]: value }));
+  const handleInputChange = ({ target: { name, value } }) => {
+    if (name in newTicket.issue_details) {
+      setNewTicket((prev) => ({
+        ...prev,
+        issue_details: {
+          ...prev.issue_details,
+          [name]: value,
+        },
+      }));
+    } else {
+      setNewTicket((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
   };
-
+  
+  
   // Function to handle file uploads (attachments)
   //   const handleFileChange = (event) => {
   //     setNewTicket((prev) => ({ ...prev, attachments: [...event.target.files] }));
@@ -173,50 +180,36 @@ const TicketSection = () => {
   const handleSubmitTicket = async () => {
     const token = localStorage.getItem("token");
     const formData = new FormData();
-
-    // Append customer ID
+  
+    // Validate required fields
+    if (!newTicket.Customer) {
+      console.error("Customer is required to create a ticket.");
+      return;
+    }
+  
     formData.append("customerId", newTicket.Customer);
-    // formData.append("assignedTo", "66ff7eb29cfb482d716fcbbd");
-    formData.append("subject", "sdfjekjn");
-    formData.append("description", "sdfjek");
-    formData.append("category", "cate");
-    formData.append("sub_category", "subcate");
-    formData.append("priority", "High");
-
-    // Append attachments
+    formData.append("subject", newTicket.issue_details.subject || "");
+    formData.append("description", newTicket.issue_details.description || "");
+    formData.append("category", newTicket.issue_details.category || "");
+    formData.append("sub_category", newTicket.issue_details.sub_category || "");
+    formData.append("priority", newTicket.issue_details.priority || "");
+  
     if (Array.isArray(newTicket.attachments)) {
       newTicket.attachments.forEach((file) => formData.append("attachments", file));
     }
-
-    // Debugging: Log formData
-    for (let [key, value] of formData.entries()) {
-      console.log(`${key}:`, value);
-    }
-
-    console.log(JSON.stringify(formData))
-
+  
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL;
       const response = await axios.post(`${apiUrl}/api/ticket/create`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data", // Necessary for FormData
+          "Content-Type": "multipart/form-data",
         },
       });
-
+  
       console.log("Ticket created successfully:", response.data);
 
-      // Update tickets state and reset form
-      setTickets((prevTickets) => [
-        ...prevTickets,
-        {
-          id: response.data.ticket._id,
-          ...newTicket,
-          created_at: response.data.ticket.timestamps.created_at,
-          updated_at: response.data.ticket.timestamps.updated_at,
-        },
-      ]);
-
+      fetchTickets();
       handleCloseDialog();
       setNewTicket({
         Customer: "",
@@ -234,7 +227,31 @@ const TicketSection = () => {
       console.error("Error adding new ticket:", error.response?.data || error);
     }
   };
+  
 
+  // Function to handle the selection of a customer
+const handleCustomerChange = (event, value) => {
+  setNewTicket((prevTicket) => ({
+    ...prevTicket,
+    Customer: value ? value._id : '', // Ensure it's the customer's _id
+  }));
+};
+
+// In your Autocomplete component
+<Autocomplete
+  options={customers}
+  getOptionLabel={(option) => `${option.firstName} ${option.lastName}`}
+  renderInput={(params) => <TextField {...params} label="Customer" />}
+  onChange={(event, value) =>
+    handleInputChange({
+      target: {
+        name: 'Customer',
+        value: value ? value._id : '',
+      },
+    })
+  }
+  isOptionEqualToValue={(option, value) => option._id === value}
+/>
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -375,7 +392,7 @@ const TicketSection = () => {
                       }}
                     >
                     <Typography variant="body2" sx={{ color: "#9e9e9e" }}>
-                      Created: {formatToDateTime(ticket.timestamps?.created_at)}
+                      Created: {formatToRelativeTime(ticket.timestamps?.created_at)}
                     </Typography>
                     {/* <Box
                       sx={{
@@ -392,7 +409,7 @@ const TicketSection = () => {
                     {ticket.issue_details?.status}
                   </Box> */}
                   <Typography variant="body2" sx={{ color: "#9e9e9e" }}>
-                      Updated: {formatToDateTime(ticket.timestamps?.updated_at)}
+                    Updated: {formatToRelativeTime(ticket.timestamps?.updated_at)}
                   </Typography>
                 </Box>
             </Card>
@@ -409,7 +426,7 @@ const TicketSection = () => {
             <Autocomplete
               options={customers}
               getOptionLabel={(option) => `${option.firstName} ${option.lastName}`}
-              renderInput={(params) => <TextField {...params} label="Customer" />}
+              renderInput={(params) => <TextField {...params} label="Customer" error={!!error} helperText={error} />}
               onChange={(event, value) =>
                 handleInputChange({
                   target: {
@@ -454,7 +471,7 @@ const TicketSection = () => {
           {/* Sub-Category Dropdown */}
           <FormControl fullWidth sx={{ mb: 2 }}>
             <InputLabel>Sub-Category</InputLabel>
-            <Select value={newTicket.issue_details?.sub_category} name="subCategory" onChange={handleInputChange} label="Sub-Category">
+            <Select value={newTicket.issue_details?.sub_category} name="sub_category" onChange={handleInputChange} label="Sub-Category">
               <MenuItem value="Refund">Refund</MenuItem>
               <MenuItem value="Network Issues">Network Issues</MenuItem>
               <MenuItem value="Password Reset">Password Reset</MenuItem>

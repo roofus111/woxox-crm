@@ -106,6 +106,7 @@ const Login = ({ mode }) => {
       toast.success('Successfully Logined')
     } else {
       if (res?.error) {
+        toast.error(res.error); 
         const error = JSON.parse(res.error)
 
         setErrorState(error)

@@ -26,6 +26,7 @@ import {
     Grid,
     Card,
     CardContent,
+    MenuItem,
 } from "@mui/material";
 import AddCustomerForm from "@/views/apps/customer/Addcustomer";
 import { state } from "@formkit/drag-and-drop";
@@ -109,7 +110,7 @@ const Customer = () => {
         try {
             // Simulating an API call to get the invoice file URL
             const invoiceUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/invoices/download/${invoiceId}`;
-            
+
             // Create an anchor element to trigger the download
             const link = document.createElement("a");
             link.href = invoiceUrl;  // Set the file URL
@@ -119,7 +120,7 @@ const Customer = () => {
             console.error("Error downloading the invoice:", error);
         }
     };
-    
+
 
     // Fetch customers dynamically
     const fetchCustomers = async () => {
@@ -132,7 +133,13 @@ const Customer = () => {
                 },
             });
             console.log("Fetched customers:", response.data);
+            response.data.customers.forEach((customer) => {
+                console.log("Customer ID:", customer._id);
+            });
             setCustomers(response.data.customers); // Update the state with fetched data
+
+
+
         } catch (error) {
             console.error("Error fetching customers:", error);
         } finally {
@@ -164,10 +171,13 @@ const Customer = () => {
         } catch (error) {
             console.error('Error adding customer:', error);
         }
-    }; 
+    };
 
 
     const [openEditDialog, setOpenEditDialog] = useState(false);
+
+    console.log(customerId);
+
 
     useEffect(() => {
 
@@ -179,6 +189,8 @@ const Customer = () => {
 
             try {
                 const token = localStorage.getItem("token");
+                console.log(token);
+
                 const response = await axios.get(
                     `${process.env.NEXT_PUBLIC_API_URL}/api/customer/getcustomer/${customerId}`,
                     {
@@ -187,7 +199,7 @@ const Customer = () => {
                         },
                     }
                 );
-
+                console.log("umesh", response.data);
                 const customer = response.data.customer;
 
                 const flattenedData = {
@@ -208,67 +220,124 @@ const Customer = () => {
         fetchCustomerData();
     }, [customerId]);
 
-    const handleChange = (event) => {
-        const { name, value } = event.target;
-        setFormData((prevState) => ({
-            ...prevState,
-            [name]: value,
-        }));
-    };
-
-        // Handle "Edit" button click
-        const handleEdit = () => {
-            setIsEditable(true); // Enable the fields for editing
-        };
-
-        const handleSave = async () => {
+    useEffect(() => {
+        if (!customerId) return;
+    
+        const fetchCustomerData = async () => {
+            setLoading(true);
+            setError(null);
+    
             try {
                 const token = localStorage.getItem("token");
-
-                const updatedData = {
-                    ...formData,
-                    address: {
-                        street: formData.street,
-                        city: formData.city,
-                        state: formData.state,
-                        postalCode: formData.postalCode,
-                        country: formData.country,
-                    },
-                };
-
-                delete updatedData.street;
-                delete updatedData.city;
-                delete updatedData.state;
-                delete updatedData.postalCode;
-                delete updatedData.country;
-
-                await axios.put(
-                    `${process.env.NEXT_PUBLIC_API_URL}/api/customer/updatecustomer/${customerId}`,
-                    updatedData,
+                console.log(token);
+    
+                const response = await axios.get(
+                    `${process.env.NEXT_PUBLIC_API_URL}/api/customer/getcustomer/${customerId}`,
                     {
                         headers: {
                             Authorization: `Bearer ${token}`,
                         },
                     }
                 );
-
-                setIsEditable(false); // Disable the fields after saving
+                console.log("Response Data:", response.data);
+                console.log("leadID", response.data.leadID);
+                
+                const leadIds = response.data.leadIds;
+    
+                // Combine customer and lead data
+                const combinedData = {
+                    ...flattenedCustomerData,
+                    leadIds, // Add leadIds to the state
+                };
+    
+                setFormData(combinedData);
             } catch (error) {
-                console.error("Error updating customer:", error);
+                console.error("Error fetching customer data:", error);
+                setError("Failed to fetch customer data");
+            } finally {
+                setLoading(false);
             }
-        }
-
-        const handleOpenEditDialog = (id) => {
-            setCustomerId(id);
-            setOpenEditDialog(true);
         };
     
-        const handleCloseEditDialog = () => {
-            setOpenEditDialog(false);
-            setCustomerId("");
-            setFormData({});
-            setIsEditable(false);
-        };
+        fetchCustomerData();
+    }, [customerId]);
+    
+
+    // handleChange function
+    const handleChange = ({ target: { name, value } }) => {
+        if (name.startsWith("address.")) {
+            const addressField = name.split(".")[1];
+            setFormData((prev) => ({
+                ...prev,
+                address: {
+                    ...prev.address,
+                    [addressField]: value,
+                },
+            }));
+        } else {
+            setFormData((prev) => ({ ...prev, [name]: value }));
+        }
+    };
+
+    // Handle "Edit" button click
+    const handleEdit = () => {
+        setIsEditable(true); // Enable the fields for editing
+    };
+
+    const handleSave = async () => {
+        try {
+            const token = localStorage.getItem("token");
+
+            // Prepare the updated customer data
+            const updatedData = {
+                ...formData,
+                address: {
+                    street: formData.street,
+                    city: formData.city,
+                    state: formData.state,
+                    postalCode: formData.postalCode,
+                    country: formData.country,
+                },
+            };
+
+            // Remove street, city, state, postalCode, country from the formData object
+            delete updatedData.street;
+            delete updatedData.city;
+            delete updatedData.state;
+            delete updatedData.postalCode;
+            delete updatedData.country;
+
+            console.log("Sending updated data:", updatedData); // Log to check the data
+
+            // Make the PUT request to update the customer
+            const response = await axios.put(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/customer/updatecustomer/${customerId}`,
+                updatedData,
+                {
+                    headers: { Authorization: `Bearer ${token}` },
+                }
+            );
+            
+            // Handle successful update
+            console.log("Customer updated successfully:", response.data);
+            setIsEditable(false); // Disable the fields after saving
+        } catch (error) {
+            // Handle and log error
+            console.error("Error updating customer:", error.response?.data || error.message);
+        }
+    };
+
+    const handleOpenEditDialog = (id) => {
+        setCustomerId(id);
+        setOpenEditDialog(true);
+    };
+
+    const handleCloseEditDialog = () => {
+        setOpenEditDialog(false);
+        setCustomerId("");
+        setFormData({});
+        setIsEditable(false);
+    };
 
     // const updateCustomer = async (id, updatedData) => {
     //     try {
@@ -292,7 +361,7 @@ const Customer = () => {
     //         console.error("Error updating customer:", error);
     //     }
     // };
-    
+
 
     // Delete a customer
     const deleteCustomer = async (_id) => {
@@ -320,9 +389,9 @@ const Customer = () => {
 
     // Function to open the dialog
     const handleOpenDialog = () => {
-    setOpenAddDialog(true);
+        setOpenAddDialog(true);
     };
-    
+
     // Function to close the dialog
     const handleCloseDialog = () => {
         setOpenAddDialog(false);
@@ -361,6 +430,23 @@ const Customer = () => {
     const handleOpenDrawer = (customer) => {
         setSelectedCustomer(customer);
         setDrawerOpen(true);
+        // Map the customer data to formData
+        setFormData({
+            firstName: customer.firstName || "",
+            lastName: customer.lastName || "",
+            email: customer.email || "",
+            phone: customer.phone || "",
+            address: {
+                street: customer.address?.street || "",
+                city: customer.address?.city || "",
+                state: customer.address?.state || "",
+                postalCode: customer.address?.postalCode || "",
+                country: customer.address?.country || "",
+            },
+            dateOfBirth: customer.dateOfBirth ? customer.dateOfBirth.split("T")[0] : "", // Format the date
+            gender: customer.gender || "",
+            status: customer.status || "Active",
+        });
     };
     const handleCloseDrawer = () => {
         setSelectedCustomer(null);
@@ -380,11 +466,11 @@ const Customer = () => {
             <Dialog open={openAddDialog} onClose={handleCloseDialog} fullWidth maxWidth="sm">
                 <DialogTitle>Add New Customer</DialogTitle>
                 <DialogContent>
-                <AddCustomerForm
-                    setOpenDialog={setOpenAddDialog}
-                    isEdit={isEditable}
-                    selectedCustomer={selectedCustomer}
-                    refreshCustomers={refreshCustomers}  // Ensure this is passed properly
+                    <AddCustomerForm
+                        setOpenDialog={setOpenAddDialog}
+                        isEdit={isEditable}
+                        selectedCustomer={selectedCustomer}
+                        refreshCustomers={refreshCustomers}  // Ensure this is passed properly
                     />
                 </DialogContent>
             </Dialog>
@@ -512,17 +598,17 @@ const Customer = () => {
                     </TableBody>
                 </Table>
                 <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)} fullWidth maxWidth="sm">
-                <DialogTitle>Edit Customer</DialogTitle>
-                <DialogContent>
-                    {selectedCustomer && (
-                        <AddCustomerForm
-                            customer={selectedCustomer} // Pass the selected customer data to the form
-                            setOpenAddDialog={setOpenEditDialog}
-                            addCustomer={addCustomer} // You can reuse the addCustomer function for updating
-                        />
-                    )}
-                </DialogContent>
-            </Dialog>
+                    <DialogTitle>Edit Customer</DialogTitle>
+                    <DialogContent>
+                        {selectedCustomer && (
+                            <AddCustomerForm
+                                customer={selectedCustomer} // Pass the selected customer data to the form
+                                setOpenAddDialog={setOpenEditDialog}
+                                addCustomer={addCustomer} // You can reuse the addCustomer function for updating
+                            />
+                        )}
+                    </DialogContent>
+                </Dialog>
             </TableContainer>
 
             <Drawer
@@ -716,33 +802,147 @@ const Customer = () => {
 
                     {/* Display content based on active tab */}
                     <Box
-                    sx={{
-                        paddingTop: 2,
-                        overflowY: "auto", // Ensure scrolling for content if it's long
-                        maxHeight: "60vh", // Limit the height of the content to avoid overflow
-                    }}
-                >
-                    {tabValue === 0 && (
-                                <Box sx={{ width: '100%', padding: 2, border: '1px solid #ccc', borderRadius: 1 }}>
-                                <Typography variant="h6">Customer ID: {formData._id || "Loading..."}</Typography>
+                        sx={{
+                            paddingTop: 2,
+                            overflowY: "auto", // Ensure scrolling for content if it's long
+                            maxHeight: "60vh", // Limit the height of the content to avoid overflow
+                        }}
+                    >
+                        {tabValue === 0 && (
+                            <Box sx={{ width: '100%', padding: 2, border: '1px solid #ccc', borderRadius: 1 }}>
                                 <Typography variant="h6">Basic Information</Typography>
                                 <Box sx={{ padding: 2 }}>
                                     {/* Render form fields dynamically */}
-                                    {Object.entries(formData).map(([key, value]) => (
-                                        key !== "_id" && (
-                                        <TextField
-                                            key={key}
-                                            label={key.replace(/([A-Z])/g, ' $1').toUpperCase()} // Formatting the label
-                                            name={key}
-                                            value={value}
-                                            onChange={handleChange}
-                                            fullWidth
-                                            disabled={!isEditable}
-                                            sx={{ marginBottom: 2 }}
-                                        />
-                                        )
-                                    ))}
-                                    
+                                    <form>
+                                        <Grid container spacing={2}>
+                                            <Grid item xs={12} sm={6}>
+                                                <TextField
+                                                    fullWidth
+                                                    label="First Name"
+                                                    name="firstName"
+                                                    value={formData.firstName}
+                                                    onChange={handleChange}
+                                                    required
+                                                />
+                                            </Grid>
+                                            <Grid item xs={12} sm={6}>
+                                                <TextField
+                                                    fullWidth
+                                                    label="Last Name"
+                                                    name="lastName"
+                                                    disabled={isEditable}
+                                                    value={formData.lastName}
+                                                    onChange={handleChange}
+                                                    required
+                                                />
+                                            </Grid>
+                                            <Grid item xs={12}>
+                                                <TextField
+                                                    fullWidth
+                                                    label="Email"
+                                                    name="email"
+                                                    type="email"
+                                                    value={formData.email}
+                                                    onChange={handleChange}
+                                                    required
+                                                />
+                                            </Grid>
+                                            <Grid item xs={12}>
+                                                <TextField
+                                                    fullWidth
+                                                    label="Phone"
+                                                    name="phone"
+                                                    value={formData.phone}
+                                                    onChange={handleChange}
+                                                />
+                                            </Grid>
+                                            <Grid item xs={12}>
+                                                <TextField
+                                                    fullWidth
+                                                    label="Street"
+                                                    name="address.street"
+                                                    value={formData.address?.street}
+                                                    onChange={handleChange}
+                                                />
+                                            </Grid>
+                                            <Grid item xs={12} sm={6}>
+                                                <TextField
+                                                    fullWidth
+                                                    label="City"
+                                                    name="address.city"
+                                                    value={formData.address?.city}
+                                                    onChange={handleChange}
+                                                />
+                                            </Grid>
+                                            <Grid item xs={12} sm={6}>
+                                                <TextField
+                                                    fullWidth
+                                                    label="State"
+                                                    name="address.state"
+                                                    value={formData.address?.state}
+                                                    onChange={handleChange}
+                                                />
+                                            </Grid>
+                                            <Grid item xs={12} sm={6}>
+                                                <TextField
+                                                    fullWidth
+                                                    label="Postal Code"
+                                                    name="address.postalCode"
+                                                    value={formData.address?.postalCode}
+                                                    onChange={handleChange}
+                                                />
+                                            </Grid>
+                                            <Grid item xs={12} sm={6}>
+                                                <TextField
+                                                    fullWidth
+                                                    label="Country"
+                                                    name="address.country"
+                                                    value={formData.address?.country}
+                                                    onChange={handleChange}
+                                                />
+                                            </Grid>
+                                            <Grid item xs={12}>
+                                                <TextField
+                                                    fullWidth
+                                                    label="Date of Birth"
+                                                    name="dateOfBirth"
+                                                    type="date"
+                                                    InputLabelProps={{ shrink: true }}
+                                                    value={formData.dateOfBirth}
+                                                    onChange={handleChange}
+                                                />
+                                            </Grid>
+                                            <Grid item xs={12} sm={6}>
+                                                <TextField
+                                                    fullWidth
+                                                    select
+                                                    label="Gender"
+                                                    name="gender"
+                                                    value={formData.gender}
+                                                    onChange={handleChange}
+                                                >
+                                                    <MenuItem value="">Select</MenuItem>
+                                                    <MenuItem value="Male">Male</MenuItem>
+                                                    <MenuItem value="Female">Female</MenuItem>
+                                                    <MenuItem value="Other">Other</MenuItem>
+                                                </TextField>
+                                            </Grid>
+                                            <Grid item xs={12} sm={6}>
+                                                <TextField
+                                                    fullWidth
+                                                    select
+                                                    label="Status"
+                                                    name="status"
+                                                    value={formData.status}
+                                                    onChange={handleChange}
+                                                >
+                                                    <MenuItem value="Active">Active</MenuItem>
+                                                    <MenuItem value="Inactive">Inactive</MenuItem>
+                                                </TextField>
+                                            </Grid>
+                                        </Grid>
+                                    </form>
+
                                     {/* Edit/Save Buttons */}
                                     <Box sx={{ marginTop: 2, display: 'flex', justifyContent: 'space-between' }}>
                                         {!isEditable && (
@@ -767,7 +967,7 @@ const Customer = () => {
                                         key={lead.id}
                                         sx={{
                                             width: '100%',
-                                             border: '0.5px solid #ccc',  // Thin gray border
+                                            border: '0.5px solid #ccc',  // Thin gray border
                                             borderRadius: 2,
                                             padding: 2,
                                             cursor: 'pointer',
@@ -841,8 +1041,8 @@ const Customer = () => {
                                         }}
                                     >
                                         <CardContent sx={{ display: 'flex', justifyContent: 'space-between' }}> */}
-                                            {/* Left Side */}
-                                            {/* <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                {/* Left Side */}
+                                {/* <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                     <i class="ri-receipt-fill" sx={{ color: '#007bff', fontSize: 40 }} />
                                                     <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#007bff' }}>
@@ -867,7 +1067,7 @@ const Customer = () => {
                         {tabValue === 2 && (
                             <>
                                 {/* First Card: File Info with Icons (View, Delete, Download) */}
-                                <Card sx={{ width: '100%', padding: 2, marginBottom: 2, border: '1px solid #ccc', borderRadius: 2,boxShadow: 'none',cursor: 'pointer', '&:hover': { boxShadow: 3 } }}>
+                                <Card sx={{ width: '100%', padding: 2, marginBottom: 2, border: '1px solid #ccc', borderRadius: 2, boxShadow: 'none', cursor: 'pointer', '&:hover': { boxShadow: 3 } }}>
                                     <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         {/* Left side: File icon and File name */}
                                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -880,17 +1080,17 @@ const Customer = () => {
                                                 <i class="ri-eye-line" /> {/* View Icon */}
                                             </Button>
                                             <Button>
-                                            <i class="ri-delete-bin-line"></i> {/* Delete Icon */}
+                                                <i class="ri-delete-bin-line"></i> {/* Delete Icon */}
                                             </Button>
                                             <Button>
-                                            <i class="ri-download-line"></i> {/* Download Icon */}
+                                                <i class="ri-download-line"></i> {/* Download Icon */}
                                             </Button>
                                         </Box>
                                     </CardContent>
                                 </Card>
 
                                 {/* Second Card: File Info with Upload Button */}
-                                <Card sx={{ width: '100%', padding: 2,boxShadow: 'none', border: '1px solid #ccc', borderRadius: 2,cursor: 'pointer', '&:hover': { boxShadow: 3 } }}>
+                                <Card sx={{ width: '100%', padding: 2, boxShadow: 'none', border: '1px solid #ccc', borderRadius: 2, cursor: 'pointer', '&:hover': { boxShadow: 3 } }}>
                                     <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         {/* Left side: File icon and File name */}
                                         <Box sx={{ display: 'flex', alignItems: 'center' }}>

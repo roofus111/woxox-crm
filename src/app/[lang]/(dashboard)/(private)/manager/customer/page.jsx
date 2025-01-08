@@ -111,7 +111,7 @@ const Customer = () => {
             // Simulating an API call to get the invoice file URL
             const invoiceUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/invoices/download/${invoiceId}`;
 
-            // Create an anchor element to trigger the download
+            // Create anchor element to trigger the download
             const link = document.createElement("a");
             link.href = invoiceUrl;  // Set the file URL
             link.download = `Invoice-${invoiceId}.pdf`;  // Set the default filename

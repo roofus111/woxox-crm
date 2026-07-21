@@ -16,7 +16,8 @@ fi
 
 if [ ! -f deploy/aws/certs/fullchain.pem ] || [ ! -f deploy/aws/certs/privkey.pem ]; then
   echo "WARNING: TLS certs not found in deploy/aws/certs/"
-  echo "For initial HTTP-only testing, use deploy/aws/nginx/woxox-http-only.conf instead."
+  echo "Using deploy/aws/nginx/woxox-http-only.conf (HTTP-only mode)."
+  export NGINX_CONF="${ROOT}/deploy/aws/nginx/woxox-http-only.conf"
 fi
 
 echo "==> Pulling latest code..."

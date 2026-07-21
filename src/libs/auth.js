@@ -13,14 +13,23 @@ export const authOptions = {
       async authorize(credentials) {
         const { email, password } = credentials;
 
+        // Prefer internal Docker URL on the server (avoids Elastic IP hairpin failures).
+        // API_URL is http://crmserver:8000/api → /login
+        // BACKEND_API_URL is http://crmserver:8000 → /api/login
+        const loginUrl = process.env.API_URL
+          ? `${process.env.API_URL}/login`
+          : process.env.BACKEND_API_URL
+            ? `${process.env.BACKEND_API_URL}/api/login`
+            : `${process.env.NEXT_PUBLIC_API_URL}/api/login`;
+
         try {
-          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/login`, {
+          const res = await fetch(loginUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email, password })
           });
 
-          const data = await res.json();
+          const data = await res.json().catch(() => ({}));
 
           if (res.status === 401) throw new Error("Invalid email or password");
 
@@ -33,8 +42,10 @@ export const authOptions = {
             };
           }
 
+          console.error("[auth] login failed", res.status, data);
           return null;
         } catch (e) {
+          console.error("[auth] login error", loginUrl, e.message);
           throw new Error(e.message);
         }
       }

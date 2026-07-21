@@ -6,7 +6,8 @@ npx prisma db push --skip-generate
 
 if [ "${SEED_DB:-false}" = "true" ]; then
   echo "Seeding database..."
-  npx tsx prisma/seed.ts || true
+  npx tsx prisma/seed.ts || echo "Seed skipped/failed (continuing)"
 fi
 
+echo "Starting CRM API..."
 exec "$@"

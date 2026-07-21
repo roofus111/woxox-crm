@@ -1,0 +1,21 @@
+{
+  "name": "@woxox/legalos-shared",
+  "version": "1.0.0",
+  "description": "Shared types, DTOs, enums, and provider contracts for WOXOX LegalOS India",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  },
+  "license": "UNLICENSED"
+}

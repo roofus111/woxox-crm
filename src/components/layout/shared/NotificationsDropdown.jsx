@@ -1,7 +1,7 @@
 'use client'
 
 // React Imports
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useMemo, useCallback } from 'react'
 
 // MUI Imports
 import IconButton from '@mui/material/IconButton'
@@ -21,6 +21,7 @@ import Button from '@mui/material/Button'
 // Third Party Components
 import classnames from 'classnames'
 import PerfectScrollbar from 'react-perfect-scrollbar'
+import { debounce } from 'lodash'
 
 // Component Imports
 import CustomAvatar from '@core/components/mui/Avatar'
@@ -33,6 +34,10 @@ import { useSettings } from '@core/hooks/useSettings'
 
 // Util Imports
 import { getInitials } from '@/utils/getInitials'
+
+// Add useSocket import
+import { useSocket } from '@/hooks/useSocket'
+import { toast } from 'react-toastify'
 
 const ScrollWrapper = ({ children, hidden }) => {
   if (hidden) {
@@ -71,18 +76,89 @@ const NotificationDropdown = ({ notifications }) => {
   const [open, setOpen] = useState(false)
   const [notificationsState, setNotificationsState] = useState(notifications)
 
-  // Vars
-  const notificationCount = notificationsState.filter(notification => !notification.read).length
-  const readAll = notificationsState.every(notification => notification.read)
+  // Memoize filtered notifications count
+  const notificationCount = useMemo(() =>
+    notificationsState.filter(notification => !notification.read).length,
+    [notificationsState]
+  )
+
+  // Memoize readAll status
+  const readAll = useMemo(() =>
+    notificationsState.every(notification => notification.read),
+    [notificationsState]
+  )
 
   // Refs
   const anchorRef = useRef(null)
   const ref = useRef(null)
 
   // Hooks
+  const { notificationData } = useSocket()
   const hidden = useMediaQuery(theme => theme.breakpoints.down('lg'))
   const isSmallScreen = useMediaQuery(theme => theme.breakpoints.down('sm'))
   const { settings } = useSettings()
+
+  // Handlers
+  const handleReadNotification = useCallback((event, value, index) => {
+    event.stopPropagation()
+    setNotificationsState(prev => {
+      const newNotifications = [...prev]
+      newNotifications[index].read = value
+      return newNotifications
+    })
+  }, [])
+
+  const handleRemoveNotification = useCallback((event, index) => {
+    event.stopPropagation()
+    setNotificationsState(prev => {
+      const newNotifications = [...prev]
+      newNotifications.splice(index, 1)
+      return newNotifications
+    })
+  }, [])
+
+  const readAllNotifications = useCallback(() => {
+    setNotificationsState(prev =>
+      prev.map(notification => ({
+        ...notification,
+        read: !readAll
+      }))
+    )
+  }, [readAll])
+
+  // Handle resize effect
+  useEffect(() => {
+    const adjustPopoverHeight = () => {
+      if (ref.current) {
+        const availableHeight = window.innerHeight - 100
+        ref.current.style.height = `${Math.min(availableHeight, 550)}px`
+      }
+    }
+
+    adjustPopoverHeight() // Call initially
+    const debouncedAdjust = debounce(adjustPopoverHeight, 250) // Debounce resize handler
+
+    window.addEventListener('resize', debouncedAdjust)
+    return () => {
+      window.removeEventListener('resize', debouncedAdjust)
+      debouncedAdjust.cancel()
+    }
+  }, [])
+
+  // Handle socket notifications
+  useEffect(() => {
+    const handleNewNotification = (notification) => {
+      setNotificationsState(prev => [{
+        title: notification?.title || 'New Notification',
+        subtitle: notification?.message || notification?.subtitle,
+        time: new Date().toLocaleTimeString(),
+        read: false,
+        avatarIcon: notification?.icon || 'ri-notification-2-line',
+        avatarColor: notification?.color || 'primary'
+      }, ...prev])
+    }
+    handleNewNotification(notificationData)
+  }, [notificationData])
 
   const handleClose = () => {
     setOpen(false)
@@ -91,47 +167,6 @@ const NotificationDropdown = ({ notifications }) => {
   const handleToggle = () => {
     setOpen(prevOpen => !prevOpen)
   }
-
-  // Read notification when notification is clicked
-  const handleReadNotification = (event, value, index) => {
-    event.stopPropagation()
-    const newNotifications = [...notificationsState]
-
-    newNotifications[index].read = value
-    setNotificationsState(newNotifications)
-  }
-
-  // Remove notification when close icon is clicked
-  const handleRemoveNotification = (event, index) => {
-    event.stopPropagation()
-    const newNotifications = [...notificationsState]
-
-    newNotifications.splice(index, 1)
-    setNotificationsState(newNotifications)
-  }
-
-  // Read or unread all notifications when read all icon is clicked
-  const readAllNotifications = () => {
-    const newNotifications = [...notificationsState]
-
-    newNotifications.forEach(notification => {
-      notification.read = !readAll
-    })
-    setNotificationsState(newNotifications)
-  }
-
-  useEffect(() => {
-    const adjustPopoverHeight = () => {
-      if (ref.current) {
-        // Calculate available height, subtracting any fixed UI elements' height as necessary
-        const availableHeight = window.innerHeight - 100
-
-        ref.current.style.height = `${Math.min(availableHeight, 550)}px`
-      }
-    }
-
-    window.addEventListener('resize', adjustPopoverHeight)
-  }, [])
 
   return (
     <>
@@ -156,16 +191,16 @@ const NotificationDropdown = ({ notifications }) => {
         anchorEl={anchorRef.current}
         {...(isSmallScreen
           ? {
-              className: 'is-full !mbs-4 z-[1] max-bs-[550px] bs-[550px]',
-              modifiers: [
-                {
-                  name: 'preventOverflow',
-                  options: {
-                    padding: themeConfig.layoutPadding
-                  }
+            className: 'is-full !mbs-4 z-[1] max-bs-[550px] bs-[550px]',
+            modifiers: [
+              {
+                name: 'preventOverflow',
+                options: {
+                  padding: themeConfig.layoutPadding
                 }
-              ]
-            }
+              }
+            ]
+          }
           : { className: 'is-96 !mbs-4 z-[1] max-bs-[550px] bs-[550px]' })}
       >
         {({ TransitionProps, placement }) => (

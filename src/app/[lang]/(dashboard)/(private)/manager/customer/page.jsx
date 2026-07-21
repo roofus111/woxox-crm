@@ -42,9 +42,62 @@ const Customer = () => {
     const [tabValue, setTabValue] = useState(0);
     const [formData, setFormData] = useState({});
     const [error, setError] = useState(null);
+    const [leadData, setLeadData] = useState([]);
+
 
     const [isEditable, setIsEditable] = useState(false);
     const [customerId, setCustomerId] = useState("");
+
+
+
+    // Handle sorting
+    const handleSort = (field) => {
+        const isAsc = sortBy.field === field && sortBy.direction === "asc";
+        setSortBy({ field, direction: isAsc ? "desc" : "asc" });
+    };
+
+    const sortedCustomers = [...customers].sort((a, b) => {
+        if (!sortBy.field) return 0;
+        const valueA = a[sortBy.field];
+        const valueB = b[sortBy.field];
+        if (valueA < valueB) return sortBy.direction === "asc" ? -1 : 1;
+        if (valueA > valueB) return sortBy.direction === "asc" ? 1 : -1;
+        return 0;
+    });
+
+    // Handle row selection
+    const handleRowSelect = (id) => {
+        setSelectedRows((prev) =>
+            prev.includes(id) ? prev.filter((rowId) => rowId !== id) : [...prev, id]
+        );
+    };
+
+    // Handle "Select All" checkbox
+    const handleSelectAll = () => {
+        if (selectedRows.length === customers.length) {
+            setSelectedRows([]);
+        } else {
+            setSelectedRows(customers.map((customer) => customer.id));
+        }
+    };
+
+    // Drawer open and close
+    const handleOpenDrawer = (customer) => {
+        setSelectedCustomer(customer);
+        setDrawerOpen(true);
+    };
+    const handleCloseDrawer = () => {
+        setSelectedCustomer(null);
+        setDrawerOpen(false);
+    };
+
+
+    const handleTabChange = (event, newValue) => {
+        setTabValue(newValue);
+    };
+
+    // Placeholder functions for the buttons
+
 
     const activities = [
         {
@@ -73,12 +126,6 @@ const Customer = () => {
         },
     ];
 
-    const handleViewInvoice = () => {
-        // Set the invoice details and open the modal
-        setInvoiceDetails(invoiceData[0]); // Use the first item from the array
-        setOpenModal(true);
-    };
-
     const leadsData = [
         {
             id: 1,
@@ -87,24 +134,15 @@ const Customer = () => {
             campaignDescription: 'A campaign to boost summer product sales.',
             status: 'Active',
             assignedTo: { name: 'John Doe', avatar: 'https://i.pravatar.cc/150?img=1' },
-        },
-        {
-            id: 2,
-            createdDate: '2024-06-05',
-            campaignName: 'Winter Discounts Campaign',
-            campaignDescription: 'Special discounts on winter essentials.',
-            status: 'Pending',
-            assignedTo: { name: 'Jane Smith', avatar: 'https://i.pravatar.cc/150?img=2' },
-        },
-        {
-            id: 3,
-            createdDate: '2024-06-10',
-            campaignName: 'Back-to-School Campaign',
-            campaignDescription: 'Promoting school supplies and uniforms.',
-            status: 'Completed',
-            assignedTo: { name: 'Michael Brown', avatar: 'https://i.pravatar.cc/150?img=3' },
-        },
+        }
     ];
+
+
+    const handleViewInvoice = () => {
+        // Set the invoice details and open the modal
+        setInvoiceDetails(invoiceData[0]); // Use the first item from the array
+        setOpenModal(true);
+    };
 
     const handleDownloadInvoice = async (invoiceId) => {
         try {
@@ -122,6 +160,7 @@ const Customer = () => {
     };
 
 
+
     // Fetch customers dynamically
     const fetchCustomers = async () => {
         setLoading(true);
@@ -137,8 +176,6 @@ const Customer = () => {
                 console.log("Customer ID:", customer._id);
             });
             setCustomers(response.data.customers); // Update the state with fetched data
-
-
 
         } catch (error) {
             console.error("Error fetching customers:", error);
@@ -180,7 +217,6 @@ const Customer = () => {
 
 
     useEffect(() => {
-
         if (!customerId) return;
 
         const fetchCustomerData = async () => {
@@ -222,15 +258,16 @@ const Customer = () => {
 
     useEffect(() => {
         if (!customerId) return;
-    
+
         const fetchCustomerData = async () => {
             setLoading(true);
             setError(null);
-    
+
             try {
                 const token = localStorage.getItem("token");
-                console.log(token);
-    
+                if (!token) throw new Error("No token found in localStorage");
+
+
                 const response = await axios.get(
                     `${process.env.NEXT_PUBLIC_API_URL}/api/customer/getcustomer/${customerId}`,
                     {
@@ -239,18 +276,35 @@ const Customer = () => {
                         },
                     }
                 );
+
                 console.log("Response Data:", response.data);
-                console.log("leadID", response.data.leadID);
-                
-                const leadIds = response.data.leadIds;
-    
-                // Combine customer and lead data
-                const combinedData = {
-                    ...flattenedCustomerData,
-                    leadIds, // Add leadIds to the state
+
+
+                const { leadIds, customer } = response.data;
+                const flattenedData = {
+                    ...customer,
+                    leadIds,
                 };
-    
-                setFormData(combinedData);
+
+                setFormData(flattenedData);
+
+                // Map `leadIds` to match `leadsData` structure
+                const mappedLeads = leadIds.map((lead) => ({
+                    id: lead._id, // ID from API
+                    Date: lead.createdAt, // Map `createdAt` to `createdDate`
+                    Name: lead.name || "Unknown Campaign", // Default value
+                    Description: lead.description || "No description available", // Default value
+                    status: lead.status || "Inactive", // Default value
+                    assignedTo: lead.assignedTo
+                        ? {
+                            name: lead.assignedTo.name || "Unassigned",
+                            avatar: lead.assignedTo.avatar || "https://i.pravatar.cc/150?img=1",
+                        }
+                        : { name: "Unassigned", avatar: "https://i.pravatar.cc/150?img=1" },
+                }));
+
+                setLeadData(mappedLeads); // Update `leadsData` state with mapped leads
+
             } catch (error) {
                 console.error("Error fetching customer data:", error);
                 setError("Failed to fetch customer data");
@@ -258,10 +312,10 @@ const Customer = () => {
                 setLoading(false);
             }
         };
-    
+
         fetchCustomerData();
     }, [customerId]);
-    
+
 
     // handleChange function
     const handleChange = ({ target: { name, value } }) => {
@@ -317,7 +371,7 @@ const Customer = () => {
                     headers: { Authorization: `Bearer ${token}` },
                 }
             );
-            
+
             // Handle successful update
             console.log("Customer updated successfully:", response.data);
             setIsEditable(false); // Disable the fields after saving
@@ -383,9 +437,6 @@ const Customer = () => {
     }, []);
 
     // Handle Tab Change
-    const handleTabChange = (event, newValue) => {
-        setTabValue(newValue);
-    };
 
     // Function to open the dialog
     const handleOpenDialog = () => {
@@ -398,60 +449,6 @@ const Customer = () => {
     };
 
     // Handle sorting
-    const handleSort = (field) => {
-        const isAsc = sortBy.field === field && sortBy.direction === "asc";
-        setSortBy({ field, direction: isAsc ? "desc" : "asc" });
-    };
-
-    const sortedCustomers = Array.isArray(customers) ? [...customers].sort((a, b) => {
-        if (!sortBy.field) return 0;
-        const valueA = a[sortBy.field];
-        const valueB = b[sortBy.field];
-        if (valueA < valueB) return sortBy.direction === "asc" ? -1 : 1;
-        if (valueA > valueB) return sortBy.direction === "asc" ? 1 : -1;
-        return 0;
-    }) : [];      // Handle row selection
-    const handleRowSelect = (id) => {
-        setSelectedRows((prev) =>
-            prev.includes(id) ? prev.filter((rowId) => rowId !== id) : [...prev, id]
-        );
-    };
-
-    // Handle "Select All" checkbox
-    const handleSelectAll = () => {
-        if (selectedRows.length === customers.length) {
-            setSelectedRows([]);
-        } else {
-            setSelectedRows(customers.map((customer) => customer.id));
-        }
-    };
-
-    // Drawer open and close
-    const handleOpenDrawer = (customer) => {
-        setSelectedCustomer(customer);
-        setDrawerOpen(true);
-        // Map the customer data to formData
-        setFormData({
-            firstName: customer.firstName || "",
-            lastName: customer.lastName || "",
-            email: customer.email || "",
-            phone: customer.phone || "",
-            address: {
-                street: customer.address?.street || "",
-                city: customer.address?.city || "",
-                state: customer.address?.state || "",
-                postalCode: customer.address?.postalCode || "",
-                country: customer.address?.country || "",
-            },
-            dateOfBirth: customer.dateOfBirth ? customer.dateOfBirth.split("T")[0] : "", // Format the date
-            gender: customer.gender || "",
-            status: customer.status || "Active",
-        });
-    };
-    const handleCloseDrawer = () => {
-        setSelectedCustomer(null);
-        setDrawerOpen(false);
-    };
 
     const handleViewLead = (id) => console.log(`Viewing lead with ID: ${id}`);
     const handleEditLead = (id) => console.log(`Editing lead with ID: ${id}`);
@@ -519,6 +516,9 @@ const Customer = () => {
                                 <strong>Phone</strong>
                             </TableCell>
                             <TableCell>
+                                <strong>Status</strong>
+                            </TableCell>
+                            <TableCell>
                                 <strong>Actions</strong>
                             </TableCell>
                         </TableRow>
@@ -535,6 +535,7 @@ const Customer = () => {
                                 <TableCell>{customer.firstName} {customer.lastName}</TableCell>
                                 <TableCell>{customer.email}</TableCell>
                                 <TableCell>{customer.phone}</TableCell>
+                                <TableCell>{customer.status}</TableCell>
                                 <TableCell>
                                     <Button
                                         onClick={() => handleOpenDrawer(customer)} // Use handleOpenDrawer instead of handleCloseDrawer
@@ -820,6 +821,7 @@ const Customer = () => {
                                                     fullWidth
                                                     label="First Name"
                                                     name="firstName"
+                                                    disabled={isEditable}
                                                     value={formData.firstName}
                                                     onChange={handleChange}
                                                     required
@@ -842,6 +844,7 @@ const Customer = () => {
                                                     label="Email"
                                                     name="email"
                                                     type="email"
+                                                    disabled={isEditable}
                                                     value={formData.email}
                                                     onChange={handleChange}
                                                     required
@@ -852,6 +855,7 @@ const Customer = () => {
                                                     fullWidth
                                                     label="Phone"
                                                     name="phone"
+                                                    disabled={isEditable}
                                                     value={formData.phone}
                                                     onChange={handleChange}
                                                 />
@@ -861,6 +865,7 @@ const Customer = () => {
                                                     fullWidth
                                                     label="Street"
                                                     name="address.street"
+                                                    disabled={isEditable}
                                                     value={formData.address?.street}
                                                     onChange={handleChange}
                                                 />
@@ -870,6 +875,7 @@ const Customer = () => {
                                                     fullWidth
                                                     label="City"
                                                     name="address.city"
+                                                    disabled={isEditable}
                                                     value={formData.address?.city}
                                                     onChange={handleChange}
                                                 />
@@ -879,6 +885,7 @@ const Customer = () => {
                                                     fullWidth
                                                     label="State"
                                                     name="address.state"
+                                                    disabled={isEditable}
                                                     value={formData.address?.state}
                                                     onChange={handleChange}
                                                 />
@@ -888,6 +895,7 @@ const Customer = () => {
                                                     fullWidth
                                                     label="Postal Code"
                                                     name="address.postalCode"
+                                                    disabled={isEditable}
                                                     value={formData.address?.postalCode}
                                                     onChange={handleChange}
                                                 />
@@ -897,6 +905,7 @@ const Customer = () => {
                                                     fullWidth
                                                     label="Country"
                                                     name="address.country"
+                                                    disabled={isEditable}
                                                     value={formData.address?.country}
                                                     onChange={handleChange}
                                                 />
@@ -907,6 +916,7 @@ const Customer = () => {
                                                     label="Date of Birth"
                                                     name="dateOfBirth"
                                                     type="date"
+                                                    disabled={isEditable}
                                                     InputLabelProps={{ shrink: true }}
                                                     value={formData.dateOfBirth}
                                                     onChange={handleChange}
@@ -918,6 +928,7 @@ const Customer = () => {
                                                     select
                                                     label="Gender"
                                                     name="gender"
+                                                    disabled={isEditable}
                                                     value={formData.gender}
                                                     onChange={handleChange}
                                                 >
@@ -933,6 +944,7 @@ const Customer = () => {
                                                     select
                                                     label="Status"
                                                     name="status"
+                                                    disabled={isEditable}
                                                     value={formData.status}
                                                     onChange={handleChange}
                                                 >
@@ -967,7 +979,7 @@ const Customer = () => {
                                         key={lead.id}
                                         sx={{
                                             width: '100%',
-                                            border: '0.5px solid #ccc',  // Thin gray border
+                                            border: '0.5px solid #ccc',
                                             borderRadius: 2,
                                             padding: 2,
                                             cursor: 'pointer',
@@ -992,7 +1004,6 @@ const Customer = () => {
 
                                             {/* Right Side */}
                                             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
-                                                {/* Chip for Status */}
                                                 <Chip
                                                     label={lead.status}
                                                     color={
@@ -1005,14 +1016,12 @@ const Customer = () => {
                                                     sx={{ fontWeight: 'bold', marginBottom: 1 }}
                                                 />
 
-                                                {/* Assigned to */}
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                        {/* Assigned to text */}
-                                                        <Box sx={{ display: 'flex', gap: 1, }}>
+                                                        <Box sx={{ display: 'flex', gap: 1 }}>
                                                             <Typography variant="body2" sx={{ color: '#495057', fontWeight: 'semibold' }}>
-
-                                                                Assigned to:<Avatar
+                                                                Assigned to:
+                                                                <Avatar
                                                                     src={lead.assignedTo.avatar}
                                                                     alt={lead.assignedTo.name}
                                                                     sx={{ width: 40, height: 40 }}
@@ -1022,7 +1031,6 @@ const Customer = () => {
                                                     </Box>
                                                 </Box>
                                             </Box>
-
                                         </CardContent>
                                     </Card>
                                 ))}

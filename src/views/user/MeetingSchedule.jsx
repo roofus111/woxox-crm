@@ -3,12 +3,9 @@ import React, { useState, useEffect, useRef } from 'react'
 import Grid from '@mui/material/Grid'
 import axios from 'axios'
 import Card from '@mui/material/Card'
-import CardHeader from '@mui/material/CardHeader'
 import CardContent from '@mui/material/CardContent'
 import Typography from '@mui/material/Typography'
 import Chip from '@mui/material/Chip'
-import OptionMenu from '@core/components/option-menu'
-import dynamic from 'next/dynamic'
 import CustomAvatar from '@core/components/mui/Avatar'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
@@ -16,164 +13,315 @@ import TextField from '@mui/material/TextField'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
-import DialogContentText from '@mui/material/DialogContentText'
-import UserLeftOverview from '@views/apps/leadView/view/user-left-overview'
-import UserRight from '@views/apps/leadView/view/user-right'
-import { DataProvider } from '@/contexts/DataContext'
-import { Box, Menu, MenuItem, FormControl, InputLabel, Select } from '@mui/material'
+import { Box, MenuItem, FormControl, InputLabel, Select, Tooltip, Autocomplete, useTheme, useMediaQuery } from '@mui/material'
 import { toast } from 'react-toastify'
 import { useSearchParams } from 'next/navigation'
-const OverViewTab = dynamic(() => import('@views/apps/leadView/view/user-right/overview'))
-const SecurityTab = dynamic(() => import('@views/apps/leadView/view/user-right/security'))
-const BillingPlans = dynamic(() => import('@views/apps/leadView/view/user-right/billing-plans'))
-const NotificationsTab = dynamic(() => import('@views/apps/leadView/view/user-right/notifications'))
-const ConnectionsTab = dynamic(() => import('@views/apps/leadView/view/user-right/connections'))
+import ResizableDrawer from '../../../src/app/[lang]/(dashboard)/(private)/manager/leads/components/ResizableDrawer'
 
 const Transactions = (props) => {
-  const [open, setOpen] = useState(false)
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'))
+
+  // UI states and dialog controls
+  const [openDrawer, setOpenDrawer] = useState(false)
+  const [open2, setOpen2] = useState(false)
   const [viewItem, setViewItem] = useState({})
 
-  const handleClickOpen = item => {
-    setOpen(true)
-    setViewItem(item)
-  }
-
-  const tabContentList = data => ({
-    overview: <OverViewTab props={data} />,
-    security: <SecurityTab props={data} />,
-    // 'billing-plans': <BillingPlans data={data} />,
-    notifications: <NotificationsTab props={data} />,
-    connections: <ConnectionsTab />
-  })
-
-  const handleClose = () => {
-    setOpen(false)
-    fetchItems(1, searchTerm)
-  }
-
-  const [data, setData] = useState([])
-  const [error, setError] = useState(null)
+  // Data & filtering states
+  const [leads, setLeads] = useState([])
   const [loading, setLoading] = useState(false)
   const [hasMore, setHasMore] = useState(true)
   const [page, setPage] = useState(1)
-  const [items, setItems] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedTags, setSelectedTags] = useState([])
+  const [assignee, setAssignee] = useState('')
+  const [status, setStatus] = useState('')
+  const [allTags, setAllTags] = useState([])
+  const [loadingTags, setLoadingTags] = useState(false)
+
   const loader = useRef(null)
   const inputRef = useRef(null)
+  const searchParams = useSearchParams()
+  const userId = searchParams.get('Userid')
 
+  // Status color mapping
+  const getStatusColor = (status) => {
+    const statusColors = {
+      'New': 'primary',
+      'Contacted': 'info',
+      'Interested': 'success',
+      'Not Interested': 'error',
+      'Converted': 'success',
+      'Pending': 'warning',
+      'In Progress': 'info',
+      'Processing': 'info',
+      'Won': 'success',
+      'Lost': 'error',
+      'Duplicate': 'default'
+    }
+    return statusColors[status] || 'default'
+  }
+
+  // Helper function to generate random background colors for avatars
+  const getRandomAvatarColor = (name) => {
+    const colors = [
+      '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+      '#DDA0DD', '#FFB6C1', '#87CEEB', '#F0E68C', '#FFA07A',
+      '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9', '#F8C471'
+    ]
+    if (!name) return colors[0]
+    const hash = name.split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0)
+      return a & a
+    }, 0)
+    return colors[Math.abs(hash) % colors.length]
+  }
+
+  // Helper function to get initials
+  const getInitials = (name) => {
+    if (!name) return '?'
+    return name.split(' ').map(word => word.charAt(0)).join('').toUpperCase().slice(0, 2)
+  }
+
+  useEffect(() => {
+    if (userId) {
+      console.log("URL parameter detected")
+      toast.error("UserID detected")
+    }
+  }, [userId])
+
+  // Simple drawer handler - opens plain drawer
+  const handleClickOpen = item => {
+    setOpenDrawer(true)
+    setViewItem(item)
+  }
+
+const handleCloseDrawer = () => {
+  setOpenDrawer(false)
+  // If you need to refetch, refetch all pages up to current page
+  const refetchAllPages = async () => {
+    setLoading(true)
+    const token = localStorage.getItem('token')
+    if (!token) {
+      setLoading(false)
+      return
+    }
+
+    const tagsString = selectedTags.map(tag => tag._id).join(',')
+    let allLeads = []
+    
+    // Fetch all pages up to current page
+    for (let p = 1; p <= page; p++) {
+      const url =
+        `${process.env.NEXT_PUBLIC_API_URL}/api/leads/search?page=${p}` +
+        `&search=${encodeURIComponent(searchTerm)}` +
+        `&status=${encodeURIComponent(status)}` +
+        `&assignedTo=${encodeURIComponent(assignee)}` +
+        (tagsString ? `&tags=${encodeURIComponent(tagsString)}` : '')
+
+      try {
+        const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+        const newData = await response.json()
+        let fetchedLeads = Array.isArray(newData.leads) ? newData.leads : []
+
+        // Apply client-side filtering
+        if (selectedTags.length > 0) {
+          const selectedTagIds = selectedTags.map(tag => tag._id)
+          fetchedLeads = fetchedLeads.filter(lead => {
+            let leadTagIds = []
+            if (lead.tags && Array.isArray(lead.tags)) {
+              leadTagIds = lead.tags.map(t => (typeof t === 'object' ? t._id : t))
+            }
+            return selectedTagIds.every(id => leadTagIds.includes(id))
+          })
+        }
+
+        allLeads = [...allLeads, ...fetchedLeads]
+      } catch (err) {
+        console.error("Error refetching leads: ", err)
+        break
+      }
+    }
+    
+    setLeads(allLeads)
+    setLoading(false)
+  }
+  
+  refetchAllPages()
+}
+
+  // Fetch available tags for Autocomplete
+  useEffect(() => {
+    const fetchTags = async () => {
+      setLoadingTags(true)
+      try {
+        const token = localStorage.getItem('token')
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/tagmanager/alltags`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+
+        // Check if response is an array directly (as seen in Postman)
+        if (Array.isArray(response.data)) {
+          console.log("Fetched tags (array):", response.data)
+          setAllTags(response.data)
+        }
+        // Or check if it's wrapped in a success property
+        else if (response.data && response.data.success && Array.isArray(response.data.data)) {
+          console.log("Fetched tags (success.data):", response.data.data)
+          setAllTags(response.data.data)
+        }
+        // If neither format works, log the issue
+        else {
+          console.error("Unexpected tags response format:", response.data)
+          toast.error("Unexpected tags format received")
+        }
+      } catch (err) {
+        console.error("Error fetching tags", err)
+        toast.error("Failed to load tags. Please try again.")
+      }
+      setLoadingTags(false)
+    }
+    fetchTags()
+  }, [])
+
+  // Fetch items on page or search change
   useEffect(() => {
     fetchItems(page, searchTerm)
   }, [page])
 
+  // Observer for infinite scroll
   useEffect(() => {
     const observer = new IntersectionObserver(handleObserver, {
       root: null,
       rootMargin: '20px',
       threshold: 1.0
     })
-
     if (loader.current) {
       observer.observe(loader.current)
     }
-
     return () => observer.disconnect()
   }, [])
 
+  // Debounce for searchTerm
   useEffect(() => {
     const timer = setTimeout(() => {
-      console.log('triggered')
-      setPage(1) // Reset to page 1 to handle new search terms correctly
+      setPage(1)
       fetchItems(1, searchTerm)
-    }, 300) // 300ms debounce time
-
+    }, 300)
     return () => clearTimeout(timer)
   }, [searchTerm])
 
-  const handleObserver = entities => {
+  // Auto re-fetch when filters change (tags, assignee, status)
+  useEffect(() => {
+    setPage(1)
+    fetchItems(1, searchTerm)
+  }, [selectedTags, assignee, status])
+
+  const handleObserver = (entities) => {
     const target = entities[0]
-    if (target.isIntersecting) {
+    if (target.isIntersecting && !loading && hasMore) {
       setPage(prev => prev + 1)
     }
   }
 
-  const handleSearchChange = e => {
+  const handleSearchChange = (e) => {
     setSearchTerm(e.target.value)
   }
 
   const resetSearch = () => {
     setSearchTerm('')
-    inputRef.current.value = '' // Clear the input field
+    setSelectedTags([])
+    setStatus('')
+    setAssignee('')
+    if (inputRef.current) inputRef.current.value = ''
     setPage(1)
-    fetchItems(1, '') // Fetch without any search term
+    fetchItems(1, '')
   }
 
-  const fetchItems = async (page, searchTerm = '',) => {
+  // Fetch items from API with filters
+  const fetchItems = async (page, searchTerm = '') => {
     setLoading(true)
     const token = localStorage.getItem('token')
     if (!token) {
-      setError('No authorization token found.')
       setLoading(false)
       return
     }
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/leads/search?page=${page}&search=${encodeURIComponent(searchTerm)}&status=${encodeURIComponent(status)}&assignedTo=${encodeURIComponent(assignee)}`,
-      {
-        headers: { Authorization: `Bearer ${token}` }
+
+    // Create a comma-separated string of tag IDs
+    const tagsString = selectedTags.map(tag => tag._id).join(',')
+    // Build the URL with a 'tags' query parameter as a comma-separated string.
+    const url =
+      `${process.env.NEXT_PUBLIC_API_URL}/api/leads/search?page=${page}` +
+      `&search=${encodeURIComponent(searchTerm)}` +
+      `&status=${encodeURIComponent(status)}` +
+      `&assignedTo=${encodeURIComponent(assignee)}` +
+      (tagsString ? `&tags=${encodeURIComponent(tagsString)}` : '')
+
+    try {
+      const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      const newData = await response.json()
+      // Ensure newData.leads is an array; fallback to an empty array if not
+      let fetchedLeads = Array.isArray(newData.leads) ? newData.leads : []
+
+      // Client-side filtering to display only leads that contain all selected tags.
+      if (selectedTags.length > 0) {
+        const selectedTagIds = selectedTags.map(tag => tag._id)
+        fetchedLeads = fetchedLeads.filter(lead => {
+          // Get IDs of tags in the lead
+          let leadTagIds = []
+          if (lead.tags && Array.isArray(lead.tags)) {
+            leadTagIds = lead.tags.map(t => (typeof t === 'object' ? t._id : t))
+          }
+          // Check that every selected tag is present in the lead's tags.
+          return selectedTagIds.every(id => leadTagIds.includes(id))
+        })
       }
-    )
-    const newData = await response.json()
-    console.log("new lead added", newData.leads)
 
-    if (page === 1) {
-      setLoading(false)
-      setItems(newData.leads) // Reset items if it's a new search or reset
-    } else {
-      setLoading(false)
-      setItems(prev => [...prev, ...newData.leads]) // Append items if it's just lazy loading more
+      console.log(fetchedLeads)
+      if (page === 1) {
+        setLeads(fetchedLeads)
+        setHasMore(fetchedLeads.length > 0)
+      } else {
+        setLeads(prev => [...prev, ...fetchedLeads])
+        setHasMore(fetchedLeads.length > 0)
+      }
+    } catch (err) {
+      console.error("Error fetching leads: ", err)
+      toast.error("Failed to load leads. Please try again.")
     }
+    setLoading(false)
   }
 
-
-  const callHandler = (x) => {
-    console.log('triggeresd', x)
+  // Helpers for tag display
+  const getTagLabel = (tag) => (tag ? tag.name : '')
+  const normalizeItemTags = (itemTags) => {
+    if (!itemTags || !Array.isArray(itemTags)) return []
+    return itemTags.map(t => {
+      if (typeof t === 'object') return t
+      const found = allTags.find(tag => tag._id === t)
+      return found || { _id: t, name: t, color: '#ccc' }
+    })
   }
 
-  const [open2, setOpen2] = useState(false)
-
-  const handleClickOpen2 = () => {
-    setOpen2(true)
+  // Truncate text helper
+  const truncateText = (text, maxLength = isMobile ? 15 : 25) => {
+    if (!text) return ''
+    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text
   }
-
-  const handleClose2 = () => {
-    setOpen2(false)
-  }
-  const handleFilter = () => {
-    setPage(1)
-    fetchItems(page, searchTerm)
-  }
-
-  const [assignee, setAssignee] = useState('')
-  const [status, setStatus] = useState('')
-
-  const searchParams = useSearchParams();
-  const userId = searchParams.get('Userid');
-
-  useEffect(() => {
-    if (userId) {
-      console.log("URL parameter detected");
-      toast.error("UserID detected");
-    }
-  }, [userId]);
 
   return (
     <>
       <Card>
-        <Grid container spacing={6} marginLeft={3} marginTop={3} marginRight={3}>
-          <Grid xs={12} item md={4}>
-            <h2>All Leads</h2>
+        <Grid container spacing={isMobile ? 2 : 6} sx={{ margin: 0, width: '100%' }}>
+          <Grid item xs={12} md={4} sx={{ paddingLeft: { xs: 2, md: 3 }, paddingTop: { xs: 2, md: 3 } }}>
+            <Typography variant={isMobile ? "h6" : "h5"} component="h2">
+              All Leads
+            </Typography>
           </Grid>
-          <Grid item xs={10} md={4}>
-            <Box display={'flex'}>
+          <Grid item xs={12} md={4} sx={{ paddingLeft: { xs: 2, md: 0 }, paddingRight: { xs: 2, md: 0 } }}>
+            <Box display={'flex'} gap={1}>
               <TextField
                 fullWidth
                 label='Search'
@@ -181,133 +329,384 @@ const Transactions = (props) => {
                 type='text'
                 ref={inputRef}
                 onChange={handleSearchChange}
+                size={isMobile ? 'small' : 'medium'}
               />
-              <Button onClick={resetSearch} color='primary' variant='standard'>
+              <Button 
+                onClick={resetSearch} 
+                color='primary' 
+                variant='text'
+                size={isMobile ? 'small' : 'medium'}
+                sx={{ minWidth: 'auto', px: 1 }}
+              >
                 Reset
-              </Button>{' '}
+              </Button>
             </Box>
           </Grid>
-          <Grid xs={12} item md={4}>
-            <Button onClick={handleClickOpen2}> Filter</Button>
+          <Grid item xs={12} md={4} sx={{ paddingLeft: { xs: 2, md: 0 }, paddingRight: { xs: 2, md: 3 } }}>
+            <Button 
+              onClick={() => setOpen2(true)}
+              variant="outlined"
+              size={isMobile ? 'small' : 'medium'}
+              fullWidth={isMobile}
+            >
+              Filter
+            </Button>
+            {selectedTags.length > 0 && (
+              <Box mt={1} display="flex" flexWrap="wrap" gap={0.5}>
+                {selectedTags.map(tag => (
+                  <Chip
+                    key={tag._id}
+                    size="small"
+                    label={tag.name}
+                    icon={<i className="ri-price-tag-3-fill" style={{ color: tag.color }}></i>}
+                    onDelete={() => {
+                      setSelectedTags(prev => prev.filter(t => t._id !== tag._id))
+                    }}
+                  />
+                ))}
+              </Box>
+            )}
           </Grid>
         </Grid>
-        <CardContent className='flex flex-col gap-3'>
-          {items &&
-            items.map((item, index) => (
+        <CardContent sx={{ padding: isMobile ? 1 : 3 }}>
+          {Array.isArray(leads) && leads.map((item, index) => {
+            const itemTags = normalizeItemTags(item.tags)
+            return (
               <Box
                 key={index}
-                className='flex items-center gap-4'
                 onClick={() => handleClickOpen(item)}
                 sx={{
-                  transition: 'padding 0.3s linear, backgroundColor 0.3s linear',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: isMobile ? 2 : 4,
+                  padding: isMobile ? '8px' : '12px',
+                  marginBottom: 1,
+                  borderRadius: 1,
+                  transition: 'all 0.2s ease-in-out',
                   '&:hover': {
-                    padding: '9px',
-                    backgroundColor: '#f7f7f7', // Darken background on hover
-                    transitionTimingFunction: 'linear',
-                    transitionDuration: '0.3s', // Corrected property name and value format
-                    cursor: 'pointer' // Indicates a clickable element
+                    backgroundColor: '#f5f5f5',
+                    cursor: 'pointer',
+                    transform: 'translateY(-1px)',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                   }
                 }}
               >
-                <CustomAvatar variant='rounded' src={item.avatarSrc} size={38} />
-                <div className='flex justify-between items-center is-full flex-wrap gap-x-4 gap-y-2'>
-                  <div className='flex flex-col gap-0.5'>
-                    <Typography color='text.primary' className='font-medium'>
-                      {item.name}
-                    </Typography>
-                    <div className='flex items-center gap-2'>
-                      <i className='ri-flag-line text-base text-textSecondary' />
-                      <Typography variant='body2'>{item.campaign ? item.campaign : item.campaignid?.name}</Typography>
-                    </div>
-                  </div>
-                  <Chip label={item.status} color={item.chipColor} size='small' variant='tonal' />
-                </div>
-              </Box>
-            ))}
+                {item.avatarSrc ? (
+                  <CustomAvatar 
+                    variant='rounded' 
+                    src={item.avatarSrc} 
+                    size={isMobile ? 32 : 38} 
+                  />
+                ) : (
+                  <Box
+                    sx={{
+                      width: isMobile ? 32 : 38,
+                      height: isMobile ? 32 : 38,
+                      borderRadius: 1,
+                      backgroundColor: getRandomAvatarColor(item.name),
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontWeight: 'bold',
+                      fontSize: isMobile ? '0.75rem' : '0.875rem'
+                    }}
+                  >
+                    {getInitials(item.name)}
+                  </Box>
+                )}
+                
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    width: '100%',
+                    minWidth: 0, // Allow flex items to shrink
+                  }}
+                >
+                  {/* Left side - Name, Tags, Campaign */}
+                  <Box 
+                    sx={{ 
+                      flex: 1, 
+                      minWidth: 0, // Allow shrinking
+                      marginRight: isMobile ? 1 : 2 
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, marginBottom: 0.5 }}>
+                      <Tooltip title={item.name || ''} placement="top">
+                        <Typography 
+                          color='text.primary' 
+                          sx={{ 
+                            fontWeight: 'medium',
+                            fontSize: isMobile ? '0.875rem' : '1rem',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            maxWidth: isMobile ? '120px' : '200px'
+                          }}
+                        >
+                          {truncateText(item.name)}
+                        </Typography>
+                      </Tooltip>
+                      
+                      {itemTags.length > 0 && !isMobile && (
+                        <Box sx={{ display: 'flex', gap: 0.5 }}>
+                          <Chip
+                            size='small'
+                            icon={<i className="ri-price-tag-3-fill" style={{ color: itemTags[0].color }}></i>}
+                            label={itemTags[0].name || ''}
+                          />
+                          {itemTags.length > 1 && (
+                            <Tooltip title={
+                              <Box>
+                                {itemTags.slice(1).map((tag, idx) => (
+                                  <Box key={idx} sx={{ display: "flex", alignItems: "center", mb: 0.5 }}>
+                                    <i className="ri-price-tag-3-fill" style={{ marginRight: 4, color: tag.color }}></i>
+                                    {tag.name}
+                                  </Box>
+                                ))}
+                              </Box>
+                            }>
+                              <Chip
+                                size='small'
+                                icon={<i className="ri-price-tag-3-fill"></i>}
+                                label={`+${itemTags.length - 1}`}
+                              />
+                            </Tooltip>
+                          )}
+                        </Box>
+                      )}
+                    </Box>
+                    
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <i className='ri-flag-line' style={{ fontSize: '14px', color: 'rgba(0,0,0,0.6)' }} />
+                      <Typography sx={{ fontSize: isMobile ? '0.65rem' : '0.75rem', color: 'rgba(0,0,0,0.6)' }}>
+                        {truncateText(item.campaign ? item.campaign : item.campaignid?.name, isMobile ? 20 : 30)}
+                      </Typography>
+                    </Box>
+                  </Box>
 
-          <div ref={loader} style={{ height: '50px' }}>
-            {loading ? <p> Loading more... </p> : null}
+                  {/* Right side - Status and Assigned (Fixed position) */}
+                  <Box 
+                    sx={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      alignItems: 'flex-end', 
+                      gap: 0.5,
+                      flexShrink: 0, // Prevent shrinking
+                      minWidth: isMobile ? '80px' : '120px'
+                    }}
+                  >
+                    <Chip 
+                      label={item.status} 
+                      color={getStatusColor(item.status)}
+                      size='small' 
+                      variant='filled'
+                      sx={{
+                        fontSize: isMobile ? '0.65rem' : '0.75rem',
+                        height: isMobile ? '20px' : '24px',
+                        fontWeight: 'medium'
+                      }}
+                    />
+                    <Typography 
+                      sx={{ 
+                        fontSize: isMobile ? '0.65rem' : '0.75rem', 
+                        color: 'rgba(0,0,0,0.6)',
+                        textAlign: 'right',
+                        lineHeight: 1.2
+                      }}
+                    >
+                      {item.assignedTo 
+                        ? truncateText(item.assignedTo?.firstName, isMobile ? 8 : 12)
+                        : 'Unassigned'
+                      }
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+            )
+          })}
+          
+          <div ref={loader} style={{ height: '50px', textAlign: 'center', padding: '20px' }}>
+            {loading && <Typography color="text.secondary">Loading more...</Typography>}
+            {!loading && leads.length === 0 && (
+              <Typography color="text.secondary">No leads match your filters</Typography>
+            )}
           </div>
         </CardContent>
       </Card>
+
       {/* Filter Modal */}
-      <Dialog maxWidth='xs' fullWidth open={open2} onClose={handleClose2}>
-        <DialogTitle>Filter the Leads</DialogTitle>
-        <DialogContent className='!pbs-2'>
-          <Box component='form' className='flex gap-4'>
-            <FormControl className='mie-4 mbe-4' fullWidth>
-              <InputLabel id='demo-dialog-select-label'>Assigned</InputLabel>
-              <Select
-                label='Assigned'
-                labelId='demo-dialog-select-label'
-                id='demo-dialog-select'
-                value={assignee}
-                onChange={(e) => setAssignee(e.target.value)}
-              >
-                <MenuItem value=''>
-                  <em>None</em>
-                </MenuItem>
-                {props.user.map((item) => (
-                  <MenuItem key={item._id} value={item._id}>
-                    {item.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <FormControl fullWidth>
-              <InputLabel htmlFor='outlined-age-native-basic'>Status</InputLabel>
-              <Select label='Status' labelId='demo-dialog-select-label' id='demo-dialog-select' value={status} onChange={(e) => setStatus(e.target.value)}>
-                <MenuItem value=''>
-                  <em>None</em>
-                </MenuItem>
-                <MenuItem value={'New'}>New</MenuItem>
-                <MenuItem value={'Contacted'}>Contacted</MenuItem>
-                <MenuItem value={'Interested'}>Interested</MenuItem>
-                <MenuItem value={"Not Interested"}>Not Interested</MenuItem>
-                <MenuItem value={"Converted"}>Converted</MenuItem>
-                <MenuItem value={"Pending"}>Pending</MenuItem>
-                <MenuItem value={"In Progress"}>In Progress</MenuItem>
-                <MenuItem value={"Won"}>Won</MenuItem>
-                <MenuItem value={"Lost"}>Lost</MenuItem>
-              </Select>
-            </FormControl>
+      <Dialog 
+        maxWidth='sm' 
+        fullWidth 
+        open={open2} 
+        onClose={() => setOpen2(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            padding: 1
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>Filter the Leads</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              <FormControl sx={{ minWidth: 120, flex: 1 }}>
+                <InputLabel>Assigned</InputLabel>
+                <Select
+                  label='Assigned'
+                  value={assignee}
+                  onChange={(e) => setAssignee(e.target.value)}
+                  size="small"
+                >
+                  <MenuItem value=''><em>None</em></MenuItem>
+                  {props.user && props.user.map((item) => (
+                    <MenuItem key={item._id} value={item._id}>
+                      {item.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              
+              <FormControl sx={{ minWidth: 120, flex: 1 }}>
+                <InputLabel>Status</InputLabel>
+                <Select
+                  label='Status'
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  size="small"
+                >
+                  <MenuItem value=''><em>None</em></MenuItem>
+                  <MenuItem value={'New'}>New</MenuItem>
+                  <MenuItem value={'Contacted'}>Contacted</MenuItem>
+                  <MenuItem value={'Interested'}>Interested</MenuItem>
+                  <MenuItem value={"Not Interested"}>Not Interested</MenuItem>
+                  <MenuItem value={"Converted"}>Converted</MenuItem>
+                  <MenuItem value={"Pending"}>Pending</MenuItem>
+                  <MenuItem value={"In Progress"}>In Progress</MenuItem>
+                  <MenuItem value={"Processing"}>Processing</MenuItem>
+                  <MenuItem value={"Won"}>Won</MenuItem>
+                  <MenuItem value={"Lost"}>Lost</MenuItem>
+                  <MenuItem value={"Duplicate"}>Duplicate</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+            
+            <Autocomplete
+              multiple
+              id="tags-filter"
+              options={allTags}
+              value={selectedTags}
+              onChange={(event, newValue) => setSelectedTags(newValue)}
+              getOptionLabel={getTagLabel}
+              loading={loadingTags}
+              isOptionEqualToValue={(option, value) => option._id === value._id}
+              size="small"
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  variant="outlined"
+                  label="Filter by Tags"
+                  placeholder="Select Tags"
+                  size="small"
+                  InputProps={{
+                    ...params.InputProps,
+                    endAdornment: (
+                      <>
+                        {loadingTags ? <span style={{ fontSize: '0.75rem' }}>Loading...</span> : null}
+                        {params.InputProps.endAdornment}
+                      </>
+                    ),
+                  }}
+                />
+              )}
+              renderOption={(props, option) => (
+                <li {...props}>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <i className="ri-price-tag-3-fill" style={{ color: option.color || '#ccc', marginRight: '8px' }} />
+                    {option.name}
+                  </Box>
+                </li>
+              )}
+              renderTags={(tagValue, getTagProps) =>
+                tagValue.map((option, index) => (
+                  <Chip
+                    key={option._id}
+                    label={option.name}
+                    {...getTagProps({ index })}
+                    icon={<i className="ri-price-tag-3-fill" style={{ color: option.color }}></i>}
+                    size="small"
+                  />
+                ))
+              }
+            />
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose2} variant='outlined' color='secondary'>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button 
+            onClick={() => setOpen2(false)} 
+            variant='outlined' 
+            size="small"
+          >
             Cancel
           </Button>
-          <Button onClick={handleFilter} variant='contained'>
-            Ok
+          <Button 
+            onClick={() => {
+              setOpen2(false)
+              setPage(1)
+              fetchItems(1, searchTerm)
+            }} 
+            variant='contained'
+            size="small"
+          >
+            Apply Filters
           </Button>
         </DialogActions>
       </Dialog>
-      {/* Lead Details */}
-      <Dialog fullScreen open={open} onClose={handleClose} aria-labelledby='form-dialog-title'>
-        <DialogTitle id='form-dialog-title'><Button onClick={handleClose}><i className="ri-arrow-left-s-line" /> </Button>Lead Details</DialogTitle>
-        <DialogContent>
 
-
-          <Grid container spacing={6}>
-            <DataProvider>
-              <Grid item xs={12} lg={4} md={5}>
-                <UserLeftOverview data={viewItem} />
-              </Grid>
-              <Grid item xs={12} lg={8} md={7}>
-                <UserRight tabContentList={tabContentList({ viewItem })} />
-              </Grid>
-            </DataProvider>
-          </Grid>
-        </DialogContent>
-        {/* <DialogActions className='p-3'>
-          <Button onClick={handleClose} variant='outlined' color='secondary'>
-            Cancel
-          </Button>
-          <Button onClick={() => callHandler(viewItem)} variant='contained' color='success'>
-            Call
-          </Button>
-        </DialogActions> */}
-      </Dialog >
+      {/* Plain Drawer - Simplified with basic lead info */}
+      <ResizableDrawer
+        open={openDrawer}
+        onClose={handleCloseDrawer}
+        defaultWidth={isMobile ? '100%' : 600}
+        minWidth={isMobile ? '100%' : 800}
+        maxWidth={isMobile ? '100%' : 1200}
+        leadData={viewItem}
+        leadId={viewItem._id}
+      >
+        <Box sx={{ p: isMobile ? 2 : 3 }}>
+          <Typography variant={isMobile ? "h6" : "h5"} gutterBottom>
+            Lead Details
+          </Typography>
+          <Typography variant="body1" gutterBottom>
+            <strong>Name:</strong> {viewItem.name}
+          </Typography>
+          <Typography variant="body1" gutterBottom>
+            <strong>Status:</strong> {viewItem.status}
+          </Typography>
+          <Typography variant="body1" gutterBottom>
+            <strong>Campaign:</strong> {viewItem.campaign ? viewItem.campaign : viewItem.campaignid?.name}
+          </Typography>
+          {viewItem.assignedTo && (
+            <Typography variant="body1" gutterBottom>
+              <strong>Assigned To:</strong> {viewItem.assignedTo.firstName}
+            </Typography>
+          )}
+          <Box sx={{ mt: 3 }}>
+            <Button 
+              variant="contained" 
+              color="primary" 
+              onClick={handleCloseDrawer}
+              fullWidth={isMobile}
+            >
+              Close
+            </Button>
+          </Box>
+        </Box>
+      </ResizableDrawer>
     </>
   )
 }

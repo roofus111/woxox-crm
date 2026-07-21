@@ -1,0 +1,349 @@
+// WOXOX CRM — PostgreSQL schema (multi-tenant, row-level isolation via workspaceId)
+// Phase 1: Core CRM entities. Expand per module in later migrations.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Tenancy & identity ─────────────────────────────────────────────────────
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  plan      String   @default("starter")
+  settings  Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users         WorkspaceMember[]
+  leads         Lead[]
+  contacts      Contact[]
+  companies     Company[]
+  deals         Deal[]
+  pipelines     Pipeline[]
+  activities    Activity[]
+  tasks         Task[]
+  auditLogs     AuditLog[]
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  name          String?
+  avatarUrl     String?
+  emailVerified DateTime?
+  twoFactorEnabled Boolean @default(false)
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  memberships WorkspaceMember[]
+  auditLogs   AuditLog[]
+}
+
+model WorkspaceMember {
+  id          String   @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        Role     @default(USER)
+  permissions Json     @default("[]")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([workspaceId])
+  @@index([userId])
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  MANAGER
+  USER
+  FINANCE
+  PIPELINE
+  GUEST
+}
+
+// ─── Lead management ────────────────────────────────────────────────────────
+
+model Lead {
+  id           String     @id @default(cuid())
+  workspaceId  String
+  title        String?
+  firstName    String?
+  lastName     String?
+  email        String?
+  phone        String?
+  companyName  String?
+  source       LeadSource @default(MANUAL)
+  status       LeadStatus @default(NEW)
+  score        Int        @default(0)
+  ownerId      String?
+  tags         String[]   @default([])
+  customFields Json       @default("{}")
+  geoLocation  Json?
+  convertedAt  DateTime?
+  deletedAt    DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  workspace  Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  activities Activity[]
+  deals      Deal[]
+
+  @@index([workspaceId, status])
+  @@index([workspaceId, email])
+  @@index([workspaceId, ownerId])
+  @@index([workspaceId, createdAt])
+}
+
+enum LeadSource {
+  MANUAL
+  WEBSITE
+  LANDING_PAGE
+  FACEBOOK
+  GOOGLE_ADS
+  WHATSAPP
+  EMAIL
+  API
+  CSV_IMPORT
+  REFERRAL
+  OTHER
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  UNQUALIFIED
+  NURTURING
+  CONVERTED
+  LOST
+}
+
+// ─── Contacts & companies ───────────────────────────────────────────────────
+
+model Contact {
+  id           String    @id @default(cuid())
+  workspaceId  String
+  companyId    String?
+  firstName    String
+  lastName     String?
+  emails       String[]  @default([])
+  phones       String[]  @default([])
+  jobTitle     String?
+  socialProfiles Json    @default("{}")
+  customFields Json      @default("{}")
+  ownerId      String?
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  company   Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  activities Activity[]
+  deals      Deal[]
+
+  @@index([workspaceId])
+  @@index([workspaceId, companyId])
+}
+
+model Company {
+  id           String    @id @default(cuid())
+  workspaceId  String
+  name         String
+  industry     String?
+  website      String?
+  revenue      Decimal?  @db.Decimal(18, 2)
+  employeeCount Int?
+  addresses    Json      @default("[]")
+  customFields Json      @default("{}")
+  ownerId      String?
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  contacts  Contact[]
+  deals     Deal[]
+
+  @@index([workspaceId])
+  @@index([workspaceId, name])
+}
+
+// ─── Deals & pipeline ───────────────────────────────────────────────────────
+
+model Pipeline {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  stages    PipelineStage[]
+  deals     Deal[]
+
+  @@index([workspaceId])
+}
+
+model PipelineStage {
+  id          String   @id @default(cuid())
+  pipelineId  String
+  name        String
+  probability Int      @default(0)
+  sortOrder   Int      @default(0)
+  isWon       Boolean  @default(false)
+  isLost      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  pipeline Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  deals    Deal[]
+
+  @@index([pipelineId, sortOrder])
+}
+
+model Deal {
+  id              String    @id @default(cuid())
+  workspaceId     String
+  pipelineId      String?
+  stageId         String?
+  leadId          String?
+  contactId       String?
+  companyId       String?
+  title           String
+  amount          Decimal   @default(0) @db.Decimal(18, 2)
+  currency        String    @default("INR")
+  probability     Int       @default(0)
+  expectedCloseAt DateTime?
+  closedAt        DateTime?
+  wonReason       String?
+  lostReason      String?
+  ownerId         String?
+  customFields    Json      @default("{}")
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  workspace Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  pipeline  Pipeline?      @relation(fields: [pipelineId], references: [id], onDelete: SetNull)
+  stage     PipelineStage? @relation(fields: [stageId], references: [id], onDelete: SetNull)
+  lead      Lead?          @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  contact   Contact?       @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  company   Company?       @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  activities Activity[]
+
+  @@index([workspaceId, stageId])
+  @@index([workspaceId, ownerId])
+  @@index([workspaceId, expectedCloseAt])
+}
+
+// ─── Activities & tasks ─────────────────────────────────────────────────────
+
+model Activity {
+  id          String       @id @default(cuid())
+  workspaceId String
+  type        ActivityType
+  subject     String
+  body        String?
+  dueAt       DateTime?
+  completedAt DateTime?
+  ownerId     String?
+  leadId      String?
+  contactId   String?
+  dealId      String?
+  metadata    Json         @default("{}")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  lead      Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  contact   Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  deal      Deal?     @relation(fields: [dealId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, type])
+  @@index([workspaceId, dueAt])
+}
+
+enum ActivityType {
+  CALL
+  MEETING
+  EMAIL
+  WHATSAPP
+  TASK
+  NOTE
+  SITE_VISIT
+  VIDEO_CALL
+  VOICE_NOTE
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  workspaceId String
+  title       String
+  description String?
+  status      TaskStatus @default(OPEN)
+  priority    TaskPriority @default(MEDIUM)
+  dueAt       DateTime?
+  ownerId     String?
+  assigneeId  String?
+  parentId    String?
+  checklist   Json       @default("[]")
+  deletedAt   DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, status])
+  @@index([workspaceId, assigneeId])
+}
+
+enum TaskStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// ─── Security & audit ───────────────────────────────────────────────────────
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  workspaceId String
+  userId      String?
+  action      String
+  entity      String
+  entityId    String?
+  ipAddress   String?
+  userAgent   String?
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt])
+  @@index([workspaceId, entity, entityId])
+}

@@ -8,11 +8,24 @@ import Button from '@mui/material/Button'
 // MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
+import Dialog from '@mui/material/Dialog'
+import DialogTitle from '@mui/material/DialogTitle'
+import DialogContent from '@mui/material/DialogContent'
+import DialogContentText from '@mui/material/DialogContentText'
+import DialogActions from '@mui/material/DialogActions'
+import List from '@mui/material/List'
+import ListItem from '@mui/material/ListItem'
+import ListItemText from '@mui/material/ListItemText'
+import Divider from '@mui/material/Divider'
+import Typography from '@mui/material/Typography'
+
 
 // Third-party Imports
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table'
 
+
 // Style Imports
+
 import styles from '@core/styles/table.module.css'
 import { IconButton } from '@mui/material'
 import { toast } from 'react-toastify'
@@ -46,68 +59,129 @@ const SalesRequest = () => {
             cell: info => info.getValue(),
             header: 'Email'
         }),
-        columnHelper.accessor('LeadId.profile.countryOfInterest', {
+        columnHelper.accessor('LeadId.campaignid.name', {
             cell: info => info.getValue(),
-            header: 'Country'
+            header: 'Campaign'
         }),
-        columnHelper.accessor('LeadId.profile.programOfInterest', {
-            cell: info => info.getValue(),
-            header: 'Course'
-        }),
+        // columnHelper.accessor('LeadId.profile.programOfInterest', {
+        //     cell: info => info.getValue(),
+        //     header: 'Course'
+        // }),
         columnHelper.accessor('', {
             header: 'Actions',
             cell: (info) => {
                 const rowData = info.row.original; // Access the original row data
                 return (
+                    // <div>
+                    //     <IconButton color='primary' size='small'>
+                    //         <i className='ri-eye-fill ' />
+                    //     </IconButton>
+                    //     {rowData?.LeadId?.status === 'Converted' ? (
+                    //         <>
+                    //             <Button onClick={() => handleApprove(rowData.LeadId._id)} color="success">Approve</Button>
+                    //             <IconButton color='error' size='small'>
+                    //                 <i className='ri-close-fill ' />
+                    //             </IconButton>
+                    //         </>
+                    //     ) : <Link href={`saleRequest/createInvoice?id=${rowData?.LeadId?._id}`} passHref>
+                    //         <IconButton color="primary" size="small">
+                    //             <i className="ri-bill-fill" />
+                    //         </IconButton>
+                    //     </Link>
+                    //     }
+                    // </div>
                     <div>
-                        <IconButton color='primary' size='small'>
-                            <i className='ri-eye-fill ' />
-                        </IconButton>
-                        {rowData?.LeadId?.status === 'Converted' ? (
-                            <>
-                                <Button onClick={() => handleApprove(rowData.LeadId._id)} color="success">Approve</Button>
-                                <IconButton color='error' size='small'>
-                                    <i className='ri-close-fill ' />
-                                </IconButton>
-                            </>
-                        ) : <Link href={`saleRequest/createInvoice?id=${rowData?.LeadId?._id}`} passHref>
-                            <IconButton color="primary" size="small">
-                                <i className="ri-bill-fill" />
-                            </IconButton>
-                        </Link>
-                        }
+                        {rowData.accepted ? (
+                            <><IconButton color='primary' size='small' onClick={() => handleOpen(rowData)}>
+                                <i className='ri-eye-fill ' />
+                            </IconButton><Link href={`saleRequest/createInvoice?id=${rowData?.LeadId?._id}&sales=${rowData?._id}`} passHref>
+                                    <IconButton color="primary" size="small">
+                                        <i className="ri-bill-fill" />
+                                    </IconButton>
+                                </Link></>
+                        ) : (
+                            <Button variant='contained' color='success' onClick={() => handleAccept(rowData._id)}>
+                                Accept
+                            </Button>
+                        )}
+
+
+
                     </div>
                 );
             }
         })
     ]
-
-    const handleApprove = async (id) => {
+    const [refresh, setRefresh] = useState(false)
+    const handleAccept = async (id) => {
         try {
             const token = localStorage.getItem('token')
             if (!token) {
                 toast.error('No authorization token found.')
-
                 return
             }
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leads/${id}/status`, {
+
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/sales/accept`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ status: "Pending" }),
-            });
+                body: JSON.stringify({ SalesId: id })
+            })
+
             if (!response.ok) {
-                toast.error("Something goes wrong")
+                const errorData = await response.json()
+                toast.error(errorData.message || 'Failed to accept sale request')
+                return
             }
-            const data = await response.json();
-            toast.success(`Lead Status changes to ${data.lead.status}`)
+
+            const data = await response.json()
+            toast.success('Sale request accepted successfully')
+
+            // Refresh the data
+            setRefresh(!refresh)
+
         } catch (error) {
-            console.error('Failed to update lead status:', error);
-            throw error; // Rethrow error to handle in the UI
+            console.error('Error accepting sale request:', error)
+            toast.error('Failed to accept sale request')
         }
     }
+
+
+
+
+
+
+
+    // const handleApprove = async (id) => {
+    //     try {
+    //         const token = localStorage.getItem('token')
+    //         if (!token) {
+    //             toast.error('No authorization token found.')
+
+    //             return
+    //         }
+    //         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leads/${id}/status`, {
+    //             method: 'PUT',
+    //             headers: {
+    //                 'Content-Type': 'application/json',
+    //                 'Authorization': `Bearer ${token}`
+    //             },
+    //             body: JSON.stringify({ status: "Pending" }),
+    //         });
+    //         if (!response.ok) {
+    //             toast.error("Something goes wrong")
+    //         }
+    //         const data = await response.json();
+    //         toast.success(`Lead Status changes to ${data.lead.status}`)
+    //     } catch (error) {
+    //         console.error('Failed to update lead status:', error);
+    //         throw error; // Rethrow error to handle in the UI
+    //     }
+    // }
+
+
     const table = useReactTable({
         data,
         columns,
@@ -150,9 +224,24 @@ const SalesRequest = () => {
         return () => {
             isMounted = false // Cleanup flag when component unmounts
         }
-    }, [])
+    }, [refresh])
+
+    const [open, setOpen] = useState(false);
+    const [rowData, setRowData] = useState(null);
+    const handleClose = () => {
+        setOpen(false);
+    };
+
+    const handleOpen = (rowData) => {
+        setOpen(true);
+        setRowData(rowData.invoice);
+    };
+
+
+
+
     return (
-        <Card>
+        <><Card>
             <CardHeader title='Sales Request' />
             <div className='overflow-x-auto'>
                 <table className={styles.table}>
@@ -182,6 +271,62 @@ const SalesRequest = () => {
                 </table>
             </div>
         </Card>
+            <Dialog
+                open={open}
+                onClose={handleClose}
+                aria-labelledby="alert-dialog-title"
+                aria-describedby="alert-dialog-description"
+            >
+                <DialogTitle id="alert-dialog-title">
+                    {"Sale Request Details"}
+                </DialogTitle>
+                <DialogContent>
+                    <DialogContentText id="alert-dialog-description">
+                        {rowData && rowData.length > 0 ? (
+                            <List>
+                                {rowData.map((invoice, index) => (
+                                    <div key={invoice._id}>
+                                        <ListItem>
+                                            <ListItemText
+                                                primary={`Invoice #${index + 1}`}
+                                                secondary={
+                                                    <>
+                                                        <Typography component="span" variant="body2">
+                                                            Total Amount: ₹{invoice.totalAmount}
+                                                        </Typography>
+                                                        <br />
+                                                        <Typography component="span" variant="body2">
+                                                            GST: ₹{invoice.gst}
+                                                        </Typography>
+                                                        <br />
+                                                        <Typography component="span" variant="body2">
+                                                            Grand Total: ₹{invoice.grandTotal}
+                                                        </Typography>
+
+                                                        <br />
+                                                        <Link href={`/manager/saleRequest/preview?id=${invoice.refId}`} passHref>
+                                                            <IconButton color="primary" size="small">
+                                                                <i className="ri-eye-fill" />
+                                                            </IconButton>
+                                                        </Link>
+                                                    </>
+                                                }
+                                            />
+                                        </ListItem>
+                                        {index < rowData.length - 1 && <Divider />}
+                                    </div>
+                                ))}
+                            </List>
+                        ) : (
+                            <Typography>No invoices found</Typography>
+                        )}
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleClose}>Close</Button>
+                </DialogActions>
+            </Dialog>
+        </>
     )
 }
 export default SalesRequest

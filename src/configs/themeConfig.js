@@ -21,9 +21,14 @@ const themeConfig = {
   userHomePageUrl: '/home',
   financeHomePageUrl: '/finance',
   pipelineHomePageUrl: '/pipeline',
+  marketplacePageUrl: '/marketplace',
+  loginPageUrl: '/login',
+  emailValidationPageUrl: '/email-validation',
+  companyRegisterPageUrl: '/company-register',
+  selectProductsPageUrl: '/select-products',
   settingsCookieName: 'TastyCookies',
   mode: 'light', // 'system', 'light', 'dark'
-  skin: 'default', // 'default', 'bordered'
+  skin: 'bordered', // 'default', 'bordered'
   semiDark: false, // true, false
   layout: 'vertical', // 'vertical', 'collapsed', 'horizontal'
   layoutPadding: 24, // Common padding for header, content, footer layout components (in px)

@@ -10,6 +10,8 @@ import Chip from '@mui/material/Chip'
 import Autocomplete from '@mui/material/Autocomplete'
 import InputAdornment from '@mui/material/InputAdornment'
 import IconButton from '@mui/material/IconButton'
+import Button from '@mui/material/Button'
+import Tooltip from '@mui/material/Tooltip'
 
 // Third-party Imports
 import classnames from 'classnames'
@@ -40,8 +42,12 @@ const renderChat = props => {
   const { chatStore, getActiveUserData, setSidebarOpen, backdropOpen, setBackdropOpen, isBelowMdScreen } = props
 
   return chatStore.chats.map(chat => {
-    const contact = chatStore.contacts.find(contact => contact.id === chat.userId) || chatStore.contacts[0]
-    const isChatActive = chatStore.activeUser?.id === contact.id
+    const contact = chatStore.contacts.find(
+      contact => contact.id?.toString() === chat.userId?.toString()
+    )
+    if (!contact) return null
+
+    const isChatActive = chatStore.activeUser?.id?.toString() === contact.id?.toString()
 
     return (
       <li
@@ -67,7 +73,9 @@ const renderChat = props => {
           <Typography color='inherit'>{contact?.fullName}</Typography>
           {chat.chat.length ? (
             <Typography variant='body2' color={isChatActive ? 'inherit' : 'text.secondary'} className='truncate'>
-              {chat.chat[chat.chat.length - 1].message}
+              {chat.chat[chat.chat.length - 1].messageType !== 'text'
+                ? `[${chat.chat[chat.chat.length - 1].messageType}]`
+                : chat.chat[chat.chat.length - 1].message}
             </Typography>
           ) : (
             <Typography variant='body2' color={isChatActive ? 'inherit' : 'text.secondary'} className='truncate'>
@@ -114,7 +122,8 @@ const SidebarLeft = props => {
     isBelowLgScreen,
     isBelowMdScreen,
     isBelowSmScreen,
-    messageInputRef
+    messageInputRef,
+    onOpenNewChat,
   } = props
 
   // States
@@ -122,9 +131,12 @@ const SidebarLeft = props => {
   const [searchValue, setSearchValue] = useState()
 
   const handleChange = (event, newValue) => {
+    if (!newValue) return
+    const contact = chatStore.contacts.find(contact => contact.fullName === newValue)
+    if (!contact) return
     setSearchValue(newValue)
-    dispatch(addNewChat({ id: chatStore.contacts.find(contact => contact.fullName === newValue)?.id }))
-    getActiveUserData(chatStore.contacts.find(contact => contact.fullName === newValue)?.id || chatStore.activeUser?.id)
+    dispatch(addNewChat({ id: contact.id }))
+    getActiveUserData(contact.id)
     isBelowMdScreen && setSidebarOpen(false)
     setBackdropOpen(false)
     setSearchValue(null)
@@ -219,17 +231,45 @@ const SidebarLeft = props => {
               }}
             />
             {isBelowMdScreen ? (
-              <IconButton
-                className='p-0 mis-2'
-                onClick={() => {
-                  setSidebarOpen(false)
-                  setBackdropOpen(false)
-                }}
-              >
-                <i className='ri-close-line' />
-              </IconButton>
-            ) : null}
+              <>
+                <Tooltip title='New chat'>
+                  <IconButton className='p-0 mis-1' onClick={onOpenNewChat}>
+                    <i className='ri-edit-box-line text-xl' />
+                  </IconButton>
+                </Tooltip>
+                <IconButton
+                  className='p-0 mis-2'
+                  onClick={() => {
+                    setSidebarOpen(false)
+                    setBackdropOpen(false)
+                  }}
+                >
+                  <i className='ri-close-line' />
+                </IconButton>
+              </>
+            ) : (
+              <Tooltip title='New chat'>
+                <IconButton color='primary' onClick={onOpenNewChat} className='mis-1'>
+                  <i className='ri-edit-box-line text-xl' />
+                </IconButton>
+              </Tooltip>
+            )}
           </div>
+        </div>
+        <div className='flex items-center justify-between pli-5 plb-2 border-be'>
+          <Typography variant='body2' color='text.secondary'>
+            {chatStore.chats.length ? `${chatStore.chats.length} conversation${chatStore.chats.length > 1 ? 's' : ''}` : 'No conversations yet'}
+          </Typography>
+          {(isBelowMdScreen || chatStore.chats.length === 0) && (
+            <Button
+              size='small'
+              variant='text'
+              startIcon={<i className='ri-add-line' />}
+              onClick={onOpenNewChat}
+            >
+              New Chat
+            </Button>
+          )}
         </div>
         <ScrollWrapper isBelowLgScreen={isBelowLgScreen}>
           <ul className='p-3 pbs-4'>
@@ -240,7 +280,22 @@ const SidebarLeft = props => {
               setSidebarOpen,
               isBelowMdScreen,
               setBackdropOpen
-            })}
+            }).filter(Boolean)}
+            {!chatStore.chats.length && chatStore.contacts.length > 0 && (
+              <div className='flex flex-col items-center gap-3 p-6'>
+                <Typography variant='body2' color='text.secondary' className='text-center'>
+                  No conversations yet. Start chatting with a team member.
+                </Typography>
+                <Button
+                  variant='contained'
+                  size='small'
+                  startIcon={<i className='ri-add-line' />}
+                  onClick={onOpenNewChat}
+                >
+                  New Chat
+                </Button>
+              </div>
+            )}
           </ul>
         </ScrollWrapper>
       </Drawer>

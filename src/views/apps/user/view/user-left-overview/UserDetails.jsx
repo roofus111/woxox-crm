@@ -12,7 +12,6 @@ import ConfirmationDialog from '@components/dialogs/confirmation-dialog'
 import OpenDialogOnElementClick from '@components/dialogs/OpenDialogOnElementClick'
 import CustomAvatar from '@core/components/mui/Avatar'
 
-// Vars
 const userData = {
   firstName: 'Seth',
   lastName: 'Hallam',

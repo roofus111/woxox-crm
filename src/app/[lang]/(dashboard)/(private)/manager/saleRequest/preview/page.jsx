@@ -1,76 +1,108 @@
 'use client'
 import axios from 'axios'
-import { redirect } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 // Component Imports
 import Preview from '@views/apps/manager/invoice/preview'
+import TransactionHistory from './TransactionHistory'
 import { useSearchParams } from 'next/navigation'
-// Data Imports
-import { getInvoiceData } from '@/app/server/actions'
 
-/**
- * ! If you need data using an API call, uncomment the below API code, update the `process.env.API_URL` variable in the
- * ! `.env` file found at root of your project and also update the API endpoints like `/apps/invoice` in below example.
- * ! Also, remove the above server action import and the action itself from the `src/app/server/actions.ts` file to clean up unused code
- * ! because we've used the server action for getting our static data.
- */
-/* const getInvoiceData = async () => {
-  // Vars
-  const res = await fetch(`${process.env.API_URL}/apps/invoice`)
+const PreviewPage = () => {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const transactionHistoryRef = useRef(null)
 
-  if (!res.ok) {
-    throw new Error('Failed to fetch invoice data')
+  useEffect(() => {
+  window.refreshTransactionHistory = () => {
+    try {
+      transactionHistoryRef.current?.refreshTransactions()
+    } catch (e) {
+    }
   }
 
-  return res.json()
-} */
-const PreviewPage = () => {
-  const [data, setData] = useState([])
+  return () => {
+    try { delete window.refreshTransactionHistory } catch (e) {}
+  }
+}, [transactionHistoryRef])
+
   const searchParams = useSearchParams()
   const id = searchParams.get('id')
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    axios
-      .get(`${process.env.NEXT_PUBLIC_API_URL}/api/invoice/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      })
-      .then(response => {
-        setData(response.data) // Update data if component is still mounted
-        console.log(response.data)
-      })
-      .catch(error => {
-        console.error('Failed to fetch data:', error)
-      })
-  }, [])
+    if (!id) {
+      setLoading(false)
+      setError('No invoice id in URL')
+      return
+    }
 
-  return <Preview invoiceData={{
-    id: data.id,
+    let isMounted = true
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    const headers = token ? { Authorization: `Bearer ${token}` } : {}
+
+    const fetchInvoice = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/invoice/${id}`, { headers })
+        if (!isMounted) return
+        setData(res.data)
+      } catch (err) {
+        console.error('Failed to fetch invoice:', err)
+        if (isMounted) setError(err?.response?.data?.message || err.message || 'Failed to load invoice')
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+
+    fetchInvoice()
+    return () => {
+      isMounted = false
+    }
+  }, [id])
+
+  if (loading) return <div className="p-4">Loading invoice...</div>
+  if (error) return <div className="p-4 text-red-600">Error: {String(error)}</div>
+  if (!data) return <div className="p-4">No invoice data</div>
+
+  const invoiceData = {
+    id: data.id ?? data._id ?? data.refId,
     issuedDate: data.issuedDate,
     address: data.address,
-    company: 'Hall-Robbins PLC',
+    company: data.company ?? 'Hall-Robbins PLC',
     companyEmail: data.companyEmail,
-    country: 'USA',
+    country: data.country ?? 'USA',
     contact: data.contact,
     name: data.name,
-    service: 'Software Development',
-    total: data.total,
+    service: data.service ?? 'Software Development',
+    total: data.total ?? data.totalAmount,
     avatar: '',
     avatarColor: 'primary',
     invoiceStatus: data.service,
-    balance: data.balance,
+    balance: data.balance ?? data.balanceAmount,
     dueDate: data.dueDate,
-    items: data.items,
+    items: data.items ?? [],
     gst: data.gst,
     subtotal: data.subtotal,
-    paid: data.paid,
+    paid: data.paid ?? data.paidAmount,
     leadId: data.leadId
+  }
 
-  }} id={data.refId} />
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="px-4 py-6">
+        <div className="mb-6">
+          <Preview invoiceData={invoiceData} id={data.refId ?? invoiceData.id} />
+        </div>
+      </div>
 
-
+      <div className="w-full">
+        <TransactionHistory 
+          ref={transactionHistoryRef}
+          invoiceId={data.refId ?? invoiceData.id} 
+        />
+      </div>
+    </div>
+  )
 }
 
 export default PreviewPage

@@ -8,20 +8,21 @@ import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Typography from '@mui/material/Typography'
 import { useTheme } from '@mui/material/styles'
+import { useMemo } from 'react'
 
 // Styled Component Imports
 const AppReactApexCharts = dynamic(() => import('@/libs/styles/AppReactApexCharts'))
 
-// Vars
-const series = [35, 30, 23]
-
-const DonutChart = () => {
-  // Hooks
+const DonutChart = ({ series = [], labels = [], colors }) => {
   const theme = useTheme()
 
-  const options = {
+  // Calculate total only once
+  const total = useMemo(() => series.reduce((sum, val) => sum + (val || 0), 0), [series])
+
+  // Memoize options to prevent unnecessary re-renders
+  const options = useMemo(() => ({
     legend: { show: false },
-    stroke: { width: 5, colors: ['var(--mui-palette-background-paper)'] },
+    stroke: { width: 5, colors: [theme.palette.background.paper] },
     grid: {
       padding: {
         top: 10,
@@ -30,10 +31,22 @@ const DonutChart = () => {
         bottom: 13
       }
     },
-    colors: ['var(--mui-palette-primary-main)', 'var(--mui-palette-success-main)', 'var(--mui-palette-secondary-main)'],
-    labels: [`${new Date().getFullYear()}`, `${new Date().getFullYear() - 1}`, `${new Date().getFullYear() - 2}`],
+    colors: colors || [
+      theme.palette.primary.main,
+      '#69A8F5',
+      '#F59000',
+      '#00F407',
+      '#F53B00'
+    ],
+    labels,
     tooltip: {
-      y: { formatter: val => `${val}%` }
+      theme: theme.palette.mode,
+      y: {
+        formatter: val => `${val} Leads`,
+        title: {
+          formatter: seriesName => `${seriesName}:`
+        }
+      }
     },
     dataLabels: {
       enabled: false
@@ -54,19 +67,18 @@ const DonutChart = () => {
             show: true,
             name: { show: false },
             total: {
-              label: '',
               show: true,
               fontWeight: 600,
               fontSize: '1rem',
-              color: 'var(--mui-palette-text-secondary)',
-              formatter: val => (typeof val === 'string' ? `${val}%` : '12%')
+              color: theme.palette.text.secondary,
+              formatter: () => `${total}`
             },
             value: {
               offsetY: 6,
               fontWeight: 600,
               fontSize: '0.9375rem',
-              formatter: val => `${val}%`,
-              color: 'var(--mui-palette-text-primary)'
+              formatter: val => `${val}`,
+              color: theme.palette.text.primary
             }
           }
         }
@@ -102,17 +114,34 @@ const DonutChart = () => {
         }
       }
     ]
+  }), [colors, labels, theme, total])
+
+  // Don't render if no data
+  if (!series.length) {
+    return (
+      <Card className='bs-full'>
+        <CardContent className='flex items-center justify-center min-h-[250px]'>
+          <Typography color='text.secondary'>No data available</Typography>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
     <Card className='bs-full'>
       <CardContent className='pbe-0'>
         <div className='flex flex-wrap items-center gap-1'>
-          <Typography variant='h5'>$27.9k</Typography>
-          <Typography color='success.main'>+16%</Typography>
+          <Typography variant='h5'>Total: </Typography>
+          <Typography color='success.main'>{total}</Typography>
         </div>
-        <Typography variant='subtitle1'>Total Growth</Typography>
-        <AppReactApexCharts type='donut' height={127} width='100%' options={options} series={series} />
+        <Typography variant='subtitle1' className='mbe-4'>Distribution</Typography>
+        <AppReactApexCharts
+          type='donut'
+          height={127}
+          width='100%'
+          options={options}
+          series={series}
+        />
       </CardContent>
     </Card>
   )

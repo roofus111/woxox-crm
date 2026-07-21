@@ -1,75 +1,103 @@
-import NextAuth from 'next-auth'
-import CredentialsProvider from 'next-auth/providers/credentials'
+import NextAuth from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
 
 export const authOptions = {
   providers: [
     CredentialsProvider({
-      name: 'Credentials',
+      name: "Credentials",
       credentials: {
-        email: { label: 'Email', type: 'text' },
-        password: { label: 'Password', type: 'password' }
+        email: { label: "Email", type: "text" },
+        password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        const { email, password } = credentials
+        const { email, password } = credentials;
 
         try {
           const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/login`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email, password })
-          })
+          });
 
-          const data = await res.json()
+          const data = await res.json();
 
-          if (res.status === 401) {
-            throw new Error('Invalid email or password')
-          }
+          if (res.status === 401) throw new Error("Invalid email or password");
 
           if (res.status === 200 && data.token) {
-            return { ...data, role: data.role || 'guest', Stoken: data.token } // Include token in return
+            // return everything you need to seed the JWT
+            return {
+              ...data,
+              role: data.user.role || "guest",
+              Stoken: data.token
+            };
           }
 
-          return null
+          return null;
         } catch (e) {
-          throw new Error(e.message)
+          throw new Error(e.message);
         }
       }
     })
   ],
 
   session: {
-    strategy: 'jwt',
-    maxAge: 10 * 60 * 60 //10hrs
+    strategy: "jwt",
+    maxAge: 10 * 60 * 60 // 10 hrs
   },
 
   pages: {
-    signIn: '/login'
+    signIn: "/login"
   },
 
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
+      // First login
       if (user) {
-        token.name = user.name
-        token.id = user.id
-        token.email = user.email
-        token.role = user.role
-        token.accessToken = user.Stoken // Store token in JWT payload
+        token.name = user.user.name;
+        token.id = user.user.id;
+        token.email = user.user.email;
+        token.role = user.role;
+        token.accessToken = user.Stoken;
+        token.isEmailVerified = user.user.isEmailVerified;
+        token.company = user.user.companyId;
+        token.plan = user.user.plan;
       }
-      return token
+
+      // session.update() path
+      if (trigger === "update" && session) {
+        // Whatever you pass to session.update({...}) will be in `session` here.
+        if (session.user) {
+          token.name = session.user.name ?? token.name;
+          token.role = session.user.role ?? token.role;
+          token.company = session.user.company ?? token.company;
+          token.plan = session.user.plan ?? token.plan;
+          token.isEmailVerified =
+            session.user.isEmailVerified ?? token.isEmailVerified;
+          if (session.user.enabledProducts) {
+            token.enabledProducts = session.user.enabledProducts;
+          }
+        }
+        if (session.accessToken) token.accessToken = session.accessToken;
+      }
+
+      return token;
     },
+
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id
-        session.user.name = token.name
-        session.user.email = token.email
-        session.user.role = token.role
-        session.accessToken = token.accessToken // Include accessToken in session
+        session.user.id = token.id;
+        session.user.name = token.name;
+        session.user.email = token.email;
+        session.user.role = token.role;
+        session.user.isEmailVerified = token.isEmailVerified;
+        session.user.company = token.company;
+        session.user.plan = token.plan;
+        session.user.enabledProducts = token.enabledProducts;
       }
-      return session
+      session.accessToken = token.accessToken;
+      return session;
     }
   }
-}
+};
 
-export default NextAuth(authOptions)
+export default NextAuth(authOptions);

@@ -13,12 +13,19 @@ import { useParams } from 'next/navigation'
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import Button from '@mui/material/Button'
+import Dialog from '@mui/material/Dialog'
+import DialogTitle from '@mui/material/DialogTitle'
+import DialogContent from '@mui/material/DialogContent'
+import DialogActions from '@mui/material/DialogActions'
+import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import IconButton from '@mui/material/IconButton'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import Tooltip from '@mui/material/Tooltip'
 import TablePagination from '@mui/material/TablePagination'
+import { toast } from 'react-toastify'
+import { useDropzone } from 'react-dropzone'
 
 // Third-party Imports
 import classnames from 'classnames'
@@ -69,6 +76,12 @@ const invoiceStatusObj = {
   Downloaded: { color: 'info', icon: 'ri-arrow-down-line' }
 }
 
+// Helper function to clean document names
+const cleanDocumentName = (filename) => {
+  // Remove timestamp portion (numbers after underscore)
+  return filename.replace(/_\d+\.pdf$/i, '.pdf')
+}
+
 // Column Definitions
 
 const InvoiceListTable = ({ id }) => {
@@ -78,6 +91,73 @@ const InvoiceListTable = ({ id }) => {
   const [globalFilter, setGlobalFilter] = useState('')
   const [anchorEl, setAnchorEl] = useState(null)
   const columnHelper = createColumnHelper()
+  const [file, setFile] = useState(null)
+  const [docData, setDocData] = useState({ docName: '' })
+  const [errorMessage, setErrorMessage] = useState('')
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
+  const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+
+
+  const openGenerateDocument = () => {
+    window.location.href = `/en/manager/leaddoceditor?leadId=${id}`;
+  };
+
+  const { getRootProps, getInputProps } = useDropzone({
+  multiple: false,
+  accept: {
+    'application/pdf': ['.pdf'],
+    'image/*': ['.png', '.jpg', '.jpeg']
+  },
+  onDrop: acceptedFiles => {
+    const selectedFile = acceptedFiles[0]
+    if (selectedFile.size > MAX_FILE_SIZE) {
+      setErrorMessage('File size exceeds 5MB')
+      return
+    }
+    setErrorMessage('')
+    setFile(Object.assign(selectedFile, { preview: URL.createObjectURL(selectedFile) }))
+  }
+})
+
+const handleUpload = async () => {
+  if (!file) {
+    setErrorMessage('Please select a file to upload')
+    return
+  }
+
+  const token = localStorage.getItem('token')
+  const formDataUpload = new FormData()
+  formDataUpload.append('files', file)
+  formDataUpload.append('docName', docData.docName)
+  formDataUpload.append('leadId', id)
+
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/files/upload`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      body: formDataUpload
+    })
+
+    const data = await response.json()
+    if (response.ok) {
+      toast.success('File uploaded successfully')
+      setFile(null)
+      setUploadDialogOpen(false)
+      // Refresh data
+      const refetch = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/leads/docs/bylead/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setData(refetch.data)
+    } else {
+      setErrorMessage(data.error || 'Upload failed')
+    }
+  } catch (error) {
+    setErrorMessage('An error occurred during the upload.')
+  }
+}
+
   // Vars
   const open = Boolean(anchorEl)
 
@@ -88,11 +168,24 @@ const InvoiceListTable = ({ id }) => {
     () => [
       columnHelper.accessor('uploadedAt', {
         header: 'Created Date',
-        cell: info => info.getValue()
+        cell: info => {
+          const date = new Date(info.getValue())
+          return date.toLocaleString('en-GB', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+          }).replace(',', '')
+        }
       }),
       columnHelper.accessor('docName', {
         header: 'Document Name',
-        cell: info => info.getValue()
+        cell: info => {
+          // Clean the document name before displaying it
+          return cleanDocumentName(info.getValue())
+        }
       }),
 
       columnHelper.accessor('action', {
@@ -100,7 +193,7 @@ const InvoiceListTable = ({ id }) => {
         cell: ({ row }) => (
           <div className='flex items-center gap-0.5'>
             <IconButton onClick={() => setData(data?.filter(invoice => invoice.id !== row.original.id))} size='small'>
-              <i className='ri-delete-bin-7-line text-textSecondary' />
+              <i className='ri-delete-bin-7-line text-red-600' />
             </IconButton>
             <IconButton size='small'>
               <i
@@ -223,10 +316,19 @@ const InvoiceListTable = ({ id }) => {
   return (
     <Card>
       <CardHeader
-        title='Invoice List'
+        title='Document List 1'
         sx={{ '& .MuiCardHeader-action': { m: 0 } }}
         action={
           <>
+            <Button
+              variant='contained'
+              color='primary'
+              onClick={openGenerateDocument}
+              startIcon={<i className='ri-file-add-line' />}
+              sx={{ mr: 2 }}
+            >
+              Generate Document
+            </Button>
             {/* <Button
               variant='contained'
               aria-haspopup='true'
@@ -251,6 +353,41 @@ const InvoiceListTable = ({ id }) => {
           </>
         }
       />
+
+      <Button
+  variant='outlined'
+  onClick={() => setUploadDialogOpen(true)}
+  startIcon={<i className='ri-upload-2-line' />}
+>
+  Upload Document
+</Button>
+
+<Dialog open={uploadDialogOpen} onClose={() => setUploadDialogOpen(false)}>
+  <DialogTitle>Upload Document</DialogTitle>
+  <DialogContent>
+    <TextField
+      label='Document Name'
+      fullWidth
+      value={docData.docName}
+      onChange={e => setDocData({ ...docData, docName: e.target.value })}
+      sx={{ mb: 2 }}
+    />
+    <div {...getRootProps({ className: 'dropzone' })} style={{ border: '2px dashed gray', padding: 20, textAlign: 'center' }}>
+      <input {...getInputProps()} />
+      {
+        file
+          ? <Typography>{file.name}</Typography>
+          : <Typography>Drop a file or click to select</Typography>
+      }
+    </div>
+    {errorMessage && <Typography color='error'>{errorMessage}</Typography>}
+  </DialogContent>
+  <DialogActions>
+    <Button onClick={() => setUploadDialogOpen(false)} color='secondary'>Cancel</Button>
+    <Button onClick={handleUpload} variant='contained'>Upload</Button>
+  </DialogActions>
+</Dialog>
+
       <div className='overflow-x-auto'>
         <table className={tableStyles.table}>
           <thead>

@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 40 33% 98%;
+  --foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --muted: 214 20% 94%;
+  --muted-foreground: 215 16% 40%;
+  --border: 214 20% 88%;
+  --input: 214 20% 88%;
+  --accent: 43 74% 42%;
+  --accent-foreground: 40 33% 98%;
+  --primary: 222 47% 16%;
+  --primary-foreground: 40 33% 98%;
+  --secondary: 214 20% 94%;
+  --secondary-foreground: 222 47% 16%;
+  --destructive: 0 72% 45%;
+  --destructive-foreground: 0 0% 100%;
+  --ring: 43 74% 42%;
+  --gold: 43 74% 42%;
+  --gold-muted: 43 40% 90%;
+  --navy: 222 47% 16%;
+  --navy-light: 222 30% 28%;
+  --sidebar: 222 40% 12%;
+  --sidebar-foreground: 210 20% 92%;
+  --sidebar-accent: 222 35% 18%;
+  --sidebar-border: 222 30% 20%;
+  --radius: 0.5rem;
+  --shadow-card: 0 1px 2px hsl(222 40% 12% / 0.06);
+  --shadow-elevated: 0 12px 40px hsl(222 40% 12% / 0.12);
+}
+
+.dark {
+  --background: 222 30% 7%;
+  --foreground: 210 20% 96%;
+  --card: 222 28% 10%;
+  --card-foreground: 210 20% 96%;
+  --popover: 222 28% 10%;
+  --popover-foreground: 210 20% 96%;
+  --muted: 222 20% 16%;
+  --muted-foreground: 215 15% 65%;
+  --border: 222 18% 18%;
+  --input: 222 18% 18%;
+  --accent: 43 70% 52%;
+  --accent-foreground: 222 30% 8%;
+  --primary: 43 70% 52%;
+  --primary-foreground: 222 30% 8%;
+  --secondary: 222 20% 16%;
+  --secondary-foreground: 210 20% 96%;
+  --destructive: 0 62% 50%;
+  --destructive-foreground: 0 0% 100%;
+  --ring: 43 70% 52%;
+  --gold: 43 70% 52%;
+  --gold-muted: 43 30% 18%;
+  --navy: 210 20% 96%;
+  --navy-light: 215 15% 70%;
+  --sidebar: 222 35% 6%;
+  --sidebar-foreground: 210 20% 92%;
+  --sidebar-accent: 222 30% 12%;
+  --sidebar-border: 222 25% 14%;
+  --shadow-card: 0 1px 2px hsl(0 0% 0% / 0.35);
+  --shadow-elevated: 0 16px 48px hsl(0 0% 0% / 0.45);
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  min-height: 100vh;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  background-image:
+    radial-gradient(ellipse 80% 50% at 100% -20%, hsl(43 74% 42% / 0.08), transparent),
+    radial-gradient(ellipse 60% 40% at 0% 100%, hsl(222 47% 20% / 0.06), transparent);
+}
+
+.dark body {
+  background-image:
+    radial-gradient(ellipse 80% 50% at 100% -20%, hsl(43 70% 52% / 0.12), transparent),
+    radial-gradient(ellipse 60% 40% at 0% 100%, hsl(210 40% 40% / 0.08), transparent);
+}

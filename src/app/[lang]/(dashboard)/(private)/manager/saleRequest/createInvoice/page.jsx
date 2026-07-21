@@ -16,6 +16,7 @@ const InvoiceAdd = () => {
 
     const searchParams = useSearchParams()
     const id = searchParams.get('id')
+    const saleid = searchParams.get('sales')
     const [data, setData] = useState([])
 
     useEffect(() => {
@@ -39,7 +40,7 @@ const InvoiceAdd = () => {
     return (
         <Grid container spacing={6}>
             <Grid item xs={12} md={12}>
-                <AddCard data={data} />
+                <AddCard data={data} saleid={saleid} />
             </Grid>
             {/* <Grid item xs={12} md={3}>
                 <AddActions />

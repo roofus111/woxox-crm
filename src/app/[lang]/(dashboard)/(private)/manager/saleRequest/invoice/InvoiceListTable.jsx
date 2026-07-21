@@ -21,9 +21,8 @@ import InputLabel from '@mui/material/InputLabel'
 import Select from '@mui/material/Select'
 import MenuItem from '@mui/material/MenuItem'
 import Tooltip from '@mui/material/Tooltip'
-import AddCard from '@views/apps/manager/invoice/add/AddCard'
 import TablePagination from '@mui/material/TablePagination'
-
+import AddCard from '@views/apps/manager/invoice/add/AddCard'
 // Third-party Imports
 import classnames from 'classnames'
 import { rankItem } from '@tanstack/match-sorter-utils'
@@ -109,11 +108,10 @@ const InvoiceListTable = ({ invoiceData }) => {
   const [globalFilter, setGlobalFilter] = useState('')
   const [showAddCard, setShowAddCard] = useState(false);
 
-
   useEffect(() => {
     const token = localStorage.getItem('token')
     axios
-      .get(`${process.env.NEXT_PUBLIC_API_URL}/api/invoice`, {
+      .get(`${process.env.NEXT_PUBLIC_API_URL}/api/invoice/get`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -331,19 +329,16 @@ const InvoiceListTable = ({ invoiceData }) => {
   return (
     <Card>
       <CardContent className='flex justify-between flex-col sm:flex-row gap-4 flex-wrap items-start sm:items-center'>
-        <Button
+        {/* <Button
           variant='contained'
           component={Link}
+          to={getLocalizedUrl('apps/invoice/add', locale)} // Use `to` for react-router navigation
           startIcon={<i className='ri-add-line' />}
-
-          // href={getLocalizedUrl('apps/invoice/add', locale)}
-          href={getLocalizedUrl('apps/invoice/add', locale)}
           className='max-sm:is-full'
-          onClick={handleButtonClick}
-
+          onClick={handleButtonClick} // Optional if you want to handle something else on click
         >
           Create Invoice
-        </Button>
+        </Button> */}
         <div className='flex items-center flex-col sm:flex-row max-sm:is-full gap-4'>
           <DebouncedInput
             value={globalFilter ?? ''}
@@ -440,6 +435,8 @@ const InvoiceListTable = ({ invoiceData }) => {
         onRowsPerPageChange={e => table.setPageSize(Number(e.target.value))}
       />
     </Card>
+
+
   )
 }
 

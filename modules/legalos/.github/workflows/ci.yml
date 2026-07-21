@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm install
+      - run: npm run typecheck
+      - run: npm run build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: http://localhost:4000/api/v1/legal
+          NEXT_PUBLIC_LEGALOS_BEARER_TOKEN: ci-token
+          NEXT_PUBLIC_WORKSPACE_ID: "000000000000000000000001"
+          NEXT_PUBLIC_ALLOW_MOCKS: "false"

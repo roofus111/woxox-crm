@@ -2,6 +2,7 @@
 import { NextAuthProvider } from '@/contexts/nextAuthProvider'
 import { VerticalNavProvider } from '@menu/contexts/verticalNavContext'
 import { SettingsProvider } from '@core/contexts/settingsContext'
+import { ActiveProductProvider } from '@/contexts/ActiveProductContext'
 import ThemeProvider from '@components/theme'
 import ReduxProvider from '@/redux-store/ReduxProvider'
 
@@ -25,8 +26,10 @@ const Providers = props => {
       <VerticalNavProvider>
         <SettingsProvider settingsCookie={settingsCookie} mode={mode}>
           <ThemeProvider direction={direction} systemMode={systemMode}>
-            <ReduxProvider>{children}</ReduxProvider>
-            <AppReactToastify direction={direction} hideProgressBar />
+            <ActiveProductProvider>
+              <ReduxProvider>{children}</ReduxProvider>
+              <AppReactToastify direction={direction} hideProgressBar />
+            </ActiveProductProvider>
           </ThemeProvider>
         </SettingsProvider>
       </VerticalNavProvider>

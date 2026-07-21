@@ -86,16 +86,7 @@ export const SettingsProvider = props => {
   return (
     <SettingsContext.Provider
       value={{
-        settings: {
-          mode: themeConfig.mode,
-          skin: themeConfig.skin,
-          semiDark: themeConfig.semiDark,
-          layout: themeConfig.layout,
-          navbarContentWidth: themeConfig.navbar.contentWidth,
-          contentWidth: themeConfig.contentWidth,
-          footerContentWidth: themeConfig.footer.contentWidth,
-          primaryColor: primaryColorConfig[0].main
-        },
+        settings: _settingsState,
         updateSettings,
         isSettingsChanged,
         resetSettings,

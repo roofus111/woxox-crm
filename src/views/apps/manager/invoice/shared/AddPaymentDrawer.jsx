@@ -1,5 +1,6 @@
 // React Imports
 import { useState } from 'react'
+import axios from 'axios'
 
 // MUI Import
 import Drawer from '@mui/material/Drawer'
@@ -13,6 +14,7 @@ import Select from '@mui/material/Select'
 import MenuItem from '@mui/material/MenuItem'
 import Button from '@mui/material/Button'
 import Divider from '@mui/material/Divider'
+import Autocomplete from '@mui/material/Autocomplete'
 
 // Styled Component Imports
 import AppReactDatepicker from '@/libs/styles/AppReactDatepicker'
@@ -23,45 +25,41 @@ const initialData = {
   transactionDate: new Date(),
   paymentMethod: 'select-method',
   amount: 500,
-  description: ''
+  description: '',
+  bankAccountId: ''
 }
 
-const AddPaymentDrawer = ({ data, id, open, handleClose }) => {
+const AddPaymentDrawer = ({ data, id, open, handleClose, accounts }) => {
   // States
   const [formData, setFormData] = useState(initialData)
+  console.log(data);
 
-  const handleSubmit = async (data) => {
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    const token = localStorage.getItem('token')
+
     try {
-      const token = localStorage.getItem('token'); // Secure token retrieval from localStorage
-      console.log(data);
-
-      // Assuming `formData` is defined elsewhere in your component with useState
-      const dataIn = { ...formData, leadId: data, invoice: id }; // Ensure 'data.leadId' is correctly sourced
-      console.log(dataIn); // Useful for debugging, consider removing in production
-
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/payment/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`, // Correct way to include the bearer token
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/payment`,
+        {
+          ...formData,
+          bankAccountId: formData.bankAccountId,
+          invoice: id,
+          leadId: data.leadId
         },
-        body: JSON.stringify(dataIn)
-      });
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
 
-      const dataOut = await response.json(); // Correctly wait for JSON conversion
-
-      if (response.ok) {
-        toast.success('Invoice Generated');
-      } else {
-        toast.error(`Something went wrong: ${dataOut.message}`); // Display server error message if available
-      }
+      // Handle success
+      handleClose()
     } catch (error) {
-      console.error('Error submitting form:', error); // Log error details for debugging
-      toast.error('Please try again'); // More generic error message for the user
+      console.error('Failed to add payment:', error)
     }
-
-    handleClose(); // Assumed to be a function to close the form/modal
-  };
+  }
 
   const handleReset = () => {
     handleClose()
@@ -85,7 +83,28 @@ const AddPaymentDrawer = ({ data, id, open, handleClose }) => {
       </div>
       <Divider />
       <div className='p-5'>
-        <form className='flex flex-col gap-5'>
+        <form onSubmit={handleSubmit} className='flex flex-col gap-5'>
+          <Autocomplete
+            fullWidth
+            options={accounts}
+            value={accounts.find(account => account._id === formData.bankAccountId) || null}
+            onChange={(event, newValue) => {
+              setFormData(prev => ({
+                ...prev,
+                bankAccountId: newValue?._id || ''
+              }))
+            }}
+            getOptionLabel={(option) => option.accountName || ''}
+            isOptionEqualToValue={(option, value) => option._id === value._id}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label='Select Account'
+                required
+                margin='normal'
+              />
+            )}
+          />
           <TextField
             fullWidth
             id='invoice-balance'
@@ -143,7 +162,7 @@ const AddPaymentDrawer = ({ data, id, open, handleClose }) => {
             onChange={e => setFormData({ ...formData, description: e.target.value })}
           />
           <div className='flex items-center gap-4'>
-            <Button variant='contained' onClick={() => handleSubmit(data.leadId)}>
+            <Button variant='contained' type='submit'>
               Send
             </Button>
             <Button variant='outlined' color='secondary' type='reset' onClick={handleReset}>

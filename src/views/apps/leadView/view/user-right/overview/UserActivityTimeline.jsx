@@ -97,12 +97,12 @@ const UserActivityTimeLine = ({ id }) => {
                   <div className='flex flex-wrap items-center justify-between gap-x-2 mbe-2.5'>
                     <Typography className='font-medium' color='text.primary'>
                       {item.action === 'note_added'
-                        ? `${item.userId.name} added a Note`
+                        ? `${item.userId?.name} added a Note`
                         : item.action === 'followUp'
-                          ? `${item.userId.name} created a new followup`
+                          ? `${item.userId?.name} created a new followup`
                           : item.action === 'status_change'
-                            ? `${item.userId.name}  Closed a followup`
-                            : item.action === 'notPicked' ? `${item.userId.name}  tried to contact` : 'Other Title '}
+                            ? `${item.userId?.name}  Closed a followup`
+                            : item.action === 'notPicked' ? `${item.userId?.name}  tried to contact` : 'Other Title '}
                     </Typography>
                     <Typography variant='caption'>
                       <Moment fromNow>{item.timestamp}</Moment>

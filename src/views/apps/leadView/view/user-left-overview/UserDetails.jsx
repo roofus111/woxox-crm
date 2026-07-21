@@ -1,6 +1,6 @@
 // React Imports
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './style.css';
 import axios from 'axios'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -32,7 +32,7 @@ import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContentText from '@mui/material/DialogContentText'
-import { AvatarGroup, Box, CardMedia, Checkbox, FormControlLabel, IconButton, List, ListItem, ListItemAvatar, ListItemButton, ListItemText, Menu, Tooltip } from '@mui/material'
+import { AvatarGroup, Box, CardMedia, Checkbox, FormControlLabel, Popper, IconButton, List, ListItem, ListItemAvatar, ListItemButton, ListItemText, Menu, Tooltip, Paper } from '@mui/material'
 
 import Accordion from '@mui/material/Accordion'
 import AccordionSummary from '@mui/material/AccordionSummary'
@@ -50,7 +50,12 @@ import FormHelperText from '@mui/material/FormHelperText'
 import FormLayoutsCollapsible from '@/app/[lang]/(dashboard)/(private)/manager/leads/FormLayoutsCollapsible';
 // import Checkbox from '@mui/material'
 
+
+import LeadActions from '@/app/[lang]/(dashboard)/(private)/manager/leads/components/LeadActions';
+
+
 const UserDetails = props => {
+  const { socket } = useSocket();
   const { updateData } = useData()
   // Vars
   const router = useRouter()
@@ -60,8 +65,10 @@ const UserDetails = props => {
     variant
   })
   let content = null
-  const userData = {
+  console.log(props.data);
+  const [userData, setUserData] = useState({
     firstName: props.data.name,
+    district: props.data.district,
     status: props.data.status,
     campaign: props.data.campaign,
     source: props.data.source,
@@ -79,8 +86,9 @@ const UserDetails = props => {
     assigned: props.data.assignedTo,
     profile: props.data.profile,
     moreData: props.data.additionalFields,
-    campaignid: props.data.campaignid
-  }
+    campaignid: props.data.campaignid,
+    tags: props.data.tags
+  })
   const [open, setOpen] = useState(false)
 
   const handleClickOpen = () => setOpen(true)
@@ -93,6 +101,19 @@ const UserDetails = props => {
   const [docData, setDocData] = useState({
     docName: ''
   })
+
+  const [tags, setTags] = useState([]);
+  const [inputValue, setInputValue] = useState('');
+  const [isInputVisible, setIsInputVisible] = useState(false);
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [tagSuggestions, setTagSuggestions] = useState([]);
+  const [filteredSuggestions, setFilteredSuggestions] = useState([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+
+  const inputRef = useRef(null);
+  const popupRef = useRef(null);
+
+  // const userData = props.userData || {};
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -166,7 +187,7 @@ const UserDetails = props => {
       updateData({ refresh: true });
       handleReset();
       handleClose();
-
+      handleNoteClose()
     } catch (error) {
       setError(error.message);
     } finally {
@@ -221,6 +242,7 @@ const UserDetails = props => {
         toast.success('New Follow Up added', {
           position: 'bottom-right'
         })
+        updateData({ refresh: true });
         handleClose2()
       } else {
         toast.error('An error occurred. Please try again.', {
@@ -275,11 +297,11 @@ const UserDetails = props => {
     }
     const token = localStorage.getItem('token')
     const formData = new FormData()
-    formData.append('file', file)
+    formData.append('files', file)
     formData.append('docName', docData.docName)
     formData.append('leadId', userData.leadId)
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leads/upload`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/files/upload`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}` // Only include Authorization, no need for Content-Type
@@ -330,17 +352,20 @@ const UserDetails = props => {
   }
 
   const [anchorEl, setAnchorEl] = useState(null);
-  const [status, setStatus] = useState(userData.status);
+  const [tagAnchorEl, setTagAnchorEl] = useState(null);
+  const [status, setStatus] = useState(props.data.status);
   const openstatus = Boolean(anchorEl);
 
   const leadStatuses = [
     'Interested',
     'Not Interested',
     'Converted',
+    'Duplicate',
     'Lost',
   ];
 
   const handleClick = (event) => {
+    console.log('Button clicked');
     setAnchorEl(event.currentTarget);
   };
 
@@ -355,7 +380,7 @@ const UserDetails = props => {
   const handleConfirmPopClose = () => setConfirmPopOpen(false)
   const handleStatusChange = async (newStatus) => {
     if (newStatus == 'Converted') {
-      handleConfirmPopOpen()
+      // handleConfirmPopOpen()
     }
     try {
       const token = localStorage.getItem('token')
@@ -387,6 +412,8 @@ const UserDetails = props => {
     }
     // setStatus(newStatus);
 
+
+
   };
   const getStatusColor = (status) => {
     switch (status) {
@@ -405,9 +432,17 @@ const UserDetails = props => {
     }
   };
 
+  const tagColors = [
+    "#FF5733", "#33FF57", "#3357FF", "#FF33A1",
+    "#FFBD33", "#8D33FF", "#33FFF3", "#FF3333",
+    "#33FFBD", "#A133FF", "#33A1FF", "#57FF33",
+    "#FF8D33", "#FF33F3", "#5733FF", "#BDFF33"
+  ];
+
   const [openAssign, setOpenAssign] = useState(false)
   const [selectedValue, setSelectedValue] = useState(userData?.assigned)
   const [update, setupdate] = useState("")
+  const [selectedColor, setSelectedColor] = useState(tagColors[0]);
   const handleClickOpenAssign = () => setOpenAssign(true)
 
   const handleDialogCloseAssign = () => setOpenAssign(false)
@@ -437,8 +472,21 @@ const UserDetails = props => {
       const data = await response.json();
       toast.success(`Assigned Sucessfully`)
       setIsOpen(!isOpen)
-      setupdate(data)
+
+      setUserData((prevUserData) => ({
+        ...prevUserData,
+        assigned: data.assignedTo,
+      }));
       setOpenAssign(false)
+      if (socket) {
+        socket.emit('send_notification', {
+          to: data.assignedTo._id,
+          title: 'New Lead',
+          message: 'You have been assigned a new lead',
+          type: 'lead_assignment'
+        });
+      }
+
     } catch (error) {
       console.error('Failed to update lead status:', error);
       throw error; // Rethrow error to handle in the UI
@@ -504,6 +552,202 @@ const UserDetails = props => {
     }
 
   }
+
+  // Handle click outside to close popup
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (
+        popupRef.current &&
+        !popupRef.current.contains(event.target) &&
+        inputRef.current &&
+        !inputRef.current.contains(event.target)
+      ) {
+        setIsPopupOpen(false);
+        if (inputValue === '') {
+          setIsInputVisible(false);
+        }
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [inputValue]);
+
+  // Escape key handler
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setIsPopupOpen(false);
+        if (inputValue === '') {
+          setIsInputVisible(false);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [inputValue]);
+
+  // Fetch tag suggestions from API
+  const fetchTagSuggestions = async () => {
+    setIsLoadingSuggestions(true);
+    const token = localStorage.getItem("token");
+    try {
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/tagmanager/alltags`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+      if (response.data && Array.isArray(response.data)) {
+        setTagSuggestions(response.data);
+        setFilteredSuggestions(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching tag suggestions:", error);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  };
+
+  // Initialize tags from props and fetch existing tags
+  useEffect(() => {
+    if (props.data && props.data.tags) {
+      setTags(props.data.tags);
+    }
+
+    if (userData && userData.id) {
+      fetchTagSuggestions();
+    }
+  }, [props.data, userData]);
+
+  // Filter suggestions based on input value
+  useEffect(() => {
+    if (inputValue.trim() === '') {
+      setFilteredSuggestions(tagSuggestions);
+    } else {
+      const filtered = tagSuggestions.filter(
+        suggestion =>
+          suggestion.name.toLowerCase().includes(inputValue.toLowerCase()) &&
+          !tags.some(tag => tag._id === suggestion._id)
+      );
+      setFilteredSuggestions(filtered);
+    }
+  }, [inputValue, tagSuggestions, tags]);
+
+  // Handle adding a tag
+  const handleAddTag = async (tagInput) => {
+    if (!tagInput) return;
+    let tagId = null;
+    let tagName = '';
+
+    // Check if tagInput is an object with an '_id' property (i.e. a suggestion)
+    if (tagInput && typeof tagInput === 'object' && tagInput._id) {
+      tagId = tagInput._id;
+      tagName = tagInput.name;
+      // Preserve the color if it exists
+      if (tags.some(t => t._id === tagId)) {
+        setInputValue('');
+        return;
+      }
+    } else {
+      // New tag from manual input (assume tagInput is a string)
+      tagName = typeof tagInput === 'string' ? tagInput.trim() : '';
+      if (!tagName) return;
+      // Check for duplicates by name (case-insensitive)
+      if (tags.some(t => (t.name || '').toLowerCase() === tagName.toLowerCase())) {
+        setInputValue('');
+        return;
+      }
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+
+      if (tagId) {
+        // Bind the existing tag to the lead using the add endpoint
+        const response = await axios.put(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/leads/${userData.leadId}/tags/add`,
+          { tags: [tagId] },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (response.status === 200 || response.status === 201) {
+          setTags([...tags, tagInput]); // Use the full tag object if available
+        }
+      } else {
+        // Create a new tag with the selected color
+        const createResponse = await axios.post(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/tagmanager/createTag`,
+          { name: tagName, color: selectedColor },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (createResponse.status === 200 || createResponse.status === 201) {
+          const newTag = createResponse.data; // Expected to include _id, name, and color
+          // Bind the newly created tag to the lead using the add endpoint
+          const bindResponse = await axios.put(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/leads/${userData.leadId}/tags/add`,
+            { tags: [newTag._id] },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          if (bindResponse.status === 200 || bindResponse.status === 201) {
+            setTags([...tags, newTag]);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error adding tag:", error);
+    }
+
+    setInputValue('');
+    setIsPopupOpen(true); // Keep popup open for adding multiple tags
+    inputRef.current?.focus();
+  };
+
+
+  // Handle removing a tag
+  const handleRemoveTag = async (tagToRemove) => {
+    const token = localStorage.getItem("token");
+    try {
+      const response = await axios.put(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/leads/${userData.leadId}/tags/remove`,
+        { tags: [tagToRemove._id] },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+      if (response.status === 200 || response.status === 204) {
+        setTags(tags.filter(t => t._id !== tagToRemove._id));
+      }
+    } catch (error) {
+      console.error("Error removing tag:", error);
+    }
+  };
+
+  // Handle showing the input field
+  const handleShowInput = () => {
+    setIsInputVisible(true);
+    // Focus the input after it becomes visible
+    setTimeout(() => {
+      inputRef.current?.focus();
+      setIsPopupOpen(true);
+      fetchTagSuggestions();
+    }, 100);
+  };
+
+  const handleInputFocus = (event) => {
+    setTagAnchorEl(event.currentTarget);
+    setIsPopupOpen(true);
+    fetchTagSuggestions();
+  };
+
+
   return (
     <>
       <Dialog fullScreen open={open} onClose={handleClose} aria-labelledby='form-dialog-title'>
@@ -588,7 +832,7 @@ const UserDetails = props => {
                     variant='standard'
                     id='textarea-standard'
                     placeholder='Placeholder'
-                    label='Add Notes'
+                    label='Add Caller Note'
                     onChange={e => setFormData({ ...formData, notes: e.target.value })}
                   />
                 </div>
@@ -678,7 +922,7 @@ const UserDetails = props => {
       </Dialog>
 
       <Dialog id='popper' open={open3} onClose={handleClose3} aria-labelledby='form-dialog-title'>
-        <DialogTitle id='form-dialog-title'>Add Follow up</DialogTitle>
+        <DialogTitle id='form-dialog-title'>Upload Documents</DialogTitle>
         <DialogContent>
           <Grid marginTop={1} container spacing={6}>
             {' '}
@@ -766,8 +1010,6 @@ const UserDetails = props => {
         </DialogActions>
       </Dialog>
 
-
-
       <Dialog onClose={handleDialogCloseAssign} aria-labelledby='simple-dialog-title' open={openAssign}>
         <DialogTitle id='simple-dialog-title'>Assign Lead to</DialogTitle>
         <List className='pt-0 px-0'>
@@ -825,87 +1067,319 @@ const UserDetails = props => {
         </DialogActions>
       </Dialog>
 
-
-
       <Card>
-        <CardMedia image={data?.coverImg} className='bs-[150px] bg-primary'>
-          <Box display={'flex'} justifyContent={'flex-end'} height={'100%'} alignItems={'flex-end'} width={'100%'}>
-            {userData.assigned || update ?
-              <AvatarGroup className='pull-up m-3' max={3} >
+        <CardMedia image={data?.coverImg} className="bs-[150px] bg-primary">
+          <Box display="flex" justifyContent="flex-end" height="100%" alignItems="flex-end" width="100%">
+            {userData.assigned || update ? (
+              <AvatarGroup className="pull-up m-3" max={3}>
                 <Tooltip title={getTooltipTitle()}>
-                  <Box display={'flex'}>
-                    {/* <Avatar onClick={toggleBox} src='/images/avatars/4.png' /> */}
+                  <Box display="flex">
                     <Avatar sx={{ bgcolor: "yellow" }} onClick={toggleBox}>
                       {userData?.assigned?.firstName
                         ? userData.assigned.firstName.substring(0, 2).toUpperCase()
-                        : '??'}
+                        : "??"}
                     </Avatar>
                     {isOpen && (
-                      <IconButton onClick={handleClickOpenAssign} aria-label='capture screenshot' style={{ color: 'white' }} size='small'>
-                        <i className='ri-user-search-fill text-xl' />
+                      <IconButton
+                        onClick={handleClickOpenAssign}
+                        aria-label="capture screenshot"
+                        style={{ color: "white" }}
+                        size="small"
+                      >
+                        <i className="ri-user-search-fill text-xl" />
                       </IconButton>
                     )}
                   </Box>
                 </Tooltip>
-                {/* <Tooltip title='Howard Lloyd'>
-                <Avatar src='/images/avatars/5.png' alt='Howard Lloyd' />
-              </Tooltip> */}
-              </AvatarGroup> : <Fab onClick={handleClickOpenAssign} className='m-2' aria-label='edit' size='small'>
-                <i className='ri-user-add-line' />
-              </Fab>}
+              </AvatarGroup>
+            ) : (
+              <Fab onClick={handleClickOpenAssign} className="m-2" aria-label="edit" size="small">
+                <i className="ri-user-add-line" />
+              </Fab>
+            )}
           </Box>
         </CardMedia>
-        <CardContent className='flex justify-center flex-col items-center gap-6 md:items-end md:flex-row !pt-0 md:justify-start'>
-          <div className='flex rounded-bs-xl mbs-[-30px] mli-[-5px] border-[5px] border-be-0 border-backgroundPaper bg-backgroundPaper '>
-            {/* <img height={120} width={120} src='/images/avatars/1.png' className='rounded' alt='Profile Background' /> */}
-            <Avatar sx={{ width: 120, height: 120, fontSize: 50, bgcolor: "#DC4D01", color: 'white' }} className='rounded'>{userData ? userData.firstName?.substring(0, 2).toUpperCase() : '??'}</Avatar>
-          </div>
-          <div className='flex is-full flex-wrap justify-start flex-col items-center sm:flex-row sm:justify-between sm:items-end gap-5'>
-            <div className='flex flex-col items-center sm:items-start gap-2'>
-              <Typography variant='h4'>{userData?.firstName}</Typography>
-              <div className='flex flex-wrap gap-6 gap-y-3 justify-center sm:justify-normal min-bs-[38px]'>
-                <div className='flex items-center gap-2'>
-                  <Chip icon={<i className='ri-megaphone-line'></i>} label={userData.campaign ? userData.campaign : userData.campaignid.name} variant='tonal' size='small' />
-                </div>
-                {/* <div className='flex items-center gap-2'>
-                  <Chip label={userData.source} variant='tonal' size='small' />
-                </div> */}
-              </div>
-            </div>
-            {/* <Button variant='contained' className='flex gap-2'>
-              <i className='ri-user-follow-line text-base'></i>
-              <span>{userData.status}</span>
-            </Button> */}
 
-            <div >
-              <Button
-                aria-controls={openstatus ? 'lead-status-menu' : undefined}
-                aria-haspopup="true"
-                aria-expanded={openstatus ? 'true' : undefined}
-                onClick={handleClick}
-                variant="contained"
-                color={getStatusColor(status)} // Dynamic color based on status
-                sx={{ width: 128, height: 30 }} // Fixed width and height for button
+        <CardContent className="!pt-0">
+          {/* Top row: Avatar, name, campaign, etc. */}
+          <Box className="flex flex-col md:flex-row items-center md:items-start justify-center md:justify-start gap-6">
+            {/* Avatar */}
+            <Box
+              className="rounded-bs-xl mbs-[-30px] mli-[-5px] border-[5px] border-be-0 border-backgroundPaper bg-backgroundPaper"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              <Avatar
+                variant="square"
+                sx={{
+                  width: 120,
+                  height: 120,
+                  fontSize: 50,
+                  bgcolor: "#DC4D01",
+                  color: "white",
+                }}
               >
-                {status}
-              </Button>
-              <Menu
-                id="lead-status-menu"
-                anchorEl={anchorEl}
-                open={openstatus}
-                onClose={handleStatusClose}
+                {userData ? userData.firstName?.substring(0, 2).toUpperCase() : "??"}
+              </Avatar>
+            </Box>
+
+            {/* Right side: Name, campaign, status button, etc. */}
+            <Box display="flex" flexDirection="column" gap={1} width="100%">
+              <Typography variant="h4" align="center" sx={{ mb: 1 }}>
+                {userData?.firstName}
+              </Typography>
+
+              {/* Campaign or other info chips */}
+              <Box display="flex" flexWrap="wrap" justifyContent="center" gap={1} mb={2}>
+                <Chip
+                  icon={<i className="ri-megaphone-line" />}
+                  label={
+                    userData.campaign
+                      ? userData.campaign
+                      : userData?.campaignid?.name
+                  }
+                  variant="tonal"
+                  size="small"
+                />
+                {/* Add more chips if needed */}
+              </Box>
+
+              {/* Status button + WhatsApp */}
+              <Box display="flex" justifyContent="center" gap={2}>
+                <Button
+                  aria-controls={openstatus ? "lead-status-menu" : undefined}
+                  aria-haspopup="true"
+                  aria-expanded={openstatus ? "true" : undefined}
+                  onClick={handleClick}
+                  variant="contained"
+                  color={getStatusColor(status)}
+                  sx={{ width: 148, height: 40 }}
+                >
+                  {status || "Select Status"}
+                </Button>
+                <Menu
+                  id="lead-status-menu"
+                  anchorEl={anchorEl}
+                  open={openstatus}
+                  onClose={handleStatusClose}
+                >
+                  {leadStatuses.map((leadStatus) => {
+                    const isDisabled =
+                      (status === "Interested" && leadStatus === "Not Interested") ||
+                      (status === "Converted" && leadStatus !== "Lost");
+                    return (
+                      <MenuItem
+                        key={leadStatus}
+                        onClick={() => handleStatusChange(leadStatus)}
+                        disabled={isDisabled}
+                        onClose={handleStatusClose}
+                      >
+                        {leadStatus}
+                      </MenuItem>
+                    );
+                  })}
+                </Menu>
+
+                <IconButton
+                  color="success"
+                  sx={{
+                    backgroundColor: "#25D366",
+                    color: "white",
+                    "&:hover": { color: "#25D366" },
+                  }}
+                  onClick={() => window.open(`https://wa.me/${userData.phone}`, "_blank")}
+                >
+                  <i className="ri-whatsapp-line" style={{ fontSize: "24px" }}></i>
+                </IconButton>
+              </Box>
+            </Box>
+          </Box>
+
+          <Box
+            sx={{
+              mt: 3,
+              pt: 2,
+              borderTop: "1px solid rgba(0, 0, 0, 0.1)",
+            }}
+          >
+            <Box display="flex" flexWrap="wrap" gap={1} alignItems="center">
+              {tags.map((tag) => (
+                <Chip
+                  key={tag._id}
+                  label={tag.name}
+                  size="small"
+                  icon={
+                    <i className="ri-price-tag-3-fill"
+                      style={{ fontSize: "14px", color: tag.color }}
+                    ></i>
+                  }
+                  onDelete={() => handleRemoveTag(tag)}
+                  sx={{
+                    borderRadius: "4px",
+                    backgroundColor: tag.tagColor,
+                    "& .MuiChip-icon": {
+                      fontSize: "14px",
+                    },
+                    "& .MuiChip-deleteIcon": {
+                      "&:hover": {
+                        color: "#ccc",
+                      },
+                    },
+                  }}
+                />
+
+              ))}
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleShowInput();
+                }}
+                sx={{
+                  ml: 1,
+                  color: "primary.main",
+                  "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.04)" },
+                }}
               >
-                {leadStatuses.map((leadStatus) => (
-                  <MenuItem
-                    key={leadStatus}
-                    onClick={() => handleStatusChange(leadStatus)}
+                <i className="ri-add-line"></i>
+              </IconButton>
+
+              {isInputVisible && (
+                <Box sx={{ position: "relative", minWidth: "150px" }}>
+                  <TextField
+                    inputRef={inputRef}
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    onFocus={handleInputFocus}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && inputValue.trim()) {
+                        e.preventDefault();
+                        // Check if input matches one of the suggestions exactly
+                        const matchedSuggestion = filteredSuggestions.find(
+                          suggestion => suggestion.name.toLowerCase() === inputValue.trim().toLowerCase()
+                        );
+                        handleAddTag(matchedSuggestion || inputValue);
+                      }
+                    }}
+                    placeholder="Add tag..."
+                    size="small"
+                    autoComplete="off"
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: "4px",
+                        backgroundColor: "white",
+                      },
+                    }}
+                  />
+
+                  {/* Render color picker swatches for new tag creation */}
+                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mt: 1 }}>
+                    {tagColors.map(color => (
+                      <Box
+                        key={color}
+                        onClick={() => setSelectedColor(color)}
+                        sx={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: "50%",
+                          backgroundColor: color,
+                          cursor: "pointer",
+                          border: selectedColor === color ? "2px solid black" : "2px solid transparent"
+                        }}
+                      />
+                    ))}
+                  </Box>
+
+                  <Popper
+                    open={isPopupOpen}
+                    anchorEl={tagAnchorEl}
+                    placement="right-start"
+                    sx={{ zIndex: 1300 }}
+                    modifiers={[
+                      {
+                        name: "offset",
+                        options: {
+                          offset: [8, 0],
+                        },
+                      },
+                    ]}
                   >
-                    {leadStatus}
-                  </MenuItem>
-                ))}
-              </Menu>
-            </div>
-          </div>
+                    <Paper
+                      ref={popupRef}
+                      elevation={4}
+                      sx={{
+                        width: "280px",
+                        maxHeight: "300px",
+                        overflow: "auto",
+                        mt: 0.5,
+                        borderRadius: "8px",
+                        boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+                      }}
+                    >
+                      <Box sx={{ p: 1.5, borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "text.primary" }}>
+                          Available Tags
+                        </Typography>
+                      </Box>
+                      {isLoadingSuggestions ? (
+                        <Box sx={{ p: 2.5, textAlign: "center", color: "text.secondary" }}>
+                          Loading suggestions...
+                        </Box>
+                      ) : filteredSuggestions.length > 0 ? (
+                        <List dense sx={{ py: 0.5 }}>
+                          {filteredSuggestions.map((suggestion) => (
+                            <ListItem
+                              key={suggestion._id}
+                              button
+                              onClick={() => handleAddTag(suggestion)}
+                              sx={{
+                                py: 1,
+                                px: 2,
+                                "&:hover": {
+                                  backgroundColor: "rgba(0, 0, 0, 0.04)",
+                                },
+                              }}
+                            >
+                              <ListItemText
+                                primary={suggestion.name}
+                                primaryTypographyProps={{
+                                  fontSize: "0.9rem",
+                                  fontWeight: 500
+                                }}
+                              />
+                            </ListItem>
+                          ))}
+                        </List>
+                      ) : (
+                        <Box sx={{ p: 2.5, textAlign: "center", color: "text.secondary", fontSize: "0.875rem" }}>
+                          {inputValue.trim() ? "No matching tags found" : "Type to search for tags"}
+                        </Box>
+                      )}
+                      {inputValue.trim() &&
+                        !filteredSuggestions.some(
+                          suggestion => suggestion.name.toLowerCase() === inputValue.trim().toLowerCase()
+                        ) && (
+                          <Box sx={{ p: 1.5, borderTop: "1px solid rgba(0, 0, 0, 0.08)" }}>
+                            <Button
+                              fullWidth
+                              size="medium"
+                              variant="text"
+                              onClick={() => handleAddTag(inputValue)}
+                              sx={{
+                                textTransform: "none",
+                                fontWeight: 500,
+                                py: 1,
+                              }}
+                            >
+                              Create new tag "{inputValue}"
+                            </Button>
+                          </Box>
+                        )}
+                    </Paper>
+                  </Popper>
+                </Box>
+              )}
+            </Box>
+          </Box>
         </CardContent>
       </Card>
 
@@ -929,10 +1403,10 @@ const UserDetails = props => {
                   <i className='ri-calendar-line text-base'></i>
                   <span>Add Follow up</span>
                 </Button>
-                <Button onClick={handleNoteOpen} variant='contained' className='flex gap-2'>
+                {/* <Button onClick={handleNoteOpen} variant='contained' className='flex gap-2'>
                   <i class="ri-sticky-note-line"></i>
                   <span>Add Note</span>
-                </Button>
+                </Button> */}
                 <Button onClick={handleClickOpen3} variant='contained' className='flex gap-2'>
                   <i className='ri-file-line text-base'></i>
                   <span>Add Documents</span>
@@ -984,8 +1458,16 @@ const UserDetails = props => {
                     <Typography>{userData.email}</Typography>
                   </div>
                 </div>
+                <div className='flex items-center flex-wrap gap-2'>
+                  <Typography className='font-medium'>District : </Typography>
+                  <Typography>{userData.district}</Typography>
+                </div>
+                <div className='flex items-center flex-wrap gap-2'>
+                  <Typography className='font-medium'>Created At</Typography>
+                  <Typography>{userData.createdAt}</Typography>
+                </div>
               </div>
-              <div className='flex flex-col gap-4'>
+              {/* <div className='flex flex-col gap-4'>
                 <Typography className='uppercase' variant='body2' color='text.disabled'>
                   PROFILE
                 </Typography>
@@ -998,11 +1480,14 @@ const UserDetails = props => {
                   <Typography>{userData.profile?.address} {userData.profile?.city} {userData.profile?.state} {userData.profile?.pinCode}</Typography>
                 </div>
                 <div className='flex items-center flex-wrap gap-2'>
-                  <Typography className='font-medium'>Created At</Typography>
-                  {/* <Typography>{format(new Date(userData.createdAt), 'PPP')}</Typography> */}
+                  <Typography className='font-medium'>District : </Typography>
+                  <Typography>{userData.district}</Typography>
                 </div>
-              </div>
-              <div className='flex flex-col gap-4'>
+                <div className='flex items-center flex-wrap gap-2'>
+                  <Typography className='font-medium'>Created At</Typography>
+                </div>
+              </div> */}
+              {/* <div className='flex flex-col gap-4'>
                 <Typography className='uppercase' variant='body2' color='text.disabled'>
                   LEAD DETAILS
                 </Typography>
@@ -1018,11 +1503,19 @@ const UserDetails = props => {
                   <Typography className='font-medium'>Created At</Typography>
                   <Typography>{userData.createdAt}</Typography>
                 </div>
-              </div>
+              </div> */}
 
             </CardContent>
           </Card>
         </Grid>
+
+        <LeadActions
+          phone={userData.phone}
+          status={status}
+          onStatusChange={handleStatusChange}
+          onCall={handleCall}
+          onWhatsApp={num => window.open(`https://wa.me/${num}`, '_blank')}
+        />
 
       </Grid>
       {/* <Card>

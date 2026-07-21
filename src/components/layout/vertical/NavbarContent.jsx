@@ -1,18 +1,24 @@
-
 "use client"
 import classnames from 'classnames'
+import Link from 'next/link'
 import './style.css'
 // import { Assignment, CalendarToday, Notes, Person, Phone, Email } from '@material-ui/icons';
 import { useState, useEffect } from "react";
 // Component Imports
 import NavToggle from './NavToggle'
+import NavSearch from '@components/layout/shared/search'
+import LanguageDropdown from '@components/layout/shared/LanguageDropdown'
+import ModeDropdown from '@components/layout/shared/ModeDropdown'
+import ShortcutsDropdown from '@components/layout/shared/ShortcutsDropdown'
 import NotificationsDropdown from '@components/layout/shared/NotificationsDropdown'
+import ChatNavIcon from '@components/layout/shared/ChatNavIcon'
 import UserDropdown from '@components/layout/shared/UserDropdown'
 import { io } from 'socket.io-client';
 // Util Imports
 import { verticalLayoutClasses } from '@layouts/utils/layoutClasses'
 import { ToastContainer, toast } from "react-toastify";
 import { useSession } from 'next-auth/react'
+import { useSocket } from '@/hooks/useSocket';
 
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
@@ -76,86 +82,43 @@ const notifications = [
     time: '1m ago',
     read: false
   },
-  // {
-  //   avatarImage: '/images/avatars/3.png',
-  //   title: 'Bernard Woods',
-  //   subtitle: 'You have new message from Bernard Woods',
-  //   time: 'May 18, 8:26 AM',
-  //   read: true
-  // },
-  // {
-  //   avatarIcon: 'ri-bar-chart-line',
-  //   avatarColor: 'info',
-  //   title: 'Monthly report generated',
-  //   subtitle: 'July month financial report is generated',
-  //   time: 'Apr 24, 10:30 AM',
-  //   read: true
-  // },
-  // {
-  //   avatarText: 'MG',
-  //   avatarColor: 'success',
-  //   title: 'Application has been approved 🚀',
-  //   subtitle: 'Your Meta Gadgets project application has been approved.',
-  //   time: 'Feb 17, 12:17 PM',
-  //   read: true
-  // },
-  // {
-  //   avatarIcon: 'ri-mail-line',
-  //   avatarColor: 'error',
-  //   title: 'New message from Harry',
-  //   subtitle: 'You have new message from Harry',
-  //   time: 'Jan 6, 1:48 PM',
-  //   read: true
-  // }
+  {
+    avatarImage: '/images/avatars/3.png',
+    title: 'Bernard Woods',
+    subtitle: 'You have new message from Bernard Woods',
+    time: 'May 18, 8:26 AM',
+    read: true
+  },
+  {
+    avatarIcon: 'ri-bar-chart-line',
+    avatarColor: 'info',
+    title: 'Monthly report generated',
+    subtitle: 'July month financial report is generated',
+    time: 'Apr 24, 10:30 AM',
+    read: true
+  },
+  {
+    avatarText: 'MG',
+    avatarColor: 'success',
+    title: 'Application has been approved 🚀',
+    subtitle: 'Your Meta Gadgets project application has been approved.',
+    time: 'Feb 17, 12:17 PM',
+    read: true
+  },
+  {
+    avatarIcon: 'ri-mail-line',
+    avatarColor: 'error',
+    title: 'New message from Harry',
+    subtitle: 'You have new message from Harry',
+    time: 'Jan 6, 1:48 PM',
+    read: true
+  }
 ]
 
 const NavbarContent = () => {
   const router = useRouter()
-  const [alertData, setAlertData] = useState(null);
+  const { alertData, open, setOpen } = useSocket();
   const { data: session } = useSession()
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    const socket = io('https://app.canbridge.in', {
-      // Reconnect automatically
-      reconnection: true,
-      reconnectionDelay: 500,
-      reconnectionAttempts: 10
-    });
-
-    socket.on('connect', () => {
-      console.log('Connected to server');
-      socket.emit('register', session?.user?.id); // Send the user ID to register
-    });
-
-    socket.on('followUpAlert', function (data) {
-      setAlertData(data); // Store the data in state
-      setOpen(true);
-      console.log(data);
-
-    });
-
-    socket.on('welcome', function (data) {
-      toast(data.message); // Display welcome message
-    });
-
-    // Handle socket connection error
-    socket.on('connect_error', (err) => {
-      console.error('Connection failed: ', err);
-    });
-
-    // Cleanup on component unmount
-    return () => {
-      socket.off('connect');
-      socket.off('followUpAlert');
-      socket.off('welcome');
-      socket.off('connect_error');
-      socket.disconnect();
-    };
-  }, [session?.user?.id]); // Dependencies ensure effect runs only if userID changes
-
-  const handleClose = () => {
-    setOpen(false);
-  };
   const [openDialog, setOpenDialog] = useState(false); // Control dialog visibility
   const [selectedDate, setSelectedDate] = useState(null); // Store the selected date
 
@@ -187,7 +150,7 @@ const NavbarContent = () => {
   };
   return (
     <div className={classnames(verticalLayoutClasses.navbarContent, 'flex items-center justify-between gap-4 is-full')}>
-      <Dialog aria-labelledby='simple-dialog-title' open={open} onClose={handleClose}>
+      <Dialog aria-labelledby='simple-dialog-title' open={open} onClose={() => setOpen(false)}>
         <DialogTitle id='simple-dialog-title'>📅 Follow-Up Alert</DialogTitle>
         <DialogContent>
           {alertData && (
@@ -292,9 +255,10 @@ const NavbarContent = () => {
         {/* <NavSearch /> */}
       </div>
       <div className='flex items-center'>
-        {/* <LanguageDropdown />
+        {/* <LanguageDropdown /> */}
         <ModeDropdown />
-        <ShortcutsDropdown shortcuts={shortcuts} /> */}
+        {/* <ShortcutsDropdown shortcuts={shortcuts} /> */}
+        <ChatNavIcon />
         <NotificationsDropdown notifications={notifications} />
         <UserDropdown />
       </div>

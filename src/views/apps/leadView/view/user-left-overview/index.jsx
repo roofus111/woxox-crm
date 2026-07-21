@@ -6,6 +6,7 @@ import UserDetails from './UserDetails'
 import UserPlan from './UserPlan'
 
 const UserLeftOverview = props => {
+  console.log(props);
   return (
     <Grid container spacing={6}>
       <Grid item xs={12}>
@@ -15,6 +16,7 @@ const UserLeftOverview = props => {
         <UserPlan />
       </Grid> */}
     </Grid>
+
   )
 }
 

@@ -49,7 +49,7 @@ const data = [
   }
 ]
 
-const FormLayoutsCollapsible = ({ props, handleClose }) => {
+const FormLayoutsCollapsible = ({  props, handleClose, onSave, onCancel }) => {
   // Vars
   const initialSelectedOption = data.filter(item => item.isSelected)[data.filter(item => item.isSelected).length - 1]
     .value
@@ -137,15 +137,31 @@ const FormLayoutsCollapsible = ({ props, handleClose }) => {
       })
 
       const data = await response.json()
-      setCardData(data);
 
       if (response.ok) {
         toast.success('Lead Updated successfully!')
+        
+        // Call the onSave callback if provided (this will handle data refresh and dialog closing)
+        if (onSave) {
+          onSave()
+        } else if (handleClose) {
+          // Fallback to handleClose if onSave is not provided
+          handleClose()
+        }
       } else {
         toast.error(data.message || 'An error occurred. Please try again.')
       }
     } catch (error) {
+      console.error('Error updating profile:', error)
       toast.error('An error occurred. Please try again.')
+    }
+  }
+
+  const handleCancel = () => {
+    if (onCancel) {
+      onCancel()
+    } else if (handleClose) {
+      handleClose()
     }
   }
 
@@ -178,7 +194,7 @@ const FormLayoutsCollapsible = ({ props, handleClose }) => {
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
-                disabled
+              disabled
                 fullWidth
                 label='Phone'
                 value={cardData.phone}
@@ -519,7 +535,7 @@ const FormLayoutsCollapsible = ({ props, handleClose }) => {
           </Grid>
         </AccordionDetails>
       </Accordion>
-      <Button onClick={() => handleClose()} sx={{ margin: 5 }} variant='outlined' color='secondary'>
+      <Button onClick={handleCancel} sx={{ margin: 5 }} variant='outlined' color='secondary'>
         Cancel
       </Button>
       <Button sx={{ margin: 5 }} onClick={handleSubmit} variant='contained'>

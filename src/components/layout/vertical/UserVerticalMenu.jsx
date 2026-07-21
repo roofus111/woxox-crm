@@ -54,6 +54,8 @@ const UserVerticalMenu = ({ dictionary, scrollMenu }) => {
         }
       })
       .then(response => {
+        console.log(response.data.campaign);
+
         setData(response.data.campaign) // Update data if component is still mounted
       })
       .catch(error => {
@@ -88,21 +90,45 @@ const UserVerticalMenu = ({ dictionary, scrollMenu }) => {
         <MenuItem icon={<i className='ri-home-smile-line' />} href={`/${locale}/home`}>
           Home
         </MenuItem>
-        {/* <SubMenu
+        <SubMenu
           label={'Campaigns'}
           icon={<i class="ri-megaphone-line"></i>}
         // suffix={<Chip label='6' size='small' color='error' />}
         >
-          {data.map((menu, index) => {
-            return <MenuItem key={index} href={`/${locale}/leads/${menu}`}>{menu}</MenuItem>
-          })}
+          {
+            data.map((menu, index) => {
+              // Check if the menu item has a 'name' property
+              console.log(menu);
 
-        </SubMenu> */}
+              if (menu.name) {
+                return (
+                  <MenuItem key={index} href={`/${locale}/leads/${menu.id}`}>
+                    {menu.name}
+                  </MenuItem>
+                );
+              } else {
+                return (
+                  <MenuItem key={index} href={`/${locale}/leads/${menu.id}`}>
+                    {menu}
+                  </MenuItem>
+                );
+              }
+            })
+          }
+
+
+        </SubMenu>
         <MenuItem icon={<i className='ri-contacts-line' />} href={`/${locale}/leads`}>
           All Leads
         </MenuItem>
         <MenuItem icon={<i className='ri-calendar-schedule-line' />} href={`/${locale}/followup`}>
-          Follow Up
+          Task Manager
+        </MenuItem>
+        <MenuItem icon={<i className='ri-coupon-3-line' />} href={`/${locale}/tickets`}>
+          Tickets
+        </MenuItem>
+        <MenuItem icon={<i className='ri-user-line' />} href={`/${locale}/userdashboard`}>
+          Users
         </MenuItem>
 
         {/* <SubMenu

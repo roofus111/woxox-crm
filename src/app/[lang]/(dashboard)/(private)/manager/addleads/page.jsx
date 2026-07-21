@@ -31,8 +31,24 @@ import { DialogContentText, Select, MenuItem, InputLabel } from '@mui/material'
 import { toast } from 'react-toastify'
 import axios from 'axios'
 
-const Leads = ({ campid }) => {
-  console.log(campid);
+const Leads = ({ campid, onClose }) => {
+
+  const districtsInKerala = [
+    "Alappuzha",
+    "Ernakulam",
+    "Idukki",
+    "Kannur",
+    "Kasaragod",
+    "Kollam",
+    "Kottayam",
+    "Kozhikode",
+    "Malappuram",
+    "Palakkad",
+    "Pathanamthitta",
+    "Thiruvananthapuram",
+    "Thrissur",
+    "Wayanad",
+  ];
 
   const [formData, setFormData] = useState({
     campaign: '',
@@ -40,7 +56,8 @@ const Leads = ({ campid }) => {
     source: '',
     name: '',
     email: '',
-    phone: ''
+    phone: '',
+    district: 'Welocome'
   })
   const [uploadData, setUploadData] = useState({
     campaignid: '',
@@ -55,14 +72,14 @@ const Leads = ({ campid }) => {
 
   // Form Validation
   const validateForm = () => {
-    if (!formData.name || !formData.email || !formData.phone) {
+    if (!formData.name || !formData.phone) {
       setError('Please fill in all required fields.')
       return false
     }
 
     // Simple email regex validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(formData.email)) {
+    if (formData.email && !emailRegex.test(formData.email)) {
       setError('Please enter a valid email address.')
       return false
     }
@@ -82,7 +99,6 @@ const Leads = ({ campid }) => {
 
     try {
       const token = localStorage.getItem('token')
-      // Example API call to submit the form
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leads`, {
         method: 'POST',
         headers: {
@@ -96,7 +112,10 @@ const Leads = ({ campid }) => {
 
       if (response.ok) {
         setSuccess('Lead submitted successfully!')
-        handleReset() // Reset form after successful submission
+        handleReset();
+        if (onClose) {
+          onClose();
+        }
       } else {
         setError(data.message || 'An error occurred. Please try again.')
       }
@@ -107,13 +126,15 @@ const Leads = ({ campid }) => {
     }
   }
 
+
   const handleReset = () => {
     setFormData({
       campaignid: '',
       source: '',
       name: '',
       email: '',
-      phone: ''
+      phone: '',
+      district: ' '
     })
     setError('')
     setSuccess('')
@@ -136,7 +157,7 @@ const Leads = ({ campid }) => {
   const { getRootProps, getInputProps } = useDropzone({
     multiple: false,
     accept: {
-      'application/vnd.ms-excel': ['.xls', '.xlxs']
+      'application/vnd.ms-excel': ['.xls', '.xlsx']
     },
     onDrop: acceptedFiles => {
       const file = acceptedFiles[0]
@@ -294,7 +315,6 @@ const Leads = ({ campid }) => {
                       </MenuItem>
                     ))}
                   </Select> </>}
-
             </Grid>
 
             <Grid item xs={12} sm={12}>
@@ -321,7 +341,7 @@ const Leads = ({ campid }) => {
                       <i className='ri-upload-2-line' />
                     </Avatar>
                     <Typography variant='h4' className='mbe-2.5'>
-                      Drop XLS file here or click to upload.
+                      Drop XLS or XLSX file here or click to upload.
                     </Typography>
                     <Typography color='text.secondary'>
                       Drop files here or click{' '}
@@ -415,7 +435,7 @@ const Leads = ({ campid }) => {
                   placeholder='Name'
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  required
+
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -426,7 +446,7 @@ const Leads = ({ campid }) => {
                   placeholder='example@gmail.com'
                   value={formData.email}
                   onChange={e => setFormData({ ...formData, email: e.target.value })}
-                  required
+
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -439,6 +459,25 @@ const Leads = ({ campid }) => {
                   onChange={e => setFormData({ ...formData, phone: e.target.value })}
                   required
                 />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Box display={'flex'} justifyContent={'space-between'}>
+                  <InputLabel className='p-3'>District : </InputLabel>
+                  <Select
+                    style={{ width: '80%' }}
+                    value={formData.district || ' '}
+                    onChange={e => setFormData({ ...formData, district: e.target.value })}
+                    label="District"
+                  >
+                    <MenuItem value="" disabled>
+                      Choose a District
+                    </MenuItem>
+                    {districtsInKerala.map(district => (
+                      <MenuItem key={district} value={district}>
+                        {district}
+                      </MenuItem>
+                    ))}
+                  </Select></Box>
               </Grid>
               {error && (
                 <Grid item xs={12}>

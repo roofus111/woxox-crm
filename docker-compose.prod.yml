@@ -1,0 +1,145 @@
+# WOXOX CRM — production stack (AWS EC2 / any Docker host)
+# Usage: docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+
+name: woxox-crm-prod
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - woxox_mongo:/data/db
+    healthcheck:
+      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - woxox
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-woxox}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-woxox_crm}
+    volumes:
+      - woxox_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-woxox} -d ${POSTGRES_DB:-woxox_crm}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - woxox
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - woxox_redis:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - woxox
+
+  crmserver:
+    build:
+      context: ${CRMSERVER_PATH:-../crmserver}
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 8000
+      MONGODB_URI: mongodb://mongo:27017/woxox_crm
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
+      CORS_ORIGIN: ${APP_ORIGIN:?set APP_ORIGIN}
+    networks:
+      - woxox
+
+  crm-api:
+    build:
+      context: ./platform/crm-api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-woxox}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-woxox_crm}?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${PLATFORM_JWT_SECRET:-${JWT_SECRET}}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-10h}
+      CORS_ORIGIN: ${APP_ORIGIN}
+      SEED_DB: ${SEED_PLATFORM_DB:-true}
+    networks:
+      - woxox
+
+  crm-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_APP_URL: ${APP_ORIGIN}
+        NEXT_PUBLIC_API_URL: ${API_ORIGIN}
+        NEXT_PUBLIC_CRM_PLATFORM_API_URL: ${PLATFORM_API_ORIGIN}/api/v1
+        NEXT_PUBLIC_USE_CRM_PLATFORM_DASHBOARD: ${NEXT_PUBLIC_USE_CRM_PLATFORM_DASHBOARD:-true}
+        NEXT_PUBLIC_SOCKET_URL: ${API_ORIGIN}
+        NEXT_PUBLIC_LEGALOS_API_URL: ${LEGALOS_API_ORIGIN:-}
+        NEXT_PUBLIC_LEGALOS_WEB_URL: ${LEGALOS_WEB_ORIGIN:-}
+        NEXTAUTH_URL: ${APP_ORIGIN}/api/auth
+        NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?set NEXTAUTH_SECRET}
+    restart: unless-stopped
+    depends_on:
+      - crmserver
+      - crm-api
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      API_URL: http://crmserver:8000/api
+      BACKEND_API_URL: http://crmserver:8000
+      CRM_PLATFORM_API_URL: http://crm-api:4001/api/v1
+      LEGALOS_API_URL: ${LEGALOS_API_ORIGIN:-http://legalos-api:4000}
+      CRM_BRIDGE_SECRET: ${CRM_BRIDGE_SECRET:-}
+    networks:
+      - woxox
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      - crm-web
+      - crmserver
+      - crm-api
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./deploy/aws/nginx/woxox.conf:/etc/nginx/conf.d/default.conf:ro
+      - ${SSL_CERT_PATH:-./deploy/aws/certs}:/etc/nginx/certs:ro
+    networks:
+      - woxox
+
+volumes:
+  woxox_mongo:
+  woxox_pg:
+  woxox_redis:
+
+networks:
+  woxox:
+    driver: bridge

@@ -1,4 +1,4 @@
-import AddNote from './AddNote'; // Adjust the path as necessary
+import AddNote from './AddNote';
 
 const Note = () => {
     return (<div>

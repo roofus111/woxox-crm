@@ -7,7 +7,6 @@ module.exports = {
   "rules": {
     "jsx-a11y/alt-text": "off",
     "react/display-name": "off",
-    "react/no-unescaped-entities": "off",
     "react/no-children-prop": "off",
     "@next/next/no-img-element": "off",
     "@next/next/no-page-custom-font": "off",
@@ -16,6 +15,10 @@ module.exports = {
     "newline-before-return": "off",
     "import/newline-after-import": "off",
     "import/order": "off",
+    "import/no-named-as-default": "off",
+    "import/no-named-as-default-member": "off",
+    "import/named": "off",
+    "react/no-unescaped-entities": "off",
     // Disabling React Hook Rules
     "react-hooks/exhaustive-deps": "off", // Disables missing dependencies warnings
     "react-hooks/rules-of-hooks": "off",  // Disables React hook usage errors

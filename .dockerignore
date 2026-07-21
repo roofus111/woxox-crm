@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.env
+.env.*
+!.env.production.example
+platform/crm-api/node_modules
+platform/crm-api/dist
+modules/legalos/node_modules
+modules/legalos/apps/web/.next
+modules/legalos/apps/api/dist
+deploy/aws/*.pem
+*.md
+!deploy/aws/README.md

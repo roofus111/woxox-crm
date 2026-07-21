@@ -25,14 +25,13 @@ import defaultData from './data'
 
 // Column Definitions
 
-const NotificationsTab = (props) => {
-
+const NotificationsTab = ({ id, leadData }) => {  // Changed props destructuring
 
   const columnHelper = createColumnHelper()
   const { lang: locale } = useParams()
   const columns = [
     columnHelper.accessor('paymentId', {
-      header: 'Date',
+      header: 'Payment ID',
       cell: ({ row }) => (
         <div className='flex items-center gap-3'>
           <div className='flex flex-col'>
@@ -97,9 +96,7 @@ const NotificationsTab = (props) => {
     })
   ]
 
-
   // States
-
   const [data, setData] = useState(() => [])
 
   // Hooks
@@ -111,6 +108,7 @@ const NotificationsTab = (props) => {
       fuzzy: () => false
     }
   })
+
   // Vars
   const data1 = [
     {
@@ -133,24 +131,31 @@ const NotificationsTab = (props) => {
     }
   ]
 
-  console.log(props.props.viewItem);
+  console.log('Lead ID:', id);  // Fixed console log
+  console.log('Lead Data:', leadData);  // Optional: if you need the full lead data
 
   useEffect(() => {
+    // Check if id exists before making API call
+    if (!id) {
+      console.error('No lead ID provided');
+      return;
+    }
+
     const token = localStorage.getItem('token')
     axios
-      .get(`${process.env.NEXT_PUBLIC_API_URL}/api/payment/bylead/${props.props.viewItem._id}`, {
+      .get(`${process.env.NEXT_PUBLIC_API_URL}/api/payment/bylead/${id}`, {  // Use id directly
         headers: {
           Authorization: `Bearer ${token}`
         }
       })
       .then(response => {
         setData(response.data) // Update data if component is still mounted
-        console.log(response.data)
+        console.log("Payment data:", response.data)
       })
       .catch(error => {
-        console.error('Failed to fetch data:', error)
+        console.error('Failed to fetch payment data:', error)
       })
-  }, [])
+  }, [id])  // Add id to dependency array
 
   return (
     <>
@@ -211,7 +216,8 @@ const NotificationsTab = (props) => {
             </tbody>
           </table>
         </div>
-      </Card></>
+      </Card>
+    </>
   )
 }
 

@@ -13,11 +13,14 @@ import { styled, useColorScheme, useTheme } from '@mui/material/styles'
 // Component Imports
 import VerticalNav, { NavHeader, NavCollapseIcons } from '@menu/vertical-menu'
 import VerticalMenu from './VerticalMenu'
+import ProductMenu from './ProductMenu'
+import ProductSwitcher from './ProductSwitcher'
 import Logo from '@components/layout/shared/Logo'
 
 // Hook Imports
 import useVerticalNav from '@menu/hooks/useVerticalNav'
 import { useSettings } from '@core/hooks/useSettings'
+import { useActiveProductOptional } from '@/contexts/ActiveProductContext'
 
 // Util Imports
 import { getLocalizedUrl } from '@/utils/i18n'
@@ -27,6 +30,7 @@ import navigationCustomStyles from '@core/styles/vertical/navigationCustomStyles
 import UserVerticalMenu from './UserVerticalMenu'
 import FinanceVerticalMenu from './FinanceVerticalMenu'
 import PipelineVerticalMenu from './PipelineVerticalMenu'
+
 const StyledBoxForShadow = styled('div')(({ theme }) => ({
   top: 60,
   left: -8,
@@ -37,7 +41,9 @@ const StyledBoxForShadow = styled('div')(({ theme }) => ({
   width: 'calc(100% + 15px)',
   height: theme.mixins.toolbar.minHeight,
   transition: 'opacity .15s ease-in-out',
-  background: `linear-gradient(var(--mui-palette-background-default) ${theme.direction === 'rtl' ? '95%' : '5%'}, rgb(var(--mui-palette-background-defaultChannel) / 0.85) 30%, rgb(var(--mui-palette-background-defaultChannel) / 0.5) 65%, rgb(var(--mui-palette-background-defaultChannel) / 0.3) 75%, transparent)`,
+  background: `linear-gradient(var(--mui-palette-background-default) ${
+    theme.direction === 'rtl' ? '95%' : '5%'
+  }, rgb(var(--mui-palette-background-defaultChannel) / 0.85) 30%, rgb(var(--mui-palette-background-defaultChannel) / 0.5) 65%, rgb(var(--mui-palette-background-defaultChannel) / 0.3) 75%, transparent)`,
   '&.scrolled': {
     opacity: 1
   }
@@ -61,23 +67,19 @@ const MenuToggleSvg = (
 )
 
 const Navigation = props => {
-  // Props
   const { dictionary, mode, systemMode, user } = props
 
-  // Hooks
   const verticalNavOptions = useVerticalNav()
   const { updateSettings, settings } = useSettings()
   const { lang: locale } = useParams()
   const { mode: muiMode, systemMode: muiSystemMode } = useColorScheme()
   const theme = useTheme()
+  const productCtx = useActiveProductOptional()
 
-  // Refs
   const shadowRef = useRef(null)
 
-  // Vars
   const { isCollapsed, isHovered, collapseVerticalNav, isBreakpointReached } = verticalNavOptions
   const isServer = typeof window === 'undefined'
-  const isSemiDark = settings.semiDark
   let isDark
 
   if (isServer) {
@@ -90,13 +92,10 @@ const Navigation = props => {
     container = isBreakpointReached || !isPerfectScrollbar ? container.target : container
 
     if (shadowRef && container.scrollTop > 0) {
-      // @ts-ignore
       if (!shadowRef.current.classList.contains('scrolled')) {
-        // @ts-ignore
         shadowRef.current.classList.add('scrolled')
       }
     } else {
-      // @ts-ignore
       shadowRef.current.classList.remove('scrolled')
     }
   }
@@ -109,32 +108,31 @@ const Navigation = props => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.layout])
-  const menuComponents = {
+
+  // Role shells keep dedicated menus; admin/default uses product-based OS nav
+  const roleMenus = {
     user: UserVerticalMenu,
     pipeline: PipelineVerticalMenu,
-    finance: FinanceVerticalMenu,
-    default: VerticalMenu,
-  };
+    finance: FinanceVerticalMenu
+  }
 
-  const MenuComponent = menuComponents[user] || menuComponents.default;
+  const useProductNav = Boolean(productCtx) && !roleMenus[user]
+  const RoleMenu = roleMenus[user] || VerticalMenu
+
+  const isSemiDark = settings.semiDark
+
   return (
-    // eslint-disable-next-line lines-around-comment
-    // Sidebar Vertical Menu
     <VerticalNav
       customStyles={navigationCustomStyles(verticalNavOptions, theme)}
       collapsedWidth={71}
       backgroundColor='var(--mui-palette-background-default)'
-      // eslint-disable-next-line lines-around-comment
-      // The following condition adds the data-mui-color-scheme='dark' attribute to the VerticalNav component
-      // when semiDark is enabled and the mode or systemMode is light
       {...(isSemiDark &&
         !isDark && {
-        'data-mui-color-scheme': 'dark'
-      })}
+          'data-mui-color-scheme': 'dark'
+        })}
     >
-      {/* Nav Header including Logo & nav toggle icons  */}
       <NavHeader>
-        <Link href={getLocalizedUrl('/', locale)}>
+        <Link href={getLocalizedUrl(useProductNav ? '/' : '/', locale)}>
           <Logo />
         </Link>
         {!(isCollapsed && !isHovered) && (
@@ -147,10 +145,16 @@ const Navigation = props => {
           />
         )}
       </NavHeader>
+
+      {useProductNav ? <ProductSwitcher /> : null}
+
       <StyledBoxForShadow ref={shadowRef} />
 
-
-      <MenuComponent dictionary={dictionary} scrollMenu={scrollMenu} />;
+      {useProductNav ? (
+        <ProductMenu scrollMenu={scrollMenu} />
+      ) : (
+        <RoleMenu dictionary={dictionary} scrollMenu={scrollMenu} />
+      )}
     </VerticalNav>
   )
 }

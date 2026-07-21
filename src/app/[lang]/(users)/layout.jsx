@@ -38,7 +38,7 @@ const Layout = async ({ children, params }) => {
   const requiredRole = roles.USER
   return (
     <Providers direction={direction}>
-      <AuthGuard locale={params.lang} requiredRole={requiredRole}>
+      <AuthGuard locale={params.lang} requiredRole={requiredRole} currentpath="en/home" >
         <LayoutWrapper
           systemMode={systemMode}
           verticalLayout={

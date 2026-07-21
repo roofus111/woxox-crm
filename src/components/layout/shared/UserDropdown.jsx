@@ -1,4 +1,3 @@
-// React Imports
 import { useRef, useState } from 'react';
 import axios from 'axios';
 
@@ -65,7 +64,7 @@ const UserDropdown = () => {
   const { lang: locale } = useParams();
 
   const handleDropdownOpen = () => {
-    setOpen((prevOpen) => !prevOpen); // Toggle state here
+    setOpen((prevOpen) => !prevOpen);
   };
 
   const handleUserLogout = async () => {
@@ -111,10 +110,8 @@ const UserDropdown = () => {
     }
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-
       const token = localStorage.getItem('token'); // Retrieve token from localStorage (or use another method)
-
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
       if (!token) {
         toast.error('Authentication token not found. Please log in again.');
         return;
@@ -187,6 +184,7 @@ const UserDropdown = () => {
             <Paper elevation={settings.skin === 'bordered' ? 0 : 8}>
               <ClickAwayListener onClickAway={(e) => handleDropdownClose(e)}>
                 <MenuList>
+                  {/* User Info */}
                   <div className="flex items-center plb-2 pli-4 gap-2" tabIndex={-1}>
                     <Avatar alt={session?.user?.name || ''} src={session?.user?.image || ''} />
                     <div className="flex items-start flex-col">
@@ -197,26 +195,19 @@ const UserDropdown = () => {
                     </div>
                   </div>
                   <Divider className="mlb-1" />
-                  <MenuItem className="gap-3 pli-4" onClick={(e) => handleDropdownClose(e, '/pages/user-profile')}>
+
+                  {/* Profile Menu Item */}
+                  <MenuItem className="gap-3 pli-4" onClick={(e) => handleDropdownClose(e, '/userdashboard')}>
                     <i className="ri-user-3-line" />
-                    <Typography color="text.primary">My Profile</Typography>
+                    <Typography color="text.primary">Profile</Typography>
                   </MenuItem>
-                  <MenuItem className="gap-3 pli-4" onClick={(e) => handleDropdownClose(e, '/pages/account-settings')}>
+
+                  {/* Settings Menu Item */}
+                  <MenuItem className="gap-3 pli-4" onClick={(e) => handleDropdownClose(e, '/manager/settings')}>
                     <i className="ri-settings-4-line" />
                     <Typography color="text.primary">Settings</Typography>
                   </MenuItem>
-                  <MenuItem className="gap-3 pli-4" onClick={handleOpenChangePasswordDialog}>
-                    <i className="ri-lock-password-line" />
-                    <Typography color="text.primary">Change Password</Typography>
-                  </MenuItem>
-                  <MenuItem className="gap-3 pli-4" onClick={(e) => handleDropdownClose(e, '/pages/pricing')}>
-                    <i className="ri-money-dollar-circle-line" />
-                    <Typography color="text.primary">Pricing</Typography>
-                  </MenuItem>
-                  <MenuItem className="gap-3 pli-4" onClick={(e) => handleDropdownClose(e, '/pages/faq')}>
-                    <i className="ri-question-line" />
-                    <Typography color="text.primary">FAQ</Typography>
-                  </MenuItem>
+
                   <div className="flex items-center plb-1.5 pli-4">
                     <Button
                       fullWidth

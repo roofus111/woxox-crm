@@ -1,44 +1,58 @@
-// Third-party Imports
+// app/guarded-page/layout.tsx or component
 import { getServerSession } from 'next-auth/next'
-import themeConfig from '@configs/themeConfig'
-// Component Imports
-import AuthRedirect from '@/components/AuthRedirect'
-import NotFound from '@/views/NotFound'
 import { authOptions } from '@/libs/auth'
-import { getLocalizedUrl } from '@/utils/i18n'
 import { redirect } from 'next/navigation'
-// Define your roles (you can also manage this in a more dynamic way if needed)
-const roles = {
-  ADMIN: 'admin',
-  USER: 'user',
-  GUEST: 'guest'
-}
+import themeConfig from '@configs/themeConfig'
+import { getLocalizedUrl } from '@/utils/i18n'
+import { encodeEmail } from '@/utils/base64url'
+import AuthRedirect from '@/components/AuthRedirect'
 
-// console.log(session)
-
-export default async function AuthGuard({ children, locale, requiredRole }) {
-  // Check if session exists
+export default async function AuthGuardLayout({ children, locale, currentpath }) {
   const session = await getServerSession(authOptions)
-  console.log(session, `requiredRole : ${requiredRole}`)
-  const userHomePage = getLocalizedUrl(themeConfig.userHomePageUrl, 'en')
-  const financeHomePageUrl = getLocalizedUrl(themeConfig.financeHomePageUrl, 'en')
-  const pipelineHomePageUrl = getLocalizedUrl(themeConfig.pipelineHomePageUrl, 'en')
+
+
+  const emailValidationPageUrl = getLocalizedUrl(themeConfig.emailValidationPageUrl, locale)
+  const userHomePage = getLocalizedUrl(themeConfig.userHomePageUrl, locale)
+  const financeHomePageUrl = getLocalizedUrl(themeConfig.financeHomePageUrl, locale)
+  const pipelineHomePageUrl = getLocalizedUrl(themeConfig.pipelineHomePageUrl, locale)
+  const normalizedPath = currentpath ? `/${String(currentpath).replace(/^\//, '')}` : null
+
+  console.log(session, 'session 4...................................................');
   if (!session) {
     return <AuthRedirect lang={locale} />
   }
-  // Check if the user has the required role
-  if (requiredRole && session.user.role !== requiredRole) {
-    if (session.user.role === 'user') {
-      redirect(userHomePage)
-    } else if (session.user.role === 'finance') {
-      redirect(financeHomePageUrl)
-    } else if (session.user.role === 'pipeline') {
-      redirect(pipelineHomePageUrl)
-    } else {
-      return <NotFound />
+
+  // Local / admin bypass: don't trap admin in onboarding gates
+  if (session.user.role === 'admin') {
+    return <>{children}</>
+  }
+
+  if (session.user.role === 'guest') {
+    if (!session.user.isEmailVerified) {
+      const encoded = encodeEmail(session.user.email)
+      redirect(`${emailValidationPageUrl}/${encoded}`)
+    } else if (!session.user.company) {
+      console.log("Go to Company Register");
+
+      redirect(getLocalizedUrl(themeConfig.companyRegisterPageUrl, locale))
+    }
+  } else if (!session.user.plan) {
+    redirect(getLocalizedUrl(themeConfig.marketplacePageUrl, locale))
+  } else {
+    switch (session.user.role) {
+      case 'user':
+        if (normalizedPath && normalizedPath != userHomePage) redirect(userHomePage)
+        break
+      case 'finance':
+        if (normalizedPath && normalizedPath != financeHomePageUrl) redirect(financeHomePageUrl)
+        break
+      case 'pipeline':
+        if (normalizedPath && normalizedPath != financeHomePageUrl) redirect(financeHomePageUrl)
+        break
+      default:
+        break
     }
   }
 
-  // Render children if user has the required role
   return <>{children}</>
-}
+} 

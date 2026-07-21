@@ -27,6 +27,12 @@ const UserRight = ({ tabContentList }) => {
           <Grid item xs={12}>
             <CustomTabList onChange={handleChange} variant='scrollable' pill='true'>
               <Tab icon={<i className='ri-time-line' />} value='overview' label='Activity' iconPosition='start' />
+              <Tab
+                icon={<i className='ri-sticky-note-add-line' />}
+                value='connections'
+                label='Notes'
+                iconPosition='start'
+              />
               <Tab icon={<i className='ri-file-line' />} value='security' label='Documents' iconPosition='start' />
               {/* <Tab
                 icon={<i className='ri-bookmark-line' />}
@@ -40,6 +46,7 @@ const UserRight = ({ tabContentList }) => {
                 label='Billings'
                 iconPosition='start'
               />
+
               {/* <Tab icon={<i className='ri-link-m' />} value='connections' label='Connections' iconPosition='start' /> */}
             </CustomTabList>
           </Grid>

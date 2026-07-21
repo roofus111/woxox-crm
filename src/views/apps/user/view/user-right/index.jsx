@@ -9,7 +9,7 @@ import TabContext from '@mui/lab/TabContext'
 import TabPanel from '@mui/lab/TabPanel'
 import Grid from '@mui/material/Grid'
 
-// Component Imports
+  // Component Imports
 import CustomTabList from '@core/components/mui/TabList'
 
 const UserRight = ({ tabContentList }) => {

@@ -19,7 +19,7 @@ const InvoiceList = () => {
   useEffect(() => {
     const token = localStorage.getItem('token')
     axios
-      .get(`${process.env.NEXT_PUBLIC_API_URL}/api/invoice`, {
+      .get(`${process.env.NEXT_PUBLIC_API_URL}/api/invoice/get`, {
         headers: {
           Authorization: `Bearer ${token}`
         }

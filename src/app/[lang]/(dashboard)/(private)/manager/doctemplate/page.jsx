@@ -1,0 +1,621 @@
+"use client";
+
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import axios from 'axios';
+import DocEditor from './components/DocEditor';
+import TemplateManager from './components/TemplateManager';
+import { Button } from '@mui/material';
+import DocumentActions from './components/DocumentActions';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
+
+const Dashboard = () => {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const folderId = searchParams.get('folderId');
+
+    // Initialize state
+    const [view, setView] = useState('documents'); // 'documents', 'templates'
+    const [currentView, setCurrentView] = useState('list'); // 'list', 'editor'
+    const [documents, setDocuments] = useState([]);
+    const [currentDocumentId, setCurrentDocumentId] = useState(null);
+    const [editorContent, setEditorContent] = useState('');
+    const [documentTitle, setDocumentTitle] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    // Fetch all documents on component mount
+    useEffect(() => {
+        fetchDocuments();
+    }, []);
+
+    // Fetch documents from API
+    const fetchDocuments = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            // Build API URL with folderId if present
+            let apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/files/getdocuments`;
+            if (folderId) {
+                apiUrl += `?folderId=${folderId}`;
+            }
+
+            const { data } = await axios.get(
+                apiUrl,
+                { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+            );
+
+            // Validate the response structure to avoid null errors
+            if (!data || !Array.isArray(data.documents)) {
+                console.warn('Unexpected API response format:', data);
+                setDocuments([]);
+                return;
+            }
+
+            // Normalize API fields to what your UI expects:
+            const docs = data.documents.map(doc => {
+                // Make sure we have valid data before accessing properties
+                if (!doc) return null;
+
+                return {
+                    id: doc._id || '',
+                    title: doc.docName || doc.title || 'Untitled', // Check for both docName and title
+                    content: doc.content || '',
+                    fileUrl: doc.fileUrl || '',
+                };
+            }).filter(Boolean); // Remove any null entries
+
+            setDocuments(docs);
+        } catch (err) {
+            console.error('Error fetching documents:', err);
+            setError('Failed to load documents. Please try again.');
+            setDocuments([]); // Set to empty array on error
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Fetch a single document by ID
+    const fetchDocumentById = async (documentId) => {
+        try {
+            setLoading(true);
+            setError(null);
+            console.log('Fetching document with ID:', documentId);
+            const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/files/getdocuments/${documentId}`, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+
+            // Validate the response to avoid null errors
+            if (!response || !response.data) {
+                console.warn('Empty response when fetching document:', documentId);
+                setError('Document could not be loaded - empty response');
+                return null;
+            }
+
+            // Log the response to help debug
+            console.log('Document fetch response:', response.data);
+
+            // Check if the document is in a nested 'document' property
+            const document = response.data.document || response.data;
+
+            if (!document) {
+                console.warn('Document not found in response:', response.data);
+                setError('Document data could not be found in the response');
+                return null;
+            }
+
+            const formattedDoc = {
+                id: document._id || documentId,
+                title: document.docName || document.title || 'Untitled', // Check for both docName and title
+                content: document.content || '<p></p>'
+            };
+
+            console.log('Formatted document for editor:', formattedDoc);
+            return formattedDoc;
+        } catch (err) {
+            console.error(`Error fetching document ${documentId}:`, err);
+            if (err.response && err.response.data && err.response.data.message) {
+                setError(`Failed to load document: ${err.response.data.message}`);
+            } else if (err.response && err.response.data && err.response.data.error) {
+                setError(`Failed to load document: ${err.response.data.error}`);
+            } else {
+                setError('Failed to load document. Please try again.');
+            }
+            return null;
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleViewChange = (newView) => {
+        setView(newView);
+        // When switching views, go back to list view
+        setCurrentView('list');
+    };
+
+    const handleSelectDocument = async (documentId) => {
+        const document = await fetchDocumentById(documentId);
+        if (document) {
+            console.log('Setting document for editing:', document);
+            setCurrentDocumentId(documentId);
+            setEditorContent(document.content || '<p></p>');
+            setDocumentTitle(document.title || 'Untitled');
+            setCurrentView('editor');
+        } else {
+            // If we couldn't load the document, show an error
+            setError('Could not load the selected document. Please try again.');
+        }
+    };
+
+    const handleCreateNewDocument = () => {
+        setCurrentDocumentId(null);
+        setEditorContent('');
+        setDocumentTitle('Untitled Document');
+        setCurrentView('editor');
+    };
+
+    const handleBackToList = () => {
+        setCurrentView('list');
+    };
+
+    const handleUpdateContent = (content) => {
+        setEditorContent(content);
+    };
+
+    const handleUpdateTitle = (title) => {
+        setDocumentTitle(title);
+    };
+
+    const handleSaveDocument = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            if (currentDocumentId) {
+                // Update existing document
+                await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/files/documents/${currentDocumentId}`, {
+                    docName: documentTitle,
+                    title: documentTitle, // Include both title and docName
+                    content: editorContent
+                }, {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+
+                // Update the document in the local state
+                const updatedDocuments = documents.map(doc =>
+                    doc.id === currentDocumentId
+                        ? { ...doc, title: documentTitle, content: editorContent }
+                        : doc
+                );
+                setDocuments(updatedDocuments);
+            } else {
+                // Create new document
+                const payload = {
+                    docName: documentTitle,
+                    title: documentTitle, // Include both title and docName
+                    content: editorContent || '<p></p>' // Ensure we're not sending null content
+                };
+
+                // Add parent folder ID if available
+                if (folderId) {
+                    const currentPath = window.location.pathname;
+                    const isInPeopleFolder = currentPath.includes('/people/');
+
+                    if (isInPeopleFolder) {
+                        payload.leadId = folderId;
+                    } else {
+                        payload.parent = folderId;
+                    }
+                }
+
+                const response = await axios.post(
+                    `${process.env.NEXT_PUBLIC_API_URL}/api/files/documents`,
+                    payload,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${localStorage.getItem('token')}`
+                        }
+                    }
+                );
+
+                // Make sure we handle the response properly
+                if (response && response.data) {
+                    // Check if the response contains a document property
+                    const newDocument = response.data.document || response.data;
+
+                    // Check if newDocument is null before accessing properties
+                    if (newDocument) {
+                        const formattedNewDoc = {
+                            id: newDocument._id || newDocument.id,
+                            title: newDocument.docName || newDocument.title || documentTitle,
+                            content: newDocument.content || editorContent || '<p></p>',
+                        };
+                        setDocuments([...documents, formattedNewDoc]);
+                        setCurrentDocumentId(formattedNewDoc.id);
+
+                        // Show success message or notification here
+                        console.log('Document created successfully:', formattedNewDoc);
+                    } else {
+                        console.error('Document creation succeeded but returned null document');
+                        setError('Document was created but could not be loaded. Please refresh.');
+                    }
+                } else {
+                    throw new Error('Received empty response from server');
+                }
+            }
+
+            setLoading(false);
+        } catch (err) {
+            console.error('Error saving document:', err);
+            if (err.response && err.response.data && err.response.data.message) {
+                setError(`Failed to save document: ${err.response.data.message}`);
+            } else if (err.response && err.response.data && err.response.data.error) {
+                setError(`Failed to save document: ${err.response.data.error}`);
+            } else {
+                setError('Failed to save document. Please try again.');
+            }
+            setLoading(false);
+        }
+    };
+
+    const handleDeleteDocument = async (documentId) => {
+        try {
+            setLoading(true);
+            setError(null);
+            await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/api/files/documents/${documentId}`, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+
+            // Remove document from local state
+            setDocuments(documents.filter(doc => doc.id !== documentId));
+
+            // If the deleted document was currently being edited, return to list view
+            if (currentDocumentId === documentId) {
+                setCurrentDocumentId(null);
+                setEditorContent('');
+                setDocumentTitle('');
+                setCurrentView('list');
+            }
+
+            setLoading(false);
+        } catch (err) {
+            console.error('Error deleting document:', err);
+            setError('Failed to delete document. Please try again.');
+            setLoading(false);
+        }
+    };
+
+    // Handle document upload functionality
+    const handleUploadDocument = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        try {
+            setLoading(true);
+            setError(null);
+
+            const token = localStorage.getItem('token');
+            if (!token) {
+                setError('Authentication token not found. Please log in again.');
+                setLoading(false);
+                return;
+            }
+
+            // Create form data for upload
+            const formData = new FormData();
+            formData.append('files', file);
+
+            // Check if we're in a person's folder
+            const currentPath = window.location.pathname;
+            const isInPeopleFolder = currentPath.includes('/people/');
+
+            // Add appropriate parent ID or lead ID based on context
+            if (folderId) {
+                if (isInPeopleFolder) {
+                    formData.append('leadId', folderId);
+                } else {
+                    formData.append('parent', folderId);
+                }
+            }
+
+            // Build the API URL
+            const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/files/upload`;
+
+            // Upload the document
+            const response = await axios.post(
+                apiUrl,
+                formData,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'multipart/form-data'
+                    }
+                }
+            );
+
+            if (response.data) {
+                // Refresh the documents list after successful upload
+                await fetchDocuments();
+
+                // Show success message
+                // You could replace this with a proper toast notification
+                alert('Document uploaded successfully!');
+            }
+        } catch (err) {
+            console.error('Error uploading document:', err);
+            setError('Failed to upload document. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Handle uploading the document content as PDF
+    const handleUploadDocumentContent = async () => {
+        if (!documentTitle || !editorContent) {
+            setError('Please provide a title and content for the document.');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            setError(null);
+
+            const token = localStorage.getItem('token');
+            if (!token) {
+                setError('Authentication token not found. Please log in again.');
+                setLoading(false);
+                return;
+            }
+
+            // Create temporary container for rendering
+            const tempContainer = document.createElement('div');
+            tempContainer.innerHTML = editorContent;
+            tempContainer.style.width = '800px'; // Fixed width for better PDF formatting
+            tempContainer.style.padding = '20px';
+            tempContainer.style.position = 'absolute';
+            tempContainer.style.left = '-9999px';
+            document.body.appendChild(tempContainer);
+
+            // Use html2canvas to render the content to canvas
+            const canvas = await html2canvas(tempContainer, {
+                scale: 2, // Higher scale for better quality
+                useCORS: true,
+                logging: false
+            });
+
+            // Clean up temp container
+            document.body.removeChild(tempContainer);
+
+            // Initialize PDF with A4 dimensions
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const imgWidth = 210; // A4 width in mm
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+            // Add content to PDF
+            pdf.setFont('helvetica');
+            pdf.setFontSize(16);
+            pdf.text(documentTitle, 105, 15, { align: 'center' });
+
+            // Add image from canvas with proper dimensions
+            pdf.addImage(
+                canvas.toDataURL('image/png'),
+                'PNG',
+                0,
+                20, // Start below title
+                imgWidth,
+                imgHeight
+            );
+
+            // Convert PDF to blob
+            const pdfBlob = pdf.output('blob');
+
+            // Create a filename
+            const filename = `${documentTitle.replace(/\s+/g, '_')}_${Date.now()}.pdf`;
+
+            // Create form data for upload
+            const formData = new FormData();
+            formData.append('files', new File([pdfBlob], filename, { type: 'application/pdf' }));
+
+            // Check if we're in a person's folder
+            const currentPath = window.location.pathname;
+            const isInPeopleFolder = currentPath.includes('/people/');
+
+            // Add appropriate parent ID or lead ID based on context
+            if (folderId) {
+                if (isInPeopleFolder) {
+                    formData.append('leadId', folderId);
+                } else {
+                    formData.append('parent', folderId);
+                }
+            }
+
+            // Build the API URL
+            const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/files/upload`;
+
+            // Upload the document
+            const response = await axios.post(
+                apiUrl,
+                formData,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'multipart/form-data'
+                    }
+                }
+            );
+
+            if (response.data) {
+                // Navigate to the appropriate folder
+                if (folderId) {
+                    const navigateTo = isInPeopleFolder
+                        ? `/en/manager/people/${folderId}/files`
+                        : `/en/manager/myfiles?folderId=${folderId}`;
+                    router.push(navigateTo);
+                } else {
+                    // If no folder ID, navigate to the root files page
+                    router.push('/en/manager/myfiles');
+                }
+            }
+        } catch (err) {
+            console.error('Error uploading document content:', err);
+            setError('Failed to upload document. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="w-full min-h-screen bg-gray-50">
+            <header className="flex w-[92%] ml-12 items-center justify-between px-6 py-4 bg-white border rounded-xl">
+                <nav className="flex space-x-4">
+                    <Button
+                        className={`px-4 py-2 rounded-md transition-colors ${view === 'documents' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}
+                        onClick={() => handleViewChange('documents')}
+                    >
+                        Documents
+                    </Button>
+                    <Button
+                        className={`px-4 py-2 rounded-md transition-colors ${view === 'templates' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}
+                        onClick={() => handleViewChange('templates')}
+                    >
+                        Templates
+                    </Button>
+                </nav>
+                <div>
+                    {/* User profile button could go here */}
+                </div>
+            </header>
+
+            {error && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-4 mx-6">
+                    <span className="block sm:inline">{error}</span>
+                    <span className="absolute top-0 bottom-0 right-0 px-4 py-3" onClick={() => setError(null)}>
+                        <svg className="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                            <title>Close</title>
+                            <path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z" />
+                        </svg>
+                    </span>
+                </div>
+            )}
+
+            <div className="p-6">
+                {loading && (
+                    <div className="flex justify-center items-center h-16">
+                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                    </div>
+                )}
+
+                {view === 'documents' ? (
+                    currentView === 'editor' ? (
+                        <div className="bg-white rounded-lg shadow-md p-6">
+                            <div className="flex justify-between items-center mb-4">
+                                <div className="flex items-center">
+                                    <Button
+                                        onClick={handleBackToList}
+                                        className="mr-4 text-gray-600 hover:text-gray-900"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                        </svg>
+                                    </Button>
+                                    <input
+                                        type="text"
+                                        value={documentTitle}
+                                        onChange={(e) => handleUpdateTitle(e.target.value)}
+                                        className="text-2xl font-bold border-none focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-2"
+                                        placeholder="Document Title"
+                                    />
+                                </div>
+                                <DocumentActions onExportPdf={handleUploadDocumentContent} />
+                            </div>
+                            <DocEditor
+                                initialContent={editorContent}
+                                onUpdate={handleUpdateContent}
+                                documentTitle={documentTitle}
+                                onUpdateTitle={handleUpdateTitle}
+                                key={currentDocumentId || 'new-doc'} // Add key to force re-render on document change
+                            />
+                            <div className="mt-6 flex space-x-4">
+                                <button
+                                    onClick={handleSaveDocument}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer"
+                                    disabled={loading}
+                                >
+                                    {loading ? 'Saving...' : 'Save Document'}
+                                </button>
+                                <button
+                                    onClick={handleUploadDocumentContent}
+                                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors cursor-pointer"
+                                    disabled={loading}
+                                >
+                                    {loading ? 'Uploading...' : 'Upload as PDF'}
+                                </button>
+                                <input
+                                    type="file"
+                                    id="document-upload"
+                                    className="hidden"
+                                    onChange={handleUploadDocument}
+                                    accept=".pdf,.doc,.docx,.txt,.rtf"
+                                />
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="bg-white rounded-lg shadow-md p-6">
+                            <div className="flex items-center justify-between mb-6 border-b pb-4">
+                                <h2 className="text-xl font-semibold text-gray-800">Your Documents</h2>
+                                <div className="flex space-x-2">
+                                    <Button
+                                        onClick={handleCreateNewDocument}
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                                        disabled={loading}
+                                    >
+                                        Create New Document
+                                    </Button>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {documents.length === 0 && !loading ? (
+                                    <div className="col-span-3 text-center text-gray-500 py-8">
+                                        No documents found. Create a new document or upload one to get started.
+                                    </div>
+                                ) : (
+                                    documents.map(doc => (
+                                        <div
+                                            key={doc.id}
+                                            className="border rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow relative group"
+                                            onClick={() => handleSelectDocument(doc.id)}
+                                        >
+                                            <h3 className="text-lg font-medium text-gray-800 mb-2">{doc.title}</h3>
+                                            <div className="text-gray-600 text-sm overflow-hidden h-20">
+                                                {doc.content ? (
+                                                    <div dangerouslySetInnerHTML={{ __html: doc.content.substring(0, 100) + '...' }} />
+                                                ) : (
+                                                    <p>No content</p>
+                                                )}
+                                            </div>
+                                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                {/* Delete button could go here if needed */}
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    )
+                ) : (
+                    <TemplateManager />
+                )}
+            </div>
+        </div>
+    );
+};
+
+export default Dashboard;

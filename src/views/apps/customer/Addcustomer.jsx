@@ -1,29 +1,36 @@
-import React, { useState } from "react";
-import { Box, TextField, MenuItem, Button, Grid, Typography } from "@mui/material";
-import axios from "axios";
+'use client'
+import React, { useState } from 'react';
+import {
+    Box,
+    TextField,
+    MenuItem,
+    Button,
+    Grid,
+    Typography,
+} from '@mui/material';
 
-const AddCustomerForm = ({ setOpenDialog, refreshCustomers }) => {
+const AddCustomerForm = () => {
     const [formData, setFormData] = useState({
-        firstName: "",
-        lastName: "",
-        email: "",
-        phone: "",
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
         address: {
-            street: "",
-            city: "",
-            state: "",
-            postalCode: "",
-            country: "",
+            street: '',
+            city: '',
+            state: '',
+            postalCode: '',
+            country: '',
         },
-        dateOfBirth: "",
-        gender: "",
-        status: "Active",
+        dateOfBirth: '',
+        gender: '',
+        status: 'Active',
     });
 
-    // handleChange function
-    const handleChange = ({ target: { name, value } }) => {
-        if (name.startsWith("address.")) {
-            const addressField = name.split(".")[1];
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        if (name.includes('address.')) {
+            const addressField = name.split('.')[1];
             setFormData((prev) => ({
                 ...prev,
                 address: {
@@ -36,29 +43,20 @@ const AddCustomerForm = ({ setOpenDialog, refreshCustomers }) => {
         }
     };
 
-    const [isLoading, setIsLoading] = useState(false);
-
-    const handleSubmit = async (e) => {
+    const handleSubmit = (e) => {
         e.preventDefault();
-        setIsLoading(true);
-        try {
-            const token = localStorage.getItem("token");
-            const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/customer/createcustomer`;
-            const response = await axios.post(apiUrl, formData, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            refreshCustomers();
-            setOpenDialog(false);
-            console.log("Customer added successfully");
-        } catch (error) {
-            console.error("Error submitting form:", error.response?.data || error.message);
-        } finally {
-            setIsLoading(false);
-        }
+        console.log('Submitted Data:', formData);
+        // Add your API call or logic to handle the form submission here
     };
 
     return (
-        <Box sx={{ maxWidth: 600, margin: "auto", padding: 3 }}>
+        <Box
+            sx={{
+                maxWidth: 600,
+                margin: 'auto',
+                padding: 3
+            }}
+        >
             <Typography variant="h5" gutterBottom>
                 Add Customer
             </Typography>

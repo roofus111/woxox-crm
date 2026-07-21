@@ -13,6 +13,7 @@ import LanguageDropdown from '@components/layout/shared/LanguageDropdown'
 import ModeDropdown from '@components/layout/shared/ModeDropdown'
 import ShortcutsDropdown from '@components/layout/shared/ShortcutsDropdown'
 import NotificationsDropdown from '@components/layout/shared/NotificationsDropdown'
+import ChatNavIcon from '@components/layout/shared/ChatNavIcon'
 import UserDropdown from '@components/layout/shared/UserDropdown'
 
 // Hook Imports
@@ -133,6 +134,7 @@ const NavbarContent = () => {
         <LanguageDropdown />
         <ModeDropdown />
         <ShortcutsDropdown shortcuts={shortcuts} />
+        <ChatNavIcon />
         <NotificationsDropdown notifications={notifications} />
         <UserDropdown />
         {/* Language Dropdown, Notification Dropdown, quick access menu dropdown, user dropdown will be placed here */}

@@ -15,8 +15,27 @@ import ChatLog from './ChatLog'
 import SendMsgForm from './SendMsgForm'
 import UserProfileRight from './UserProfileRight'
 import CustomAvatar from '@core/components/mui/Avatar'
+import { clearChat } from '@/redux-store/slices/chat'
 
-// Renders the user avatar with badge and user information
+const chatMenuOptions = (dispatch, activeUser, setUserProfileRightOpen, setBackdropOpen) => [
+  {
+    text: 'View Contact',
+    menuItemProps: {
+      onClick: () => {
+        setUserProfileRightOpen(true)
+        setBackdropOpen(true)
+      }
+    }
+  },
+  {
+    text: 'Clear Chat',
+    menuItemProps: {
+      onClick: () => {
+        if (activeUser?.id) dispatch(clearChat(activeUser.id))
+      }
+    }
+  },
+]
 const UserAvatar = ({ activeUser, setUserProfileLeftOpen, setBackdropOpen }) => (
   <div
     className='flex items-center gap-4 cursor-pointer'
@@ -33,13 +52,15 @@ const UserAvatar = ({ activeUser, setUserProfileLeftOpen, setBackdropOpen }) => 
     />
     <div>
       <Typography color='text.primary'>{activeUser?.fullName}</Typography>
-      <Typography variant='body2'>{activeUser?.role}</Typography>
+      <Typography variant='body2' color={activeUser?.status === 'online' ? 'success.main' : 'text.secondary'}>
+        {activeUser?.status === 'online' ? 'Online' : 'Offline'}
+        {activeUser?.role ? ` · ${activeUser.role}` : ''}
+      </Typography>
     </div>
   </div>
 )
 
 const ChatContent = props => {
-  // Props
   const {
     chatStore,
     dispatch,
@@ -49,7 +70,13 @@ const ChatContent = props => {
     isBelowMdScreen,
     isBelowSmScreen,
     isBelowLgScreen,
-    messageInputRef
+    messageInputRef,
+    onSendMessage,
+    onTyping,
+    onEditMessage,
+    onDeleteMessage,
+    onAddReaction,
+    onOpenNewChat,
   } = props
 
   const { activeUser } = chatStore
@@ -71,16 +98,24 @@ const ChatContent = props => {
         <i className='ri-wechat-line text-[50px]' />
       </CustomAvatar>
       <Typography className='text-center'>Select a contact to start a conversation.</Typography>
+      <Button
+        variant='contained'
+        className='rounded-full'
+        startIcon={<i className='ri-add-line' />}
+        onClick={onOpenNewChat}
+      >
+        New Chat
+      </Button>
       {isBelowMdScreen && (
         <Button
-          variant='contained'
+          variant='outlined'
           className='rounded-full'
           onClick={() => {
             setSidebarOpen(true)
             isBelowSmScreen ? setBackdropOpen(false) : setBackdropOpen(true)
           }}
         >
-          Select Contact
+          Browse Conversations
         </Button>
       )}
     </CardContent>
@@ -115,50 +150,16 @@ const ChatContent = props => {
             {isBelowMdScreen ? (
               <OptionMenu
                 iconClassName='text-textSecondary'
-                options={[
-                  {
-                    text: 'View Contact',
-                    menuItemProps: {
-                      onClick: () => {
-                        setUserProfileRightOpen(true)
-                        setBackdropOpen(true)
-                      }
-                    }
-                  },
-                  'Mute Notifications',
-                  'Block Contact',
-                  'Clear Chat',
-                  'Block'
-                ]}
+                options={chatMenuOptions(dispatch, activeUser, setUserProfileRightOpen, setBackdropOpen)}
               />
             ) : (
               <div className='flex items-center gap-1'>
-                <IconButton size='small'>
-                  <i className='ri-phone-line text-textSecondary' />
-                </IconButton>
-                <IconButton size='small'>
-                  <i className='ri-video-add-line text-textSecondary' />
-                </IconButton>
                 <IconButton size='small'>
                   <i className='ri-search-line text-textSecondary' />
                 </IconButton>
                 <OptionMenu
                   iconClassName='text-textSecondary'
-                  options={[
-                    {
-                      text: 'View Contact',
-                      menuItemProps: {
-                        onClick: () => {
-                          setUserProfileRightOpen(true)
-                          setBackdropOpen(true)
-                        }
-                      }
-                    },
-                    'Mute Notifications',
-                    'Block Contact',
-                    'Clear Chat',
-                    'Block'
-                  ]}
+                  options={chatMenuOptions(dispatch, activeUser, setUserProfileRightOpen, setBackdropOpen)}
                 />
               </div>
             )}
@@ -169,13 +170,17 @@ const ChatContent = props => {
             isBelowMdScreen={isBelowMdScreen}
             isBelowSmScreen={isBelowSmScreen}
             isBelowLgScreen={isBelowLgScreen}
+            onEditMessage={onEditMessage}
+            onDeleteMessage={onDeleteMessage}
+            onAddReaction={onAddReaction}
           />
 
           <SendMsgForm
-            dispatch={dispatch}
             activeUser={activeUser}
             isBelowSmScreen={isBelowSmScreen}
             messageInputRef={messageInputRef}
+            onSendMessage={onSendMessage}
+            onTyping={onTyping}
           />
         </div>
       )}

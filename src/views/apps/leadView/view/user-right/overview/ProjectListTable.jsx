@@ -127,7 +127,7 @@ const ProjectListTable = ({ id }) => {
                   </Typography>
                   <div className='flex flex-row gap-2'>
                     <Typography variant='body2'>
-                      Created By: {item.createdBy.name} &#x2192; {item.assignedTo.name}
+                      Created By: {item.createdBy?.name} &#x2192; {item.assignedTo?.name}
                     </Typography>
                   </div>
                 </div>

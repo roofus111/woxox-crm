@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
+  // Classic output works reliably with `next start` in Docker.
+  // (standalone can be re-enabled later once production image is stable)
   basePath: process.env.BASEPATH,
   redirects: async () => {
     return [

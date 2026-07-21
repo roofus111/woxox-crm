@@ -41,11 +41,15 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN npx prisma generate && npm run build:icons
 RUN npm run build
-# Fail the image build if production output is missing (prevents runtime 502)
-RUN test -f .next/BUILD_ID \
-  && test -d .next/standalone \
-  && test -d .next/static \
-  && echo "Next.js production build OK: $(cat .next/BUILD_ID)"
+RUN if [ ! -f .next/BUILD_ID ]; then \
+      echo "ERROR: .next/BUILD_ID missing after next build"; \
+      echo "Listing /app:"; ls -la /app; \
+      echo "Listing .next (if any):"; ls -la /app/.next || true; \
+      find /app -name BUILD_ID 2>/dev/null || true; \
+      exit 1; \
+    fi \
+    && echo "Next.js production build OK: $(cat .next/BUILD_ID)" \
+    && ls -la .next
 
 FROM node:20-bookworm-slim AS runner
 WORKDIR /app
@@ -54,17 +58,18 @@ ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-certificates \
-  && rm -rf /var/lib/apt/lists/* \
-  && groupadd --system --gid 1001 nodejs \
-  && useradd --system --uid 1001 --gid nodejs nextjs
+  && rm -rf /var/lib/apt/lists/*
 
-# Standalone server (includes minimal node_modules + server.js)
-COPY --from=build --chown=nextjs:nodejs /app/public ./public
-COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=build /app/public ./public
+COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/next.config.mjs ./next.config.mjs
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/.next ./.next
 
-USER nextjs
+# Confirm build files made it into the final image
+RUN test -f .next/BUILD_ID && echo "Runner image has BUILD_ID=$(cat .next/BUILD_ID)"
+
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=5 \
   CMD node -e "fetch('http://127.0.0.1:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["node", "server.js"]
+CMD ["node", "node_modules/next/dist/bin/next", "start", "-H", "0.0.0.0", "-p", "3000"]

@@ -47,8 +47,11 @@ RUN useradd --system --uid 1001 nextjs
 
 COPY --from=build /app/public ./public
 COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/next.config.mjs ./next.config.mjs
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/.next ./.next
+
+ENV HOSTNAME=0.0.0.0
 
 USER nextjs
 EXPOSE 3000

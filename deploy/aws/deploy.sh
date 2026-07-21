@@ -29,7 +29,7 @@ echo "==> Building and starting stack..."
 docker compose -f docker-compose.prod.yml --env-file "${ENV_FILE}" up -d --build
 
 echo "==> Service status:"
-docker compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml --env-file "${ENV_FILE}" ps
 
 echo ""
 echo "Deploy complete."

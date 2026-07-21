@@ -3,10 +3,12 @@
 
 FROM node:20-bookworm-slim AS deps
 WORKDIR /app
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json* ./
 COPY src/prisma ./src/prisma
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
-RUN npm ci
+RUN npm ci --ignore-scripts
 
 FROM node:20-bookworm-slim AS build
 WORKDIR /app
@@ -34,6 +36,7 @@ ENV NEXTAUTH_URL=$NEXTAUTH_URL
 ENV NEXTAUTH_SECRET=$NEXTAUTH_SECRET
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
 
+RUN npx prisma generate && npm run build:icons
 RUN npm run build
 
 FROM node:20-bookworm-slim AS runner

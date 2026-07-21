@@ -43,18 +43,17 @@ FROM node:20-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
-RUN useradd --system --uid 1001 nextjs
-
-COPY --from=build --chown=nextjs:nextjs /app/public ./public
-COPY --from=build --chown=nextjs:nextjs /app/package.json ./package.json
-COPY --from=build --chown=nextjs:nextjs /app/next.config.mjs ./next.config.mjs
-COPY --from=build --chown=nextjs:nextjs /app/node_modules ./node_modules
-COPY --from=build --chown=nextjs:nextjs /app/.next ./.next
-
 ENV HOSTNAME=0.0.0.0
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 
-USER nextjs
+COPY --from=build /app/public ./public
+COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/next.config.mjs ./next.config.mjs
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/.next ./.next
+
 EXPOSE 3000
-HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["npm", "start"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=5 \
+  CMD node -e "fetch('http://127.0.0.0:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+CMD ["node", "node_modules/next/dist/bin/next", "start", "-H", "0.0.0.0", "-p", "3000"]

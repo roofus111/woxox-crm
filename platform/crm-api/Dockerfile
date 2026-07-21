@@ -3,6 +3,8 @@
 
 FROM node:20-bookworm-slim AS build
 WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json* ./
 RUN npm ci
 COPY prisma ./prisma
@@ -17,17 +19,14 @@ ENV NODE_ENV=production
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
-COPY package.json package-lock.json* ./
-# Production deps + prisma/tsx needed by docker-entrypoint (db push + seed)
-RUN npm ci --omit=dev \
-  && npm install prisma@6.1.0 tsx@4.19.2 --no-save
-
+# Use the same node_modules from build so prisma CLI + @prisma/client versions match
+COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
-COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=build /app/node_modules/@prisma ./node_modules/@prisma
-COPY prisma ./prisma
+COPY --from=build /app/prisma ./prisma
 COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh \
+  && npx prisma --version
 
 EXPOSE 4001
 HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=5 \

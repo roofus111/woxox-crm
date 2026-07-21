@@ -12,6 +12,10 @@ export function isCrmPlatformEnabled() {
 }
 
 export function getCrmPlatformBase() {
+  if (typeof window !== 'undefined') {
+    // Prefer same-origin proxy in the browser (works on production domain)
+    return `${window.location.origin}/platform-api/api/v1`
+  }
   return process.env.NEXT_PUBLIC_CRM_PLATFORM_API_URL || 'http://localhost:4001/api/v1'
 }
 
@@ -44,11 +48,17 @@ export function clearCrmPlatformToken() {
 
 /** Login to platform API (call after legacy login with same credentials). */
 export async function loginCrmPlatform(email, password) {
-  const res = await fetch(`${getCrmPlatformBase()}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  })
+  const url = `${getCrmPlatformBase()}/auth/login`
+  let res
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
+  } catch (err) {
+    throw new Error(`Failed to reach platform API (${url}). ${err.message}`)
+  }
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
     throw new Error(data.message || `Platform login failed (${res.status})`)

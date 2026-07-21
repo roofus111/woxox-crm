@@ -102,7 +102,8 @@ services:
       args:
         NEXT_PUBLIC_APP_URL: ${APP_ORIGIN}
         NEXT_PUBLIC_API_URL: ${API_ORIGIN}
-        NEXT_PUBLIC_CRM_PLATFORM_API_URL: ${PLATFORM_API_ORIGIN}/api/v1
+        # Same-origin path via app nginx → avoids browser CORS "Failed to fetch"
+        NEXT_PUBLIC_CRM_PLATFORM_API_URL: ${APP_ORIGIN}/platform-api/api/v1
         NEXT_PUBLIC_USE_CRM_PLATFORM_DASHBOARD: ${NEXT_PUBLIC_USE_CRM_PLATFORM_DASHBOARD:-true}
         NEXT_PUBLIC_SOCKET_URL: ${API_ORIGIN}
         NEXT_PUBLIC_LEGALOS_API_URL: ${LEGALOS_API_ORIGIN:-}

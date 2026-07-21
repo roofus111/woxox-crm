@@ -38,18 +38,31 @@ ENV NEXTAUTH_URL=$NEXTAUTH_URL
 ENV NEXTAUTH_SECRET=$NEXTAUTH_SECRET
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
 ENV NEXT_TELEMETRY_DISABLED=1
+# Leave headroom on t3.medium (4GB) while other containers run
+ENV NODE_OPTIONS=--max-old-space-size=2048
 
 RUN npx prisma generate && npm run build:icons
-RUN npm run build
-RUN if [ ! -f .next/BUILD_ID ]; then \
-      echo "ERROR: .next/BUILD_ID missing after next build"; \
-      echo "Listing /app:"; ls -la /app; \
-      echo "Listing .next (if any):"; ls -la /app/.next || true; \
-      find /app -name BUILD_ID 2>/dev/null || true; \
-      exit 1; \
-    fi \
-    && echo "Next.js production build OK: $(cat .next/BUILD_ID)" \
-    && ls -la .next
+
+# Build + always print diagnostics (so we can see what next produced)
+RUN set -eux; \
+  echo "=== before next build ==="; \
+  free -h || true; \
+  df -h / || true; \
+  npx next --version; \
+  test -f next.config.mjs; \
+  test -d src/app; \
+  npx next build; \
+  echo "=== after next build ==="; \
+  ls -la /app; \
+  ls -la /app/.next || true; \
+  find /app/.next -maxdepth 2 \( -type f -o -type d \) 2>/dev/null | head -80 || true; \
+  if [ ! -f /app/.next/BUILD_ID ]; then \
+    echo "ERROR: BUILD_ID missing"; \
+    free -h || true; \
+    df -h || true; \
+    exit 1; \
+  fi; \
+  echo "BUILD_ID=$(cat /app/.next/BUILD_ID)"
 
 FROM node:20-bookworm-slim AS runner
 WORKDIR /app
@@ -66,8 +79,7 @@ COPY --from=build /app/next.config.mjs ./next.config.mjs
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/.next ./.next
 
-# Confirm build files made it into the final image
-RUN test -f .next/BUILD_ID && echo "Runner image has BUILD_ID=$(cat .next/BUILD_ID)"
+RUN test -f .next/BUILD_ID && echo "Runner BUILD_ID=$(cat .next/BUILD_ID)"
 
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=5 \

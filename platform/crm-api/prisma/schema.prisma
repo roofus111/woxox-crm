@@ -13,13 +13,17 @@ datasource db {
 // ─── Tenancy & identity ─────────────────────────────────────────────────────
 
 model Workspace {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
-  plan      String   @default("starter")
-  settings  Json     @default("{}")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String    @id @default(cuid())
+  name            String
+  slug            String    @unique
+  tenantCode      String?   @unique
+  plan            String    @default("starter")
+  status          String    @default("active") // active | suspended
+  trialEndsAt     DateTime?
+  enabledModules  String[]  @default(["crm"])
+  settings        Json      @default("{}")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   users         WorkspaceMember[]
   leads         Lead[]

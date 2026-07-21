@@ -96,3 +96,28 @@ export async function fetchPipelines() {
 export async function fetchPipelineBoard(pipelineId) {
   return platformFetch(`/pipelines/${pipelineId}/board`)
 }
+
+export async function listSuperAdminTenants() {
+  return platformFetch('/super-admin/tenants')
+}
+
+export async function createSuperAdminTenant(payload) {
+  return platformFetch('/super-admin/tenants', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateSuperAdminTenant(id, payload) {
+  return platformFetch(`/super-admin/tenants/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function resetSuperAdminTenantPassword(id, newPassword) {
+  return platformFetch(`/super-admin/tenants/${id}/reset-password`, {
+    method: 'POST',
+    body: JSON.stringify({ newPassword }),
+  })
+}

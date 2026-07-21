@@ -61,7 +61,11 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email.toLowerCase() },
       include: {
-        memberships: { where: { isActive: true }, include: { workspace: true }, take: 1 },
+        memberships: {
+          where: { isActive: true },
+          include: { workspace: true },
+          orderBy: { createdAt: 'asc' },
+        },
       },
     });
 
@@ -74,9 +78,21 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    const membership = user.memberships[0];
+    // Prefer SUPER_ADMIN membership for control-plane login
+    const membership =
+      user.memberships.find((m) => m.role === Role.SUPER_ADMIN) ||
+      user.memberships.find((m) => m.workspace.status !== 'suspended') ||
+      user.memberships[0];
+
     if (!membership) {
       throw new UnauthorizedException('No workspace membership');
+    }
+
+    if (
+      membership.role !== Role.SUPER_ADMIN &&
+      membership.workspace.status === 'suspended'
+    ) {
+      throw new UnauthorizedException('Workspace is suspended');
     }
 
     await this.prisma.user.update({

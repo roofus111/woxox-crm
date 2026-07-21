@@ -44,8 +44,21 @@ async function main() {
 
   await prisma.workspaceMember.upsert({
     where: { workspaceId_userId: { workspaceId: workspace.id, userId: user.id } },
-    update: { role: Role.ADMIN },
-    create: { workspaceId: workspace.id, userId: user.id, role: Role.ADMIN },
+    update: { role: Role.SUPER_ADMIN },
+    create: { workspaceId: workspace.id, userId: user.id, role: Role.SUPER_ADMIN },
+  });
+
+  // Ensure control-plane workspace fields exist on demo tenant
+  await prisma.workspace.update({
+    where: { id: workspace.id },
+    data: {
+      ...(workspace.tenantCode ? {} : { tenantCode: 'WOX-000001' }),
+      status: 'active',
+      enabledModules: workspace.enabledModules?.length
+        ? workspace.enabledModules
+        : ['crm', 'finance', 'hrms', 'legalos', 'projectsLite', 'projectsMax'],
+      plan: workspace.plan || 'enterprise',
+    },
   });
 
   let pipeline = await prisma.pipeline.findFirst({

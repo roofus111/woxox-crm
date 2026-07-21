@@ -10,6 +10,7 @@ import { DealsModule } from './modules/deals/deals.module';
 import { ActivitiesModule } from './modules/activities/activities.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { HealthModule } from './modules/health/health.module';
+import { SuperAdminModule } from './modules/super-admin/super-admin.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { HealthModule } from './modules/health/health.module';
     PrismaModule,
     HealthModule,
     AuthModule,
+    SuperAdminModule,
     LeadsModule,
     ContactsModule,
     CompaniesModule,

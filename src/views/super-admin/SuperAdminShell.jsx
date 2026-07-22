@@ -7,10 +7,20 @@ import {
   clearImpersonationState,
   getCrmPlatformToken,
   getImpersonationState,
+  getSuperAdminMe,
   stopSuperAdminImpersonation,
 } from '@/libs/crmPlatformApi'
 import { SUPER_ADMIN_CSS } from './constants'
 import ImpersonationBanner from './ImpersonationBanner'
+
+function readStaffCache() {
+  try {
+    const raw = window.localStorage.getItem('crmPlatformStaff')
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
 
 export default function SuperAdminShell({ children, title = 'Companies' }) {
   const router = useRouter()
@@ -21,11 +31,13 @@ export default function SuperAdminShell({ children, title = 'Companies' }) {
 
   const [token, setToken] = useState(null)
   const [impersonation, setImpersonation] = useState(null)
+  const [staff, setStaff] = useState(null)
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
     setToken(getCrmPlatformToken())
     setImpersonation(getImpersonationState())
+    setStaff(readStaffCache())
     setReady(true)
 
     const sync = () => setImpersonation(getImpersonationState())
@@ -37,11 +49,41 @@ export default function SuperAdminShell({ children, title = 'Companies' }) {
     }
   }, [])
 
+  useEffect(() => {
+    if (!token) return
+    getSuperAdminMe()
+      .then(data => {
+        const next = {
+          role: data.user?.role,
+          roleLabel: data.user?.roleLabel,
+          permissions: data.user?.permissions || [],
+          email: data.user?.email,
+        }
+        setStaff(next)
+        try {
+          window.localStorage.setItem('crmPlatformStaff', JSON.stringify(next))
+        } catch {
+          /* ignore */
+        }
+      })
+      .catch(() => {
+        /* keep cache */
+      })
+  }, [token])
+
+  const can = perm => Boolean(staff?.permissions?.includes(perm))
+
   const logout = useCallback(() => {
     clearCrmPlatformToken()
     clearImpersonationState()
+    try {
+      window.localStorage.removeItem('crmPlatformStaff')
+    } catch {
+      /* ignore */
+    }
     setToken(null)
     setImpersonation(null)
+    setStaff(null)
     router.replace(`${base}`)
   }, [base, router])
 
@@ -49,7 +91,6 @@ export default function SuperAdminShell({ children, title = 'Companies' }) {
     const state = getImpersonationState()
     try {
       if (state?.sessionId) {
-        // Prefer original SA token for stop
         await stopSuperAdminImpersonation(state.sessionId)
       }
     } catch {
@@ -90,6 +131,12 @@ export default function SuperAdminShell({ children, title = 'Companies' }) {
           <div>
             <p className='sa-kicker'>WOXOX Control Center</p>
             <h1>{title}</h1>
+            {staff?.roleLabel ? (
+              <p className='sa-muted' style={{ margin: 0 }}>
+                {staff.roleLabel}
+                {staff.email ? ` · ${staff.email}` : ''}
+              </p>
+            ) : null}
           </div>
         </div>
         <div className='sa-topbar-actions'>
@@ -101,21 +148,35 @@ export default function SuperAdminShell({ children, title = 'Companies' }) {
 
       <main className='sa-main'>
         <nav className='sa-tabs'>
-          <a
-            href={`${base}/companies`}
-            className={isCompanies && !isCreate ? 'sa-tab active' : 'sa-tab'}
-          >
-            All companies
-          </a>
-          <a href={`${base}/companies/create`} className={isCreate ? 'sa-tab active' : 'sa-tab'}>
-            Create company
-          </a>
-          <a
-            href={`${base}/billing`}
-            className={pathname?.includes('/billing') ? 'sa-tab active' : 'sa-tab'}
-          >
-            Billing
-          </a>
+          {can('tenants:read') ? (
+            <a
+              href={`${base}/companies`}
+              className={isCompanies && !isCreate ? 'sa-tab active' : 'sa-tab'}
+            >
+              All companies
+            </a>
+          ) : null}
+          {can('tenants:write') ? (
+            <a href={`${base}/companies/create`} className={isCreate ? 'sa-tab active' : 'sa-tab'}>
+              Create company
+            </a>
+          ) : null}
+          {can('billing:read') ? (
+            <a
+              href={`${base}/billing`}
+              className={pathname?.includes('/billing') ? 'sa-tab active' : 'sa-tab'}
+            >
+              Billing
+            </a>
+          ) : null}
+          {can('staff:manage') ? (
+            <a
+              href={`${base}/staff`}
+              className={pathname?.includes('/staff') ? 'sa-tab active' : 'sa-tab'}
+            >
+              Staff
+            </a>
+          ) : null}
           {isDetail ? <span className='sa-tab active'>Company profile</span> : null}
         </nav>
         {children}

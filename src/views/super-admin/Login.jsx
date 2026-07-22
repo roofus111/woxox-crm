@@ -32,11 +32,23 @@ export default function SuperAdminLogin() {
     setError('')
     try {
       const data = await loginCrmPlatform(email, password)
-      if (data.user?.role !== 'SUPER_ADMIN') {
+      if (!data.user?.isPlatformStaff && data.user?.role !== 'SUPER_ADMIN') {
         clearCrmPlatformToken()
-        throw new Error('This account is not a Super Admin')
+        throw new Error('This account is not platform staff')
       }
       setCrmPlatformToken(data.accessToken)
+      try {
+        window.localStorage.setItem(
+          'crmPlatformStaff',
+          JSON.stringify({
+            role: data.user.role,
+            permissions: data.user.permissions || [],
+            email: data.user.email,
+          })
+        )
+      } catch {
+        /* ignore */
+      }
       router.replace(`/${lang}/super-admin/companies`)
     } catch (err) {
       setError(err.message || 'Login failed')

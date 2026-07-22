@@ -5,6 +5,7 @@ export type JwtPayload = {
   email: string;
   workspaceId: string;
   role: string;
+  permissions?: string[];
   impersonatorId?: string;
   impersonationSessionId?: string;
 };

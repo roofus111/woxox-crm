@@ -18,6 +18,7 @@ import { Request } from 'express';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { SuperAdminGuard } from '../../common/guards/super-admin.guard';
+import { RequirePermissions } from '../../common/decorators/require-permissions.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { BillingService } from './billing.service';
 import {
@@ -46,6 +47,7 @@ export class BillingController {
   @Get('revenue')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, SuperAdminGuard)
+  @RequirePermissions('billing:read')
   revenue() {
     return this.billing.revenueStats();
   }
@@ -53,6 +55,7 @@ export class BillingController {
   @Get('plans')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, SuperAdminGuard)
+  @RequirePermissions('billing:read')
   listPlans() {
     return this.billing.listPlans();
   }
@@ -60,6 +63,7 @@ export class BillingController {
   @Post('plans')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, SuperAdminGuard)
+  @RequirePermissions('billing:write')
   upsertPlan(
     @Body() dto: UpsertPlanDto,
     @CurrentUser() user: JwtPayload,
@@ -71,6 +75,7 @@ export class BillingController {
   @Get('subscriptions')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, SuperAdminGuard)
+  @RequirePermissions('billing:read')
   listSubscriptions(@Query() query: ListSubscriptionsQueryDto) {
     return this.billing.listSubscriptions(query);
   }
@@ -78,6 +83,7 @@ export class BillingController {
   @Get('subscriptions/workspace/:workspaceId')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, SuperAdminGuard)
+  @RequirePermissions('billing:read')
   workspaceSubscription(@Param('workspaceId') workspaceId: string) {
     return this.billing.getWorkspaceSubscription(workspaceId);
   }
@@ -85,6 +91,7 @@ export class BillingController {
   @Post('subscriptions/assign')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, SuperAdminGuard)
+  @RequirePermissions('billing:write')
   assign(
     @Body() dto: AssignSubscriptionDto,
     @CurrentUser() user: JwtPayload,
@@ -96,6 +103,7 @@ export class BillingController {
   @Post('subscriptions/:id/cancel')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, SuperAdminGuard)
+  @RequirePermissions('billing:write')
   cancel(
     @Param('id') id: string,
     @Body() body: { atPeriodEnd?: boolean },
@@ -108,6 +116,7 @@ export class BillingController {
   @Get('coupons')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, SuperAdminGuard)
+  @RequirePermissions('billing:read')
   listCoupons() {
     return this.billing.listCoupons();
   }
@@ -115,6 +124,7 @@ export class BillingController {
   @Post('coupons')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, SuperAdminGuard)
+  @RequirePermissions('billing:write')
   upsertCoupon(
     @Body() dto: UpsertCouponDto,
     @CurrentUser() user: JwtPayload,
@@ -126,6 +136,7 @@ export class BillingController {
   @Get('invoices')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, SuperAdminGuard)
+  @RequirePermissions('billing:read')
   listInvoices(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
     return this.billing.listInvoices(Number(page) || 1, Number(pageSize) || 25);
   }
@@ -133,6 +144,7 @@ export class BillingController {
   @Post('razorpay/orders')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, SuperAdminGuard)
+  @RequirePermissions('billing:write')
   createRazorpayOrder(
     @Body() dto: CreateRazorpayOrderDto,
     @CurrentUser() user: JwtPayload,
@@ -144,6 +156,7 @@ export class BillingController {
   @Post('razorpay/payment-links')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, SuperAdminGuard)
+  @RequirePermissions('billing:write')
   createRazorpayPaymentLink(
     @Body() dto: CreateRazorpayPaymentLinkDto,
     @CurrentUser() user: JwtPayload,
@@ -155,6 +168,7 @@ export class BillingController {
   @Post('razorpay/verify')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, SuperAdminGuard)
+  @RequirePermissions('billing:write')
   verifyRazorpayPayment(
     @Body() dto: VerifyRazorpayPaymentDto,
     @CurrentUser() user: JwtPayload,

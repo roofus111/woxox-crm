@@ -317,3 +317,25 @@ export async function verifyRazorpayPayment(payload) {
     body: JSON.stringify(payload),
   })
 }
+
+export async function getSuperAdminMe() {
+  return platformFetch('/super-admin/me')
+}
+
+export async function listPlatformStaff() {
+  return platformFetch('/super-admin/staff')
+}
+
+export async function createPlatformStaff(payload) {
+  return platformFetch('/super-admin/staff', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updatePlatformStaff(membershipId, payload) {
+  return platformFetch(`/super-admin/staff/${membershipId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}

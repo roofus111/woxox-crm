@@ -13,17 +13,20 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { SuperAdminGuard } from '../../common/guards/super-admin.guard';
+import { RequirePermissions } from '../../common/decorators/require-permissions.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { SuperAdminService } from './super-admin.service';
 import {
   AuditQueryDto,
   BulkTenantsDto,
   ChangeOwnerDto,
+  CreateStaffDto,
   CreateTenantDto,
   ExtendTrialDto,
   ListTenantsQueryDto,
   ResetTenantPasswordDto,
   StopImpersonationDto,
+  UpdateStaffDto,
   UpdateTenantDto,
 } from './dto/super-admin.dto';
 
@@ -42,22 +45,58 @@ export class SuperAdminController {
     };
   }
 
+  @Get('me')
+  me(@CurrentUser() user: JwtPayload) {
+    return this.superAdmin.me(user);
+  }
+
+  @Get('staff')
+  @RequirePermissions('staff:manage')
+  listStaff() {
+    return this.superAdmin.listStaff();
+  }
+
+  @Post('staff')
+  @RequirePermissions('staff:manage')
+  createStaff(
+    @Body() dto: CreateStaffDto,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.superAdmin.createStaff(dto, this.auditCtx(user, req));
+  }
+
+  @Patch('staff/:membershipId')
+  @RequirePermissions('staff:manage')
+  updateStaff(
+    @Param('membershipId') membershipId: string,
+    @Body() dto: UpdateStaffDto,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.superAdmin.updateStaff(membershipId, dto, this.auditCtx(user, req));
+  }
+
   @Get('stats')
+  @RequirePermissions('tenants:read')
   getStats() {
     return this.superAdmin.getStats();
   }
 
   @Get('tenants')
+  @RequirePermissions('tenants:read')
   listTenants(@Query() query: ListTenantsQueryDto) {
     return this.superAdmin.listTenants(query);
   }
 
   @Get('tenants/:id')
+  @RequirePermissions('tenants:read')
   getTenant(@Param('id') id: string) {
     return this.superAdmin.getTenant(id);
   }
 
   @Post('tenants')
+  @RequirePermissions('tenants:write')
   createTenant(
     @Body() dto: CreateTenantDto,
     @CurrentUser() user: JwtPayload,
@@ -67,6 +106,7 @@ export class SuperAdminController {
   }
 
   @Post('tenants/bulk')
+  @RequirePermissions('tenants:write')
   bulk(
     @Body() dto: BulkTenantsDto,
     @CurrentUser() user: JwtPayload,
@@ -76,6 +116,7 @@ export class SuperAdminController {
   }
 
   @Patch('tenants/:id')
+  @RequirePermissions('tenants:write')
   updateTenant(
     @Param('id') id: string,
     @Body() dto: UpdateTenantDto,
@@ -86,6 +127,7 @@ export class SuperAdminController {
   }
 
   @Post('tenants/:id/extend-trial')
+  @RequirePermissions('tenants:write')
   extendTrial(
     @Param('id') id: string,
     @Body() dto: ExtendTrialDto,
@@ -96,6 +138,7 @@ export class SuperAdminController {
   }
 
   @Post('tenants/:id/change-owner')
+  @RequirePermissions('tenants:write')
   changeOwner(
     @Param('id') id: string,
     @Body() dto: ChangeOwnerDto,
@@ -106,6 +149,7 @@ export class SuperAdminController {
   }
 
   @Post('tenants/:id/soft-delete')
+  @RequirePermissions('tenants:delete')
   softDelete(
     @Param('id') id: string,
     @CurrentUser() user: JwtPayload,
@@ -115,6 +159,7 @@ export class SuperAdminController {
   }
 
   @Post('tenants/:id/restore')
+  @RequirePermissions('tenants:delete')
   restore(
     @Param('id') id: string,
     @CurrentUser() user: JwtPayload,
@@ -124,6 +169,7 @@ export class SuperAdminController {
   }
 
   @Post('tenants/:id/reset-password')
+  @RequirePermissions('tenants:write')
   resetPassword(
     @Param('id') id: string,
     @Body() dto: ResetTenantPasswordDto,
@@ -134,11 +180,13 @@ export class SuperAdminController {
   }
 
   @Get('tenants/:id/audit')
+  @RequirePermissions('audit:read')
   listAudit(@Param('id') id: string, @Query() query: AuditQueryDto) {
     return this.superAdmin.listAudit(id, query.page ?? 1, query.pageSize ?? 50);
   }
 
   @Post('tenants/:id/impersonate')
+  @RequirePermissions('tenants:impersonate')
   impersonate(
     @Param('id') id: string,
     @CurrentUser() user: JwtPayload,
@@ -148,6 +196,7 @@ export class SuperAdminController {
   }
 
   @Post('tenants/:id/legacy-open')
+  @RequirePermissions('tenants:impersonate')
   legacyOpen(
     @Param('id') id: string,
     @CurrentUser() user: JwtPayload,
@@ -157,6 +206,7 @@ export class SuperAdminController {
   }
 
   @Post('impersonation/stop')
+  @RequirePermissions('tenants:impersonate')
   stopImpersonation(
     @Body() dto: StopImpersonationDto,
     @CurrentUser() user: JwtPayload,

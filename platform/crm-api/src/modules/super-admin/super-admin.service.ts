@@ -841,6 +841,194 @@ export class SuperAdminService {
     };
   }
 
+  async me(actor: JwtPayload) {
+    const { permissionsForRole, PLATFORM_ROLE_LABELS, isPlatformStaffRole } =
+      await import('../../common/platform-rbac');
+    return {
+      success: true,
+      user: {
+        id: actor.sub,
+        email: actor.email,
+        role: actor.role,
+        roleLabel: PLATFORM_ROLE_LABELS[actor.role] || actor.role,
+        permissions: permissionsForRole(actor.role),
+        isPlatformStaff: isPlatformStaffRole(actor.role),
+      },
+    };
+  }
+
+  async listStaff() {
+    const { PLATFORM_STAFF_ROLES, PLATFORM_ROLE_LABELS, permissionsForRole } =
+      await import('../../common/platform-rbac');
+    const members = await this.prisma.workspaceMember.findMany({
+      where: { role: { in: PLATFORM_STAFF_ROLES }, isActive: true },
+      include: {
+        user: { select: { id: true, email: true, name: true, lastLoginAt: true, createdAt: true } },
+        workspace: { select: { id: true, name: true, slug: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    // Also include inactive staff for management
+    const inactive = await this.prisma.workspaceMember.findMany({
+      where: { role: { in: PLATFORM_STAFF_ROLES }, isActive: false },
+      include: {
+        user: { select: { id: true, email: true, name: true, lastLoginAt: true, createdAt: true } },
+        workspace: { select: { id: true, name: true, slug: true } },
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 50,
+    });
+
+    const map = (m: (typeof members)[0]) => ({
+      membershipId: m.id,
+      role: m.role,
+      roleLabel: PLATFORM_ROLE_LABELS[m.role] || m.role,
+      permissions: permissionsForRole(m.role),
+      isActive: m.isActive,
+      user: m.user,
+      workspace: m.workspace,
+      createdAt: m.createdAt,
+    });
+
+    return {
+      success: true,
+      staff: [...members.map(map), ...inactive.map(map)],
+      roles: PLATFORM_STAFF_ROLES.map((r) => ({
+        code: r,
+        label: PLATFORM_ROLE_LABELS[r] || r,
+        permissions: permissionsForRole(r),
+      })),
+    };
+  }
+
+  async createStaff(
+    dto: { email: string; password: string; name?: string; role: string },
+    audit: AuditContext,
+  ) {
+    const { isPlatformStaffRole, PLATFORM_ROLE_LABELS } = await import('../../common/platform-rbac');
+    if (!isPlatformStaffRole(dto.role)) {
+      throw new BadRequestException('Invalid platform staff role');
+    }
+
+    const controlWorkspaceId = await this.getControlWorkspaceId();
+    if (!controlWorkspaceId) {
+      throw new BadRequestException('No control-plane workspace found (seed SUPER_ADMIN first)');
+    }
+
+    const email = dto.email.toLowerCase().trim();
+    let user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      const passwordHash = await bcrypt.hash(dto.password, 12);
+      user = await this.prisma.user.create({
+        data: {
+          email,
+          passwordHash,
+          name: dto.name?.trim() || 'Platform Staff',
+          emailVerified: new Date(),
+        },
+      });
+    } else {
+      const passwordHash = await bcrypt.hash(dto.password, 12);
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash, name: dto.name?.trim() || user.name },
+      });
+    }
+
+    const membership = await this.prisma.workspaceMember.upsert({
+      where: {
+        workspaceId_userId: { workspaceId: controlWorkspaceId, userId: user.id },
+      },
+      update: { role: dto.role as Role, isActive: true },
+      create: {
+        workspaceId: controlWorkspaceId,
+        userId: user.id,
+        role: dto.role as Role,
+        isActive: true,
+      },
+    });
+
+    await this.writeAudit(audit, {
+      action: 'staff.create',
+      entityType: 'workspace_member',
+      entityId: membership.id,
+      workspaceId: controlWorkspaceId,
+      metadata: { email, role: dto.role },
+    });
+
+    return {
+      success: true,
+      staff: {
+        membershipId: membership.id,
+        email,
+        role: dto.role,
+        roleLabel: PLATFORM_ROLE_LABELS[dto.role] || dto.role,
+      },
+    };
+  }
+
+  async updateStaff(
+    membershipId: string,
+    dto: { role?: string; isActive?: boolean; password?: string },
+    audit: AuditContext,
+  ) {
+    const { isPlatformStaffRole, PLATFORM_ROLE_LABELS } = await import('../../common/platform-rbac');
+    const membership = await this.prisma.workspaceMember.findUnique({
+      where: { id: membershipId },
+      include: { user: true },
+    });
+    if (!membership || !isPlatformStaffRole(membership.role)) {
+      throw new NotFoundException('Staff member not found');
+    }
+
+    if (dto.role && !isPlatformStaffRole(dto.role)) {
+      throw new BadRequestException('Invalid platform staff role');
+    }
+
+    if (dto.password) {
+      const passwordHash = await bcrypt.hash(dto.password, 12);
+      await this.prisma.user.update({
+        where: { id: membership.userId },
+        data: { passwordHash },
+      });
+    }
+
+    const updated = await this.prisma.workspaceMember.update({
+      where: { id: membershipId },
+      data: {
+        ...(dto.role ? { role: dto.role as Role } : {}),
+        ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
+      },
+    });
+
+    await this.writeAudit(audit, {
+      action: 'staff.update',
+      entityType: 'workspace_member',
+      entityId: membershipId,
+      workspaceId: membership.workspaceId,
+      metadata: { ...dto, email: membership.user.email },
+    });
+
+    return {
+      success: true,
+      staff: {
+        membershipId: updated.id,
+        role: updated.role,
+        roleLabel: PLATFORM_ROLE_LABELS[updated.role] || updated.role,
+        isActive: updated.isActive,
+      },
+    };
+  }
+
+  private async getControlWorkspaceId() {
+    const owner = await this.prisma.workspaceMember.findFirst({
+      where: { role: Role.SUPER_ADMIN, isActive: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    return owner?.workspaceId || null;
+  }
+
   private async requireActiveWorkspace(id: string) {
     const workspace = await this.prisma.workspace.findUnique({ where: { id } });
     if (!workspace) throw new NotFoundException('Tenant not found');

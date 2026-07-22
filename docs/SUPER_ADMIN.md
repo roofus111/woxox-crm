@@ -87,6 +87,20 @@ sudo docker compose -f docker-compose.prod.yml --env-file .env.production exec c
 5. **Open in CRM** → new tab signs into customer CRM dashboard
 6. Soft delete → filter Deleted → Restore
 7. **Billing** → `/en/super-admin/billing` shows MRR; assign plan from company profile
+8. **Staff** → `/en/super-admin/staff` (Platform Owner only) manage Finance / Support / Sales roles
+
+## Staff RBAC
+
+| Role | Access |
+|------|--------|
+| Platform Owner (`SUPER_ADMIN`) | Full |
+| Finance | Billing read/write, tenants read |
+| Customer Support | Tenants write + impersonate, billing read |
+| Sales | Tenants write, billing read |
+| DevOps | Tenants read + impersonate |
+| Read Only | Tenants + billing + audit read |
+
+Permissions are enforced on API routes via `@RequirePermissions`.
 
 ## Billing foundation
 

@@ -8,6 +8,11 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.module';
 import { LoginDto, RegisterWorkspaceDto } from './dto/auth.dto';
 import { Role } from '@prisma/client';
+import {
+  isPlatformStaffRole,
+  permissionsForRole,
+  PLATFORM_STAFF_ROLES,
+} from '../../common/platform-rbac';
 
 @Injectable()
 export class AuthService {
@@ -78,9 +83,9 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    // Prefer SUPER_ADMIN membership for control-plane login
+    // Prefer any platform staff membership for control-plane login
     const membership =
-      user.memberships.find((m) => m.role === Role.SUPER_ADMIN) ||
+      user.memberships.find((m) => isPlatformStaffRole(m.role)) ||
       user.memberships.find((m) => m.workspace.status !== 'suspended') ||
       user.memberships[0];
 
@@ -89,7 +94,7 @@ export class AuthService {
     }
 
     if (
-      membership.role !== Role.SUPER_ADMIN &&
+      !isPlatformStaffRole(membership.role) &&
       membership.workspace.status === 'suspended'
     ) {
       throw new UnauthorizedException('Workspace is suspended');
@@ -104,17 +109,26 @@ export class AuthService {
   }
 
   private issueToken(userId: string, email: string, workspaceId: string, role: Role) {
+    const permissions = permissionsForRole(role);
     const accessToken = this.jwt.sign({
       sub: userId,
       email,
       workspaceId,
       role,
+      permissions,
     });
     return {
       success: true,
       accessToken,
-      user: { id: userId, email, role },
+      user: {
+        id: userId,
+        email,
+        role,
+        permissions,
+        isPlatformStaff: isPlatformStaffRole(role),
+      },
       workspaceId,
+      platformStaffRoles: PLATFORM_STAFF_ROLES,
     };
   }
 }

@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsBoolean,
   IsEmail,
   IsIn,
   IsInt,
@@ -184,4 +185,65 @@ export class AuditQueryDto {
   @IsInt()
   @Min(1)
   pageSize?: number;
+}
+
+export class CreateStaffDto {
+  @ApiProperty()
+  @IsEmail()
+  email!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(6)
+  password!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @ApiProperty({
+    enum: [
+      'SUPER_ADMIN',
+      'PLATFORM_FINANCE',
+      'PLATFORM_SUPPORT',
+      'PLATFORM_SALES',
+      'PLATFORM_DEVOPS',
+      'PLATFORM_READONLY',
+    ],
+  })
+  @IsIn([
+    'SUPER_ADMIN',
+    'PLATFORM_FINANCE',
+    'PLATFORM_SUPPORT',
+    'PLATFORM_SALES',
+    'PLATFORM_DEVOPS',
+    'PLATFORM_READONLY',
+  ])
+  role!: string;
+}
+
+export class UpdateStaffDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsIn([
+    'SUPER_ADMIN',
+    'PLATFORM_FINANCE',
+    'PLATFORM_SUPPORT',
+    'PLATFORM_SALES',
+    'PLATFORM_DEVOPS',
+    'PLATFORM_READONLY',
+  ])
+  role?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MinLength(6)
+  password?: string;
 }

@@ -3,10 +3,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
+  assignBillingSubscription,
   changeSuperAdminOwner,
   extendSuperAdminTrial,
   getSuperAdminTenant,
+  getWorkspaceSubscription,
   impersonateSuperAdminTenant,
+  listBillingPlans,
   listSuperAdminTenantAudit,
   openLegacyCrmAsTenant,
   resetSuperAdminTenantPassword,
@@ -38,6 +41,10 @@ export default function CompanyDetail() {
   const [audits, setAudits] = useState([])
   const [modules, setModules] = useState([])
   const [note, setNote] = useState('')
+  const [plans, setPlans] = useState([])
+  const [subscription, setSubscription] = useState(null)
+  const [selectedPlan, setSelectedPlan] = useState('starter')
+  const [billingCycle, setBillingCycle] = useState('monthly')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -51,8 +58,21 @@ export default function CompanyDetail() {
       setTenant(data.tenant)
       setModules(data.tenant?.enabledModules || [])
       setNote(data.tenant?.accountManagerNote || '')
-      const auditData = await listSuperAdminTenantAudit(id, { page: 1, pageSize: 50 })
+      setSelectedPlan(data.tenant?.plan || 'starter')
+      const [auditData, planData, subData] = await Promise.all([
+        listSuperAdminTenantAudit(id, { page: 1, pageSize: 50 }),
+        listBillingPlans(),
+        getWorkspaceSubscription(id),
+      ])
       setAudits(auditData.items || [])
+      setPlans(planData.plans || [])
+      setSubscription(subData.subscription || null)
+      if (subData.subscription?.plan?.code) {
+        setSelectedPlan(subData.subscription.plan.code)
+      }
+      if (subData.subscription?.billingCycle) {
+        setBillingCycle(subData.subscription.billingCycle)
+      }
     } catch (err) {
       setError(err.message || 'Failed to load company')
     } finally {
@@ -119,6 +139,18 @@ export default function CompanyDetail() {
   }
 
   const restore = () => run(() => restoreSuperAdminTenant(id), 'Company restored')
+
+  const changePlan = () =>
+    run(
+      () =>
+        assignBillingSubscription({
+          workspaceId: id,
+          plan: selectedPlan,
+          billingCycle,
+          startTrial: selectedPlan === 'trial',
+        }),
+      `Plan set to ${selectedPlan}`
+    )
 
   const impersonate = async () => {
     if (
@@ -249,8 +281,20 @@ export default function CompanyDetail() {
                   <dd>{tenant.plan}</dd>
                 </div>
                 <div>
+                  <dt>Sub status</dt>
+                  <dd>{subscription?.status || '—'}</dd>
+                </div>
+                <div>
+                  <dt>Cycle</dt>
+                  <dd>{subscription?.billingCycle || '—'}</dd>
+                </div>
+                <div>
                   <dt>Trial ends</dt>
                   <dd>{formatDate(tenant.trialEndsAt)}</dd>
+                </div>
+                <div>
+                  <dt>Period end</dt>
+                  <dd>{formatDate(subscription?.currentPeriodEnd)}</dd>
                 </div>
                 <div>
                   <dt>Created</dt>
@@ -261,6 +305,34 @@ export default function CompanyDetail() {
                   <dd className='sa-mono'>{tenant.loginUrl}</dd>
                 </div>
               </dl>
+              <div className='sa-grid' style={{ marginTop: 12 }}>
+                <label>
+                  Change plan
+                  <select value={selectedPlan} onChange={e => setSelectedPlan(e.target.value)}>
+                    {plans.map(p => (
+                      <option key={p.id} value={p.code}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Cycle
+                  <select value={billingCycle} onChange={e => setBillingCycle(e.target.value)}>
+                    <option value='monthly'>Monthly</option>
+                    <option value='yearly'>Yearly</option>
+                  </select>
+                </label>
+              </div>
+              <button
+                type='button'
+                className='sa-btn sa-btn-primary'
+                style={{ marginTop: 10 }}
+                onClick={changePlan}
+                disabled={busy || Boolean(tenant.deletedAt)}
+              >
+                Apply plan
+              </button>
             </div>
 
             <div className='sa-card'>

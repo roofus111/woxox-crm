@@ -110,6 +110,12 @@ export default function SuperAdminShell({ children, title = 'Companies' }) {
           <a href={`${base}/companies/create`} className={isCreate ? 'sa-tab active' : 'sa-tab'}>
             Create company
           </a>
+          <a
+            href={`${base}/billing`}
+            className={pathname?.includes('/billing') ? 'sa-tab active' : 'sa-tab'}
+          >
+            Billing
+          </a>
           {isDetail ? <span className='sa-tab active'>Company profile</span> : null}
         </nav>
         {children}

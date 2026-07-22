@@ -92,6 +92,8 @@ services:
       APP_ORIGIN: ${APP_ORIGIN}
       LEGACY_API_URL: http://crmserver:8000
       SUPER_ADMIN_PROVISION_SECRET: ${SUPER_ADMIN_PROVISION_SECRET:-woxox-super-admin-secret}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
     networks:
       - woxox
 

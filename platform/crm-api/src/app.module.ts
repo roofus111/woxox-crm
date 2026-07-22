@@ -11,6 +11,7 @@ import { ActivitiesModule } from './modules/activities/activities.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { HealthModule } from './modules/health/health.module';
 import { SuperAdminModule } from './modules/super-admin/super-admin.module';
+import { BillingModule } from './modules/billing/billing.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { SuperAdminModule } from './modules/super-admin/super-admin.module';
     HealthModule,
     AuthModule,
     SuperAdminModule,
+    BillingModule,
     LeadsModule,
     ContactsModule,
     CompaniesModule,

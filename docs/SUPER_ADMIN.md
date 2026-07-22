@@ -10,6 +10,7 @@ Hidden ops portal for WOXOX staff to manage company tenants.
 | `/en/super-admin/companies` | Searchable company list + KPIs |
 | `/en/super-admin/companies/create` | Create tenant |
 | `/en/super-admin/companies/[id]` | Company profile, actions, audit |
+| `/en/super-admin/billing` | Plans, subscriptions, coupons, MRR |
 
 Production: `https://app.woxox.com/en/super-admin`
 
@@ -85,14 +86,24 @@ sudo docker compose -f docker-compose.prod.yml --env-file .env.production exec c
 4. Impersonate → red banner appears → Stop impersonation
 5. **Open in CRM** → new tab signs into customer CRM dashboard
 6. Soft delete → filter Deleted → Restore
+7. **Billing** → `/en/super-admin/billing` shows MRR; assign plan from company profile
 
-## Legacy handoff flow
+## Billing foundation
 
-1. Super Admin clicks **Open in CRM** on a company profile
-2. `crm-api` calls `crmserver` `POST /api/super-admin/impersonate-handoff` (shared secret)
-3. Browser opens `/en/impersonate?token=…` (one-time, 5 minutes)
-4. NextAuth redeems via `POST /api/login-impersonation` and lands on CRM dashboard
+- Plans catalog (trial / starter / professional / enterprise) with module bundles
+- Subscriptions per workspace (assign / upgrade / cancel)
+- Coupons (percent or amount off)
+- Invoice ledger (filled by Stripe webhooks when configured)
+- Revenue KPIs: MRR, ARR, revenue this month
+- Webhook: `POST /api/v1/billing/webhooks/stripe` (idempotent via `StripeEvent`)
+
+Optional env:
+
+```bash
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+```
 
 ## Out of scope (later)
 
-Billing/Stripe, staff RBAC/MFA, EKS, backups/export.
+Customer self-serve checkout UI, taxes, staff RBAC/MFA, EKS, backups/export.

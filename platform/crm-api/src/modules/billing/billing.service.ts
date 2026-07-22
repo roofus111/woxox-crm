@@ -1,0 +1,607 @@
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.module';
+import { JwtPayload } from '../../common/decorators/current-user.decorator';
+import {
+  AssignSubscriptionDto,
+  ListSubscriptionsQueryDto,
+  UpsertCouponDto,
+  UpsertPlanDto,
+} from './dto/billing.dto';
+
+type AuditContext = {
+  actor: JwtPayload;
+  ipAddress?: string;
+  userAgent?: string;
+};
+
+const ACTIVE_STATUSES = ['active', 'trialing'];
+
+@Injectable()
+export class BillingService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async ensureDefaultPlans() {
+    const defaults: UpsertPlanDto[] = [
+      {
+        code: 'trial',
+        name: 'Free Trial',
+        description: 'Time-limited evaluation',
+        currency: 'INR',
+        amountMonthly: 0,
+        amountYearly: 0,
+        enabledModules: ['crm'],
+        trialDays: 14,
+        sortOrder: 0,
+      },
+      {
+        code: 'starter',
+        name: 'Starter',
+        description: 'For small teams',
+        currency: 'INR',
+        amountMonthly: 199900,
+        amountYearly: 1999000,
+        enabledModules: ['crm'],
+        maxUsers: 5,
+        trialDays: 14,
+        sortOrder: 1,
+      },
+      {
+        code: 'professional',
+        name: 'Professional',
+        description: 'Growing companies',
+        currency: 'INR',
+        amountMonthly: 499900,
+        amountYearly: 4999000,
+        enabledModules: ['crm', 'finance', 'hrms'],
+        maxUsers: 25,
+        trialDays: 14,
+        sortOrder: 2,
+      },
+      {
+        code: 'enterprise',
+        name: 'Enterprise',
+        description: 'Full Business OS',
+        currency: 'INR',
+        amountMonthly: 999900,
+        amountYearly: 9999000,
+        enabledModules: ['crm', 'finance', 'hrms', 'legalos', 'projectsLite', 'projectsMax', 'academy', 'ecommerce'],
+        trialDays: 14,
+        sortOrder: 3,
+      },
+    ];
+
+    for (const plan of defaults) {
+      await this.prisma.plan.upsert({
+        where: { code: plan.code },
+        update: {
+          name: plan.name,
+          description: plan.description,
+          amountMonthly: plan.amountMonthly,
+          amountYearly: plan.amountYearly,
+          enabledModules: plan.enabledModules || ['crm'],
+          maxUsers: plan.maxUsers,
+          trialDays: plan.trialDays ?? 14,
+          sortOrder: plan.sortOrder ?? 0,
+        },
+        create: {
+          code: plan.code,
+          name: plan.name,
+          description: plan.description,
+          currency: plan.currency || 'INR',
+          amountMonthly: plan.amountMonthly,
+          amountYearly: plan.amountYearly,
+          enabledModules: plan.enabledModules || ['crm'],
+          maxUsers: plan.maxUsers,
+          trialDays: plan.trialDays ?? 14,
+          sortOrder: plan.sortOrder ?? 0,
+          isActive: true,
+        },
+      });
+    }
+  }
+
+  async revenueStats() {
+    await this.ensureDefaultPlans();
+    const subs = await this.prisma.subscription.findMany({
+      where: { status: { in: ACTIVE_STATUSES } },
+      include: { plan: true, workspace: { select: { id: true, name: true, deletedAt: true } } },
+    });
+
+    let mrr = 0;
+    let activePaid = 0;
+    let trialing = 0;
+    for (const s of subs) {
+      if (s.workspace.deletedAt) continue;
+      if (s.status === 'trialing' || (s.plan.amountMonthly === 0 && s.plan.code === 'trial')) {
+        trialing += 1;
+        continue;
+      }
+      activePaid += 1;
+      const monthly =
+        s.billingCycle === 'yearly'
+          ? Math.round(s.plan.amountYearly / 12)
+          : s.plan.amountMonthly;
+      mrr += await this.applyCouponAmount(monthly, s.couponCode);
+    }
+
+    const paidThisMonth = await this.prisma.invoice.aggregate({
+      where: {
+        status: 'paid',
+        paidAt: { gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1) },
+      },
+      _sum: { amountPaid: true },
+    });
+
+    const failed = await this.prisma.invoice.count({
+      where: { status: { in: ['open', 'uncollectible'] } },
+    });
+
+    return {
+      success: true,
+      stats: {
+        mrr,
+        arr: mrr * 12,
+        currency: 'INR',
+        activePaidSubscriptions: activePaid,
+        trialingSubscriptions: trialing,
+        revenueThisMonth: paidThisMonth._sum.amountPaid || 0,
+        openOrFailedInvoices: failed,
+        stripeConfigured: Boolean(process.env.STRIPE_SECRET_KEY),
+      },
+    };
+  }
+
+  async listPlans() {
+    await this.ensureDefaultPlans();
+    const plans = await this.prisma.plan.findMany({ orderBy: { sortOrder: 'asc' } });
+    return { success: true, plans };
+  }
+
+  async upsertPlan(dto: UpsertPlanDto, audit: AuditContext) {
+    const plan = await this.prisma.plan.upsert({
+      where: { code: dto.code },
+      update: {
+        name: dto.name,
+        description: dto.description,
+        currency: dto.currency || 'INR',
+        amountMonthly: dto.amountMonthly,
+        amountYearly: dto.amountYearly,
+        enabledModules: dto.enabledModules || ['crm'],
+        maxUsers: dto.maxUsers,
+        maxStorageGb: dto.maxStorageGb,
+        trialDays: dto.trialDays ?? 14,
+        stripePriceMonthly: dto.stripePriceMonthly,
+        stripePriceYearly: dto.stripePriceYearly,
+        isActive: dto.isActive ?? true,
+        sortOrder: dto.sortOrder ?? 0,
+      },
+      create: {
+        code: dto.code,
+        name: dto.name,
+        description: dto.description,
+        currency: dto.currency || 'INR',
+        amountMonthly: dto.amountMonthly,
+        amountYearly: dto.amountYearly,
+        enabledModules: dto.enabledModules || ['crm'],
+        maxUsers: dto.maxUsers,
+        maxStorageGb: dto.maxStorageGb,
+        trialDays: dto.trialDays ?? 14,
+        stripePriceMonthly: dto.stripePriceMonthly,
+        stripePriceYearly: dto.stripePriceYearly,
+        isActive: dto.isActive ?? true,
+        sortOrder: dto.sortOrder ?? 0,
+      },
+    });
+
+    await this.writeAudit(audit, {
+      action: 'billing.plan_upsert',
+      entityType: 'plan',
+      entityId: plan.id,
+      workspaceId: null,
+      metadata: { code: plan.code },
+    });
+
+    return { success: true, plan };
+  }
+
+  async listSubscriptions(query: ListSubscriptionsQueryDto) {
+    const page = query.page ?? 1;
+    const pageSize = Math.min(query.pageSize ?? 25, 100);
+    const where: Prisma.SubscriptionWhereInput = {};
+    if (query.status) where.status = query.status;
+    if (query.q?.trim()) {
+      const q = query.q.trim();
+      where.workspace = {
+        OR: [
+          { name: { contains: q, mode: 'insensitive' } },
+          { tenantCode: { contains: q, mode: 'insensitive' } },
+          { slug: { contains: q, mode: 'insensitive' } },
+        ],
+      };
+    }
+
+    const [total, items] = await this.prisma.$transaction([
+      this.prisma.subscription.count({ where }),
+      this.prisma.subscription.findMany({
+        where,
+        include: {
+          plan: true,
+          workspace: {
+            select: {
+              id: true,
+              name: true,
+              tenantCode: true,
+              slug: true,
+              status: true,
+            },
+          },
+        },
+        orderBy: { updatedAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+    ]);
+
+    return { success: true, total, page, pageSize, subscriptions: items };
+  }
+
+  async getWorkspaceSubscription(workspaceId: string) {
+    const sub = await this.prisma.subscription.findFirst({
+      where: { workspaceId },
+      orderBy: { createdAt: 'desc' },
+      include: { plan: true, invoices: { orderBy: { createdAt: 'desc' }, take: 10 } },
+    });
+    return { success: true, subscription: sub };
+  }
+
+  async assignSubscription(dto: AssignSubscriptionDto, audit: AuditContext) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: dto.workspaceId },
+    });
+    if (!workspace || workspace.deletedAt) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    const plan = await this.resolvePlan(dto.plan);
+    if (!plan.isActive) throw new BadRequestException('Plan is inactive');
+
+    if (dto.couponCode) {
+      await this.validateCoupon(dto.couponCode);
+    }
+
+    const billingCycle = dto.billingCycle || 'monthly';
+    const startTrial = dto.startTrial ?? plan.code === 'trial';
+    const trialDays = plan.trialDays || 14;
+    const now = new Date();
+    const trialEndsAt = startTrial
+      ? new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000)
+      : null;
+    const periodEnd = new Date(now);
+    if (billingCycle === 'yearly') periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+    else periodEnd.setMonth(periodEnd.getMonth() + 1);
+
+    // Cancel previous active-like subscriptions
+    await this.prisma.subscription.updateMany({
+      where: {
+        workspaceId: workspace.id,
+        status: { in: ['active', 'trialing', 'past_due'] },
+      },
+      data: { status: 'canceled', canceledAt: now, cancelAtPeriodEnd: false },
+    });
+
+    const subscription = await this.prisma.subscription.create({
+      data: {
+        workspaceId: workspace.id,
+        planId: plan.id,
+        status: startTrial ? 'trialing' : 'active',
+        billingCycle,
+        currentPeriodStart: now,
+        currentPeriodEnd: periodEnd,
+        trialEndsAt,
+        couponCode: dto.couponCode?.toUpperCase() || null,
+      },
+      include: { plan: true },
+    });
+
+    if (dto.couponCode) {
+      await this.prisma.coupon.updateMany({
+        where: { code: dto.couponCode.toUpperCase() },
+        data: { timesRedeemed: { increment: 1 } },
+      });
+    }
+
+    await this.prisma.workspace.update({
+      where: { id: workspace.id },
+      data: {
+        plan: plan.code,
+        status: startTrial ? 'trial' : 'active',
+        trialEndsAt: trialEndsAt || workspace.trialEndsAt,
+        enabledModules: plan.enabledModules.length ? plan.enabledModules : workspace.enabledModules,
+      },
+    });
+
+    await this.writeAudit(audit, {
+      action: 'billing.subscription_assign',
+      entityType: 'subscription',
+      entityId: subscription.id,
+      workspaceId: workspace.id,
+      metadata: {
+        planCode: plan.code,
+        billingCycle,
+        status: subscription.status,
+        couponCode: dto.couponCode || null,
+      },
+    });
+
+    return { success: true, subscription };
+  }
+
+  async cancelSubscription(subscriptionId: string, atPeriodEnd: boolean, audit: AuditContext) {
+    const sub = await this.prisma.subscription.findUnique({ where: { id: subscriptionId } });
+    if (!sub) throw new NotFoundException('Subscription not found');
+
+    const updated = await this.prisma.subscription.update({
+      where: { id: subscriptionId },
+      data: atPeriodEnd
+        ? { cancelAtPeriodEnd: true }
+        : { status: 'canceled', canceledAt: new Date(), cancelAtPeriodEnd: false },
+      include: { plan: true },
+    });
+
+    if (!atPeriodEnd) {
+      await this.prisma.workspace.update({
+        where: { id: sub.workspaceId },
+        data: { status: 'suspended' },
+      });
+    }
+
+    await this.writeAudit(audit, {
+      action: atPeriodEnd ? 'billing.subscription_cancel_at_period_end' : 'billing.subscription_cancel',
+      entityType: 'subscription',
+      entityId: subscriptionId,
+      workspaceId: sub.workspaceId,
+      metadata: {},
+    });
+
+    return { success: true, subscription: updated };
+  }
+
+  async listCoupons() {
+    const coupons = await this.prisma.coupon.findMany({ orderBy: { createdAt: 'desc' } });
+    return { success: true, coupons };
+  }
+
+  async upsertCoupon(dto: UpsertCouponDto, audit: AuditContext) {
+    if (!dto.percentOff && !dto.amountOff) {
+      throw new BadRequestException('percentOff or amountOff required');
+    }
+    const code = dto.code.toUpperCase().trim();
+    const coupon = await this.prisma.coupon.upsert({
+      where: { code },
+      update: {
+        name: dto.name,
+        percentOff: dto.percentOff,
+        amountOff: dto.amountOff,
+        currency: dto.currency || 'INR',
+        maxRedemptions: dto.maxRedemptions,
+        redeemBy: dto.redeemBy ? new Date(dto.redeemBy) : null,
+        durationMonths: dto.durationMonths,
+        isActive: dto.isActive ?? true,
+      },
+      create: {
+        code,
+        name: dto.name,
+        percentOff: dto.percentOff,
+        amountOff: dto.amountOff,
+        currency: dto.currency || 'INR',
+        maxRedemptions: dto.maxRedemptions,
+        redeemBy: dto.redeemBy ? new Date(dto.redeemBy) : null,
+        durationMonths: dto.durationMonths,
+        isActive: dto.isActive ?? true,
+      },
+    });
+
+    await this.writeAudit(audit, {
+      action: 'billing.coupon_upsert',
+      entityType: 'coupon',
+      entityId: coupon.id,
+      workspaceId: null,
+      metadata: { code },
+    });
+
+    return { success: true, coupon };
+  }
+
+  async listInvoices(page = 1, pageSize = 25) {
+    const take = Math.min(pageSize, 100);
+    const [total, invoices] = await this.prisma.$transaction([
+      this.prisma.invoice.count(),
+      this.prisma.invoice.findMany({
+        include: {
+          workspace: { select: { id: true, name: true, tenantCode: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * take,
+        take,
+      }),
+    ]);
+    return { success: true, total, page, pageSize: take, invoices };
+  }
+
+  /** Idempotent Stripe event processing */
+  async processStripeEvent(event: {
+    id: string;
+    type: string;
+    data: { object: Record<string, unknown> };
+  }) {
+    const existing = await this.prisma.stripeEvent.findUnique({ where: { id: event.id } });
+    if (existing) {
+      return { success: true, duplicate: true };
+    }
+
+    await this.prisma.stripeEvent.create({
+      data: {
+        id: event.id,
+        type: event.type,
+        payload: event as unknown as Prisma.InputJsonValue,
+      },
+    });
+
+    const obj = event.data?.object || {};
+
+    if (event.type === 'invoice.paid' || event.type === 'invoice.payment_succeeded') {
+      await this.upsertInvoiceFromStripe(obj, 'paid');
+    } else if (event.type === 'invoice.payment_failed') {
+      await this.upsertInvoiceFromStripe(obj, 'open');
+    } else if (event.type === 'customer.subscription.updated') {
+      await this.syncSubscriptionFromStripe(obj);
+    } else if (event.type === 'customer.subscription.deleted') {
+      const stripeSubId = String(obj.id || '');
+      if (stripeSubId) {
+        await this.prisma.subscription.updateMany({
+          where: { stripeSubscriptionId: stripeSubId },
+          data: { status: 'canceled', canceledAt: new Date() },
+        });
+      }
+    }
+
+    return { success: true, duplicate: false, type: event.type };
+  }
+
+  private async upsertInvoiceFromStripe(obj: Record<string, unknown>, status: string) {
+    const stripeInvoiceId = String(obj.id || '');
+    if (!stripeInvoiceId) return;
+
+    const stripeSubId = obj.subscription ? String(obj.subscription) : null;
+    const sub = stripeSubId
+      ? await this.prisma.subscription.findFirst({ where: { stripeSubscriptionId: stripeSubId } })
+      : null;
+
+    const amountPaid = Number(obj.amount_paid || 0);
+    const amountDue = Number(obj.amount_due || 0);
+    const currency = String(obj.currency || 'inr').toUpperCase();
+
+    if (!sub) return;
+
+    await this.prisma.invoice.upsert({
+      where: { stripeInvoiceId },
+      update: {
+        status,
+        amountPaid,
+        amountDue,
+        currency,
+        hostedInvoiceUrl: obj.hosted_invoice_url ? String(obj.hosted_invoice_url) : null,
+        pdfUrl: obj.invoice_pdf ? String(obj.invoice_pdf) : null,
+        paidAt: status === 'paid' ? new Date() : null,
+      },
+      create: {
+        workspaceId: sub.workspaceId,
+        subscriptionId: sub.id,
+        stripeInvoiceId,
+        number: obj.number ? String(obj.number) : null,
+        amountPaid,
+        amountDue,
+        currency,
+        status,
+        hostedInvoiceUrl: obj.hosted_invoice_url ? String(obj.hosted_invoice_url) : null,
+        pdfUrl: obj.invoice_pdf ? String(obj.invoice_pdf) : null,
+        paidAt: status === 'paid' ? new Date() : null,
+      },
+    });
+
+    if (status === 'paid') {
+      await this.prisma.subscription.update({
+        where: { id: sub.id },
+        data: { status: 'active' },
+      });
+      await this.prisma.workspace.update({
+        where: { id: sub.workspaceId },
+        data: { status: 'active' },
+      });
+    }
+  }
+
+  private async syncSubscriptionFromStripe(obj: Record<string, unknown>) {
+    const stripeSubId = String(obj.id || '');
+    if (!stripeSubId) return;
+    const statusMap: Record<string, string> = {
+      active: 'active',
+      trialing: 'trialing',
+      past_due: 'past_due',
+      canceled: 'canceled',
+      unpaid: 'unpaid',
+    };
+    const status = statusMap[String(obj.status || '')] || String(obj.status || 'active');
+    await this.prisma.subscription.updateMany({
+      where: { stripeSubscriptionId: stripeSubId },
+      data: {
+        status,
+        cancelAtPeriodEnd: Boolean(obj.cancel_at_period_end),
+        currentPeriodEnd: obj.current_period_end
+          ? new Date(Number(obj.current_period_end) * 1000)
+          : undefined,
+      },
+    });
+  }
+
+  private async resolvePlan(planRef: string) {
+    const byCode = await this.prisma.plan.findUnique({ where: { code: planRef } });
+    if (byCode) return byCode;
+    const byId = await this.prisma.plan.findUnique({ where: { id: planRef } });
+    if (byId) return byId;
+    throw new NotFoundException('Plan not found');
+  }
+
+  private async validateCoupon(code: string) {
+    const coupon = await this.prisma.coupon.findUnique({
+      where: { code: code.toUpperCase() },
+    });
+    if (!coupon || !coupon.isActive) throw new BadRequestException('Invalid coupon');
+    if (coupon.redeemBy && coupon.redeemBy < new Date()) {
+      throw new BadRequestException('Coupon expired');
+    }
+    if (coupon.maxRedemptions != null && coupon.timesRedeemed >= coupon.maxRedemptions) {
+      throw new BadRequestException('Coupon fully redeemed');
+    }
+    return coupon;
+  }
+
+  private async applyCouponAmount(amount: number, code: string | null) {
+    if (!code) return amount;
+    const coupon = await this.prisma.coupon.findUnique({ where: { code: code.toUpperCase() } });
+    if (!coupon || !coupon.isActive) return amount;
+    if (coupon.percentOff) return Math.round(amount * (1 - coupon.percentOff / 100));
+    if (coupon.amountOff) return Math.max(0, amount - coupon.amountOff);
+    return amount;
+  }
+
+  private async writeAudit(
+    audit: AuditContext,
+    data: {
+      action: string;
+      entityType: string;
+      entityId: string | null;
+      workspaceId: string | null;
+      metadata: Record<string, unknown>;
+    },
+  ) {
+    await this.prisma.platformAuditLog.create({
+      data: {
+        actorUserId: audit.actor.sub,
+        actorEmail: audit.actor.email,
+        action: data.action,
+        entityType: data.entityType,
+        entityId: data.entityId ?? undefined,
+        workspaceId: data.workspaceId ?? undefined,
+        ipAddress: audit.ipAddress,
+        userAgent: audit.userAgent,
+        metadata: data.metadata as Prisma.InputJsonValue,
+      },
+    });
+  }
+}

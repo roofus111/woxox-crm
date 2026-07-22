@@ -279,6 +279,76 @@ async function main() {
   console.log('[seed] Workspace:', workspace.slug);
   console.log('[seed] Pipeline:', pipeline.id);
   console.log('[seed] Login:', email, '/', password);
+
+  const planDefaults = [
+    { code: 'trial', name: 'Free Trial', amountMonthly: 0, amountYearly: 0, enabledModules: ['crm'], sortOrder: 0 },
+    { code: 'starter', name: 'Starter', amountMonthly: 199900, amountYearly: 1999000, enabledModules: ['crm'], sortOrder: 1, maxUsers: 5 },
+    {
+      code: 'professional',
+      name: 'Professional',
+      amountMonthly: 499900,
+      amountYearly: 4999000,
+      enabledModules: ['crm', 'finance', 'hrms'],
+      sortOrder: 2,
+      maxUsers: 25,
+    },
+    {
+      code: 'enterprise',
+      name: 'Enterprise',
+      amountMonthly: 999900,
+      amountYearly: 9999000,
+      enabledModules: ['crm', 'finance', 'hrms', 'legalos', 'projectsLite', 'projectsMax', 'academy', 'ecommerce'],
+      sortOrder: 3,
+    },
+  ] as const;
+
+  for (const p of planDefaults) {
+    await prisma.plan.upsert({
+      where: { code: p.code },
+      update: {
+        name: p.name,
+        amountMonthly: p.amountMonthly,
+        amountYearly: p.amountYearly,
+        enabledModules: [...p.enabledModules],
+        sortOrder: p.sortOrder,
+        maxUsers: 'maxUsers' in p ? p.maxUsers : undefined,
+      },
+      create: {
+        code: p.code,
+        name: p.name,
+        currency: 'INR',
+        amountMonthly: p.amountMonthly,
+        amountYearly: p.amountYearly,
+        enabledModules: [...p.enabledModules],
+        sortOrder: p.sortOrder,
+        maxUsers: 'maxUsers' in p ? p.maxUsers : undefined,
+        isActive: true,
+      },
+    });
+  }
+
+  const enterprise = await prisma.plan.findUnique({ where: { code: 'enterprise' } });
+  if (enterprise) {
+    const existingSub = await prisma.subscription.findFirst({
+      where: { workspaceId: workspace.id, status: { in: ['active', 'trialing'] } },
+    });
+    if (!existingSub) {
+      const periodEnd = new Date();
+      periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+      await prisma.subscription.create({
+        data: {
+          workspaceId: workspace.id,
+          planId: enterprise.id,
+          status: 'active',
+          billingCycle: 'yearly',
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: periodEnd,
+        },
+      });
+    }
+  }
+
+  console.log('[seed] Billing plans ready');
 }
 
 main()

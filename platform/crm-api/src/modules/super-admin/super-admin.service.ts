@@ -343,6 +343,33 @@ export class SuperAdminService {
       return { workspace: { ...workspace, ownerUserId: user.id }, user };
     });
 
+    // Attach control-plane subscription for billing
+    try {
+      const planCode = plan === 'trial' ? 'trial' : plan;
+      let billingPlan = await this.prisma.plan.findUnique({ where: { code: planCode } });
+      if (!billingPlan) {
+        billingPlan = await this.prisma.plan.findUnique({ where: { code: 'starter' } });
+      }
+      if (billingPlan) {
+        const periodEnd =
+          trialEndsAt ||
+          new Date(Date.now() + (billingPlan.trialDays || 14) * 24 * 60 * 60 * 1000);
+        await this.prisma.subscription.create({
+          data: {
+            workspaceId: result.workspace.id,
+            planId: billingPlan.id,
+            status: plan === 'trial' || trialDays > 0 ? 'trialing' : 'active',
+            billingCycle: 'monthly',
+            currentPeriodStart: new Date(),
+            currentPeriodEnd: periodEnd,
+            trialEndsAt,
+          },
+        });
+      }
+    } catch {
+      /* billing tables may not exist yet on first boot before db push finishes */
+    }
+
     const legacy = await this.provisionLegacyTenant({
       companyName: dto.companyName.trim(),
       adminEmail: email,

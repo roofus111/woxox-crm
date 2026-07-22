@@ -236,3 +236,63 @@ export async function stopSuperAdminImpersonation(sessionId) {
     body: JSON.stringify(sessionId ? { sessionId } : {}),
   })
 }
+
+// ─── Billing ────────────────────────────────────────────────────────────────
+
+export async function getBillingRevenue() {
+  return platformFetch('/billing/revenue')
+}
+
+export async function listBillingPlans() {
+  return platformFetch('/billing/plans')
+}
+
+export async function upsertBillingPlan(payload) {
+  return platformFetch('/billing/plans', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function listBillingSubscriptions(params = {}) {
+  const qs = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')
+  ).toString()
+  return platformFetch(`/billing/subscriptions${qs ? `?${qs}` : ''}`)
+}
+
+export async function getWorkspaceSubscription(workspaceId) {
+  return platformFetch(`/billing/subscriptions/workspace/${workspaceId}`)
+}
+
+export async function assignBillingSubscription(payload) {
+  return platformFetch('/billing/subscriptions/assign', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function cancelBillingSubscription(id, atPeriodEnd = true) {
+  return platformFetch(`/billing/subscriptions/${id}/cancel`, {
+    method: 'POST',
+    body: JSON.stringify({ atPeriodEnd }),
+  })
+}
+
+export async function listBillingCoupons() {
+  return platformFetch('/billing/coupons')
+}
+
+export async function upsertBillingCoupon(payload) {
+  return platformFetch('/billing/coupons', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function listBillingInvoices(params = {}) {
+  const qs = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')
+  ).toString()
+  return platformFetch(`/billing/invoices${qs ? `?${qs}` : ''}`)
+}

@@ -87,7 +87,7 @@ services:
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${PLATFORM_JWT_SECRET:-${JWT_SECRET}}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-10h}
-      CORS_ORIGIN: ${APP_ORIGIN}
+      CORS_ORIGIN: ${CORS_ORIGIN:-${APP_ORIGIN}}
       SEED_DB: ${SEED_PLATFORM_DB:-true}
       APP_ORIGIN: ${APP_ORIGIN}
       LEGACY_API_URL: http://crmserver:8000
@@ -102,6 +102,8 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-}
+      MARKETING_WORKSPACE_ID: ${MARKETING_WORKSPACE_ID:-}
+      MARKETING_NOTIFY_EMAIL: ${MARKETING_NOTIFY_EMAIL:-}
     networks:
       - woxox
 
@@ -139,11 +141,29 @@ services:
     networks:
       - woxox
 
+  website:
+    build:
+      context: ${WEBSITE_PATH:-../woxox-website}
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_CRM_PLATFORM_API_URL: ${PLATFORM_API_ORIGIN}/api/v1
+        NEXT_PUBLIC_APP_ORIGIN: ${APP_ORIGIN}
+    restart: unless-stopped
+    depends_on:
+      - crm-api
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      HOSTNAME: 0.0.0.0
+    networks:
+      - woxox
+
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
     depends_on:
       - crm-web
+      - website
       - crmserver
       - crm-api
     ports:

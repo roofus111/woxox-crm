@@ -12,6 +12,7 @@ import {
   CreateRazorpayOrderDto,
   CreateRazorpayPaymentLinkDto,
   ListSubscriptionsQueryDto,
+  PublicContactDto,
   PublicSignupDto,
   UpsertCouponDto,
   UpsertPlanDto,
@@ -990,6 +991,75 @@ export class BillingService {
         ? `${process.env.APP_ORIGIN}/en/onboarding`
         : 'https://app.woxox.com/en/onboarding',
     };
+  }
+
+  /**
+   * Marketing-site contact form → Lead in MARKETING_WORKSPACE_ID (or first active workspace).
+   */
+  async publicContact(dto: PublicContactDto) {
+    const email = dto.email.toLowerCase().trim();
+    const nameParts = dto.name.trim().split(/\s+/);
+    const firstName = nameParts[0] || dto.name;
+    const lastName = nameParts.slice(1).join(' ') || null;
+
+    let workspaceId = process.env.MARKETING_WORKSPACE_ID?.trim() || '';
+    if (!workspaceId) {
+      const fallback = await this.prisma.workspace.findFirst({
+        where: { deletedAt: null, status: { in: ['active', 'trial'] } },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      });
+      workspaceId = fallback?.id || '';
+    }
+    if (!workspaceId) {
+      throw new BadRequestException(
+        'Marketing workspace is not configured (set MARKETING_WORKSPACE_ID)',
+      );
+    }
+
+    const lead = await this.prisma.lead.create({
+      data: {
+        workspaceId,
+        title: dto.companyName
+          ? `Website inquiry — ${dto.companyName}`
+          : 'Website inquiry',
+        firstName,
+        lastName,
+        email,
+        phone: dto.phone || null,
+        companyName: dto.companyName || null,
+        source: 'WEBSITE',
+        status: 'NEW',
+        tags: ['website-contact'],
+        customFields: {
+          message: dto.message,
+          submittedAt: new Date().toISOString(),
+          sourcePage: 'woxox-website',
+        },
+      },
+    });
+
+    const notifyTo =
+      process.env.MARKETING_NOTIFY_EMAIL || process.env.SMTP_FROM || process.env.SMTP_USER;
+    if (notifyTo) {
+      await this.mail.send({
+        to: notifyTo.includes('<')
+          ? (notifyTo.match(/<([^>]+)>/)?.[1] || notifyTo)
+          : notifyTo,
+        subject: `WOXOX website contact — ${dto.name}`,
+        html: `
+          <p><strong>Name:</strong> ${dto.name}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Phone:</strong> ${dto.phone || '—'}</p>
+          <p><strong>Company:</strong> ${dto.companyName || '—'}</p>
+          <p><strong>Message:</strong></p>
+          <p>${dto.message.replace(/</g, '&lt;')}</p>
+          <p style="color:#94a3b8;font-size:12px">Lead id: ${lead.id}</p>
+        `,
+      });
+    }
+
+    return { success: true, leadId: lead.id };
   }
 
   private async markRazorpayPaidFromEntity(entity: Record<string, unknown>) {

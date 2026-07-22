@@ -25,6 +25,9 @@ git pull --ff-only || true
 if [ -d ../crmserver/.git ]; then
   (cd ../crmserver && git pull --ff-only) || true
 fi
+if [ -d ../woxox-website/.git ]; then
+  (cd ../woxox-website && git pull --ff-only) || true
+fi
 
 echo "==> Building and starting stack..."
 docker compose -f docker-compose.prod.yml --env-file "${ENV_FILE}" up -d --build
@@ -34,6 +37,7 @@ docker compose -f docker-compose.prod.yml --env-file "${ENV_FILE}" ps
 
 echo ""
 echo "Deploy complete."
+echo "  Website:       check WEBSITE_ORIGIN / www in nginx"
 echo "  CRM UI:        check APP_ORIGIN in ${ENV_FILE}"
 echo "  Legacy API:    check API_ORIGIN"
 echo "  Platform API:  check PLATFORM_API_ORIGIN"

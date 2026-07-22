@@ -112,8 +112,20 @@ SMTP_PASS=
 SMTP_FROM="WOXOX <noreply@woxox.com>"
 ```
 
-Razorpay webhook URL: `https://platform.woxox.com/api/v1/billing/webhooks/razorpay`  
-Events: `payment.captured`, `order.paid`, `payment_link.paid`, `payment.failed`.
+Razorpay webhook URL: `https://platform.woxox.com/api/v1/billing/webhooks/razorpay`
+
+### Marketing website (www)
+
+Self-serve checkout lives on the marketing site and calls the same public billing APIs:
+
+- `GET /billing/public/plans`
+- `POST /billing/public/signup`
+- `POST /billing/public/verify`
+- `POST /billing/public/contact` — creates a lead in `MARKETING_WORKSPACE_ID`
+
+Set `CORS_ORIGIN` to include `https://www.woxox.com` (and apex if used).
+
+Razorpay webhook events: `payment.captured`, `order.paid`, `payment_link.paid`, `payment.failed`.
 
 ## Deploy (EC2)
 

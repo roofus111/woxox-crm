@@ -6,6 +6,7 @@ Fastest path to host the full CRM stack on AWS.
 
 | Service | Container | Port (internal) | Public URL |
 |---------|-----------|-----------------|------------|
+| Marketing site (Next.js) | `website` | 3001 | `https://www.yourdomain.com` |
 | CRM UI (Next.js) | `crm-web` | 3000 | `https://app.yourdomain.com` |
 | Legacy API (crmserver) | `crmserver` | 8000 | `https://api.yourdomain.com` |
 | Platform API (NestJS) | `crm-api` | 4001 | `https://platform.yourdomain.com` |
@@ -53,6 +54,8 @@ This installs Docker, clones `crm` + `crmserver` into `/opt/woxox/`.
 
 Point these A records to your EC2 public IP:
 
+- `www.yourdomain.com` (marketing site)
+- `yourdomain.com` (redirects to www)
 - `app.yourdomain.com`
 - `api.yourdomain.com`
 - `platform.yourdomain.com`
@@ -68,14 +71,18 @@ nano .env.production
 Set:
 
 - `APP_ORIGIN`, `API_ORIGIN`, `PLATFORM_API_ORIGIN` — your real HTTPS URLs
+- `CORS_ORIGIN` — include app + marketing, e.g. `https://app.woxox.com,https://www.woxox.com,https://woxox.com`
+- `WEBSITE_PATH=../woxox-website` (sibling clone of the marketing site)
+- `MARKETING_WORKSPACE_ID` — workspace that receives website contact leads
 - `NEXTAUTH_SECRET`, `JWT_SECRET`, `POSTGRES_PASSWORD` — strong random values
 - `CRMSERVER_PATH=../crmserver`
+- Razorpay keys + `RAZORPAY_WEBHOOK_SECRET`
 
 Update nginx hostnames:
 
 ```bash
 nano deploy/aws/nginx/woxox.conf
-# Replace app.yourdomain.com, api.yourdomain.com, platform.yourdomain.com
+# Replace www / app / api / platform hostnames
 ```
 
 ## Step 5 — TLS certificates
@@ -84,9 +91,9 @@ nano deploy/aws/nginx/woxox.conf
 
 ```bash
 sudo apt-get install -y certbot
-sudo certbot certonly --standalone -d app.yourdomain.com -d api.yourdomain.com -d platform.yourdomain.com
-sudo cp /etc/letsencrypt/live/app.yourdomain.com/fullchain.pem deploy/aws/certs/
-sudo cp /etc/letsencrypt/live/app.yourdomain.com/privkey.pem deploy/aws/certs/
+sudo certbot certonly --standalone -d www.yourdomain.com -d yourdomain.com -d app.yourdomain.com -d api.yourdomain.com -d platform.yourdomain.com
+sudo cp /etc/letsencrypt/live/www.yourdomain.com/fullchain.pem deploy/aws/certs/
+sudo cp /etc/letsencrypt/live/www.yourdomain.com/privkey.pem deploy/aws/certs/
 ```
 
 ### Option B — AWS ACM + ALB (later)

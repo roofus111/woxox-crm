@@ -26,6 +26,7 @@ import {
   CreateRazorpayOrderDto,
   CreateRazorpayPaymentLinkDto,
   ListSubscriptionsQueryDto,
+  PublicContactDto,
   PublicSignupDto,
   UpsertCouponDto,
   UpsertPlanDto,
@@ -192,6 +193,13 @@ export class BillingController {
   @Post('public/verify')
   publicVerify(@Body() dto: VerifyRazorpayPaymentDto) {
     return this.billing.publicVerifyPayment(dto);
+  }
+
+  /** Marketing site contact form (no auth) */
+  @Post('public/contact')
+  @HttpCode(200)
+  publicContact(@Body() dto: PublicContactDto) {
+    return this.billing.publicContact(dto);
   }
 
   /**

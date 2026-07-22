@@ -295,3 +295,29 @@ export class PublicSignupDto {
   @IsIn(['monthly', 'yearly'])
   billingCycle?: 'monthly' | 'yearly';
 }
+
+export class PublicContactDto {
+  @ApiProperty({ example: 'Jane Doe' })
+  @IsString()
+  @MinLength(2)
+  name!: string;
+
+  @ApiProperty()
+  @IsEmail()
+  email!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  companyName?: string;
+
+  @ApiProperty({ example: 'Interested in enterprise pricing' })
+  @IsString()
+  @MinLength(5)
+  message!: string;
+}

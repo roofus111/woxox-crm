@@ -7,6 +7,7 @@ set -euo pipefail
 APP_DIR="${APP_DIR:-/opt/woxox}"
 CRM_REPO="${CRM_REPO:-https://github.com/SoorajCanbridge/crm.git}"
 CRMSERVER_REPO="${CRMSERVER_REPO:-https://github.com/SoorajCanbridge/crmserver.git}"
+WEBSITE_REPO="${WEBSITE_REPO:-https://github.com/SoorajCanbridge/woxox-website.git}"
 CRM_BRANCH="${CRM_BRANCH:-main}"
 
 echo "==> Installing Docker..."
@@ -34,6 +35,10 @@ if [ ! -d crmserver/.git ]; then
   git clone "${CRMSERVER_REPO}" crmserver
 fi
 
+if [ ! -d woxox-website/.git ]; then
+  git clone "${WEBSITE_REPO}" woxox-website
+fi
+
 cp "${APP_DIR}/crm/deploy/docker/crmserver.Dockerfile" "${APP_DIR}/crmserver/Dockerfile"
 
 cd "${APP_DIR}/crm"
@@ -55,8 +60,8 @@ ufw --force enable || true
 echo ""
 echo "Bootstrap complete."
 echo "Next steps:"
-echo "  1. Point DNS: app.*, api.*, platform.* → this server's public IP"
-echo "  2. Edit ${APP_DIR}/crm/.env.production"
+echo "  1. Point DNS: www.*, app.*, api.*, platform.* → this server's public IP"
+echo "  2. Edit ${APP_DIR}/crm/.env.production (CORS_ORIGIN must include www)"
 echo "  3. Update deploy/aws/nginx/woxox.conf server_name values"
 echo "  4. Place TLS certs in ${APP_DIR}/crm/deploy/aws/certs/ (fullchain.pem, privkey.pem)"
 echo "  5. Run: cd ${APP_DIR}/crm && bash deploy/aws/deploy.sh"

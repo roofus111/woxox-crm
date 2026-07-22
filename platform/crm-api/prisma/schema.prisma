@@ -425,6 +425,8 @@ model Plan {
   trialDays          Int      @default(14)
   stripePriceMonthly String?
   stripePriceYearly  String?
+  razorpayPlanIdMonthly String?
+  razorpayPlanIdYearly  String?
   isActive           Boolean  @default(true)
   sortOrder          Int      @default(0)
   createdAt          DateTime @default(now())
@@ -449,6 +451,8 @@ model Subscription {
   couponCode           String?
   stripeCustomerId     String?
   stripeSubscriptionId String?   @unique
+  razorpayCustomerId   String?
+  razorpaySubscriptionId String? @unique
   metadata             Json      @default("{}")
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
@@ -491,6 +495,8 @@ model Invoice {
   currency         String    @default("INR")
   status           String    @default("draft") // draft | open | paid | void | uncollectible
   stripeInvoiceId  String?   @unique
+  razorpayOrderId  String?   @unique
+  razorpayPaymentId String?  @unique
   hostedInvoiceUrl String?
   pdfUrl           String?
   periodStart      DateTime?
@@ -510,6 +516,16 @@ model Invoice {
 /// Stripe webhook idempotency
 model StripeEvent {
   id          String   @id // Stripe event id evt_...
+  type        String
+  processedAt DateTime @default(now())
+  payload     Json     @default("{}")
+
+  @@index([type, processedAt])
+}
+
+/// Razorpay webhook idempotency
+model RazorpayEvent {
+  id          String   @id // Razorpay event id or payment/order id key
   type        String
   processedAt DateTime @default(now())
   payload     Json     @default("{}")

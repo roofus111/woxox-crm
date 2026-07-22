@@ -195,3 +195,72 @@ export class ListSubscriptionsQueryDto {
   @Min(1)
   pageSize?: number;
 }
+
+export class CreateRazorpayOrderDto {
+  @ApiProperty()
+  @IsString()
+  workspaceId!: string;
+
+  @ApiProperty({ description: 'Plan code or id' })
+  @IsString()
+  plan!: string;
+
+  @ApiPropertyOptional({ enum: ['monthly', 'yearly'] })
+  @IsOptional()
+  @IsIn(['monthly', 'yearly'])
+  billingCycle?: 'monthly' | 'yearly';
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  couponCode?: string;
+}
+
+export class VerifyRazorpayPaymentDto {
+  @ApiProperty()
+  @IsString()
+  razorpayOrderId!: string;
+
+  @ApiProperty()
+  @IsString()
+  razorpayPaymentId!: string;
+
+  @ApiProperty()
+  @IsString()
+  razorpaySignature!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  workspaceId?: string;
+}
+
+export class CreateRazorpayPaymentLinkDto {
+  @ApiProperty()
+  @IsString()
+  workspaceId!: string;
+
+  @ApiProperty()
+  @IsString()
+  plan!: string;
+
+  @ApiPropertyOptional({ enum: ['monthly', 'yearly'] })
+  @IsOptional()
+  @IsIn(['monthly', 'yearly'])
+  billingCycle?: 'monthly' | 'yearly';
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  customerEmail?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  customerName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  couponCode?: string;
+}

@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import {
   assignBillingSubscription,
   changeSuperAdminOwner,
+  createRazorpayPaymentLink,
   extendSuperAdminTrial,
   getSuperAdminTenant,
   getWorkspaceSubscription,
@@ -151,6 +152,25 @@ export default function CompanyDetail() {
         }),
       `Plan set to ${selectedPlan}`
     )
+
+  const sendRazorpayLink = async () => {
+    setBusy(true)
+    setError('')
+    try {
+      const data = await createRazorpayPaymentLink({
+        workspaceId: id,
+        plan: selectedPlan,
+        billingCycle,
+      })
+      const url = data.paymentLink?.shortUrl
+      setNotice(url ? `Razorpay link: ${url}` : 'Payment link created')
+      if (url) window.open(url, '_blank', 'noopener,noreferrer')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const impersonate = async () => {
     if (
@@ -332,6 +352,15 @@ export default function CompanyDetail() {
                 disabled={busy || Boolean(tenant.deletedAt)}
               >
                 Apply plan
+              </button>
+              <button
+                type='button'
+                className='sa-btn sa-btn-ghost'
+                style={{ marginTop: 10, marginLeft: 8 }}
+                onClick={sendRazorpayLink}
+                disabled={busy || Boolean(tenant.deletedAt) || selectedPlan === 'trial'}
+              >
+                Razorpay payment link
               </button>
             </div>
 

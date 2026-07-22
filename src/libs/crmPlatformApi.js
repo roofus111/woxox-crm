@@ -296,3 +296,24 @@ export async function listBillingInvoices(params = {}) {
   ).toString()
   return platformFetch(`/billing/invoices${qs ? `?${qs}` : ''}`)
 }
+
+export async function createRazorpayOrder(payload) {
+  return platformFetch('/billing/razorpay/orders', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function createRazorpayPaymentLink(payload) {
+  return platformFetch('/billing/razorpay/payment-links', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function verifyRazorpayPayment(payload) {
+  return platformFetch('/billing/razorpay/verify', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}

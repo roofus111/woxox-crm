@@ -8,10 +8,14 @@ import { PrismaService } from '../../prisma/prisma.module';
 import { JwtPayload } from '../../common/decorators/current-user.decorator';
 import {
   AssignSubscriptionDto,
+  CreateRazorpayOrderDto,
+  CreateRazorpayPaymentLinkDto,
   ListSubscriptionsQueryDto,
   UpsertCouponDto,
   UpsertPlanDto,
+  VerifyRazorpayPaymentDto,
 } from './dto/billing.dto';
+import { createHmac, timingSafeEqual } from 'crypto';
 
 type AuditContext = {
   actor: JwtPayload;
@@ -152,6 +156,9 @@ export class BillingService {
         revenueThisMonth: paidThisMonth._sum.amountPaid || 0,
         openOrFailedInvoices: failed,
         stripeConfigured: Boolean(process.env.STRIPE_SECRET_KEY),
+        razorpayConfigured: Boolean(
+          process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET,
+        ),
       },
     };
   }
@@ -471,6 +478,377 @@ export class BillingService {
     }
 
     return { success: true, duplicate: false, type: event.type };
+  }
+
+  // ─── Razorpay ───────────────────────────────────────────────────────────────
+
+  async createRazorpayOrder(dto: CreateRazorpayOrderDto, audit: AuditContext) {
+    const { workspace, plan, billingCycle, amount, currency, couponCode } =
+      await this.resolvePayable(dto);
+
+    const order = await this.razorpayRequest('POST', '/orders', {
+      amount,
+      currency,
+      receipt: `wox-${workspace.id.slice(-10)}`,
+      notes: {
+        workspaceId: workspace.id,
+        planCode: plan.code,
+        billingCycle,
+        couponCode: couponCode || '',
+      },
+    });
+
+    const invoice = await this.prisma.invoice.create({
+      data: {
+        workspaceId: workspace.id,
+        number: `RZ-${Date.now()}`,
+        amountDue: amount,
+        amountPaid: 0,
+        currency,
+        status: 'open',
+        razorpayOrderId: String(order.id),
+        metadata: {
+          planCode: plan.code,
+          billingCycle,
+          couponCode: couponCode || null,
+          provider: 'razorpay',
+        },
+      },
+    });
+
+    await this.writeAudit(audit, {
+      action: 'billing.razorpay_order_create',
+      entityType: 'invoice',
+      entityId: invoice.id,
+      workspaceId: workspace.id,
+      metadata: { orderId: order.id, amount, planCode: plan.code },
+    });
+
+    return {
+      success: true,
+      order: {
+        id: order.id,
+        amount: order.amount,
+        currency: order.currency,
+        receipt: order.receipt,
+      },
+      keyId: process.env.RAZORPAY_KEY_ID,
+      invoiceId: invoice.id,
+      workspace: { id: workspace.id, name: workspace.name },
+      plan: { code: plan.code, name: plan.name },
+      billingCycle,
+    };
+  }
+
+  async createRazorpayPaymentLink(dto: CreateRazorpayPaymentLinkDto, audit: AuditContext) {
+    const { workspace, plan, billingCycle, amount, currency, couponCode } =
+      await this.resolvePayable(dto);
+
+    const appOrigin = process.env.APP_ORIGIN || 'https://app.woxox.com';
+    const link = await this.razorpayRequest('POST', '/payment_links', {
+      amount,
+      currency,
+      accept_partial: false,
+      description: `${plan.name} (${billingCycle}) — ${workspace.name}`,
+      customer: {
+        name: dto.customerName || workspace.name,
+        email: dto.customerEmail || undefined,
+      },
+      notify: {
+        email: Boolean(dto.customerEmail),
+        sms: false,
+      },
+      reminder_enable: true,
+      callback_url: `${appOrigin.replace(/\/$/, '')}/en/super-admin/billing`,
+      callback_method: 'get',
+      notes: {
+        workspaceId: workspace.id,
+        planCode: plan.code,
+        billingCycle,
+        couponCode: couponCode || '',
+      },
+    });
+
+    const invoice = await this.prisma.invoice.create({
+      data: {
+        workspaceId: workspace.id,
+        number: `RZPL-${Date.now()}`,
+        amountDue: amount,
+        amountPaid: 0,
+        currency,
+        status: 'open',
+        razorpayOrderId: link.order_id ? String(link.order_id) : null,
+        hostedInvoiceUrl: link.short_url ? String(link.short_url) : null,
+        metadata: {
+          planCode: plan.code,
+          billingCycle,
+          couponCode: couponCode || null,
+          provider: 'razorpay',
+          paymentLinkId: link.id,
+        },
+      },
+    });
+
+    await this.writeAudit(audit, {
+      action: 'billing.razorpay_payment_link_create',
+      entityType: 'invoice',
+      entityId: invoice.id,
+      workspaceId: workspace.id,
+      metadata: { paymentLinkId: link.id, shortUrl: link.short_url, amount },
+    });
+
+    return {
+      success: true,
+      paymentLink: {
+        id: link.id,
+        shortUrl: link.short_url,
+        amount: link.amount,
+        currency: link.currency,
+        status: link.status,
+      },
+      invoiceId: invoice.id,
+    };
+  }
+
+  async verifyRazorpayPayment(dto: VerifyRazorpayPaymentDto, audit: AuditContext) {
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    if (!keySecret) throw new BadRequestException('Razorpay is not configured');
+
+    const payload = `${dto.razorpayOrderId}|${dto.razorpayPaymentId}`;
+    const expected = createHmac('sha256', keySecret).update(payload).digest('hex');
+    const a = Buffer.from(expected, 'utf8');
+    const b = Buffer.from(dto.razorpaySignature || '', 'utf8');
+    if (a.length !== b.length || !timingSafeEqual(a, b)) {
+      throw new BadRequestException('Invalid Razorpay payment signature');
+    }
+
+    const invoice = await this.prisma.invoice.findFirst({
+      where: { razorpayOrderId: dto.razorpayOrderId },
+    });
+    if (!invoice) throw new NotFoundException('Invoice/order not found');
+
+    const meta = (invoice.metadata || {}) as Record<string, unknown>;
+    const workspaceId = dto.workspaceId || invoice.workspaceId;
+    const planCode = String(meta.planCode || 'starter');
+    const billingCycle = (meta.billingCycle as 'monthly' | 'yearly') || 'monthly';
+
+    const result = await this.assignSubscription(
+      {
+        workspaceId,
+        plan: planCode,
+        billingCycle,
+        startTrial: false,
+      },
+      audit,
+    );
+
+    await this.prisma.invoice.update({
+      where: { id: invoice.id },
+      data: {
+        status: 'paid',
+        amountPaid: invoice.amountDue,
+        razorpayPaymentId: dto.razorpayPaymentId,
+        paidAt: new Date(),
+        subscriptionId: result.subscription.id,
+      },
+    });
+
+    await this.writeAudit(audit, {
+      action: 'billing.razorpay_payment_verified',
+      entityType: 'invoice',
+      entityId: invoice.id,
+      workspaceId,
+      metadata: {
+        orderId: dto.razorpayOrderId,
+        paymentId: dto.razorpayPaymentId,
+        planCode,
+      },
+    });
+
+    return { success: true, subscription: result.subscription, invoiceId: invoice.id };
+  }
+
+  async processRazorpayEvent(
+    eventId: string,
+    eventType: string,
+    payload: Record<string, unknown>,
+  ) {
+    const existing = await this.prisma.razorpayEvent.findUnique({ where: { id: eventId } });
+    if (existing) return { success: true, duplicate: true };
+
+    await this.prisma.razorpayEvent.create({
+      data: {
+        id: eventId,
+        type: eventType,
+        payload: payload as Prisma.InputJsonValue,
+      },
+    });
+
+    const entity =
+      ((payload.payload as Record<string, unknown>)?.payment as Record<string, unknown>)
+        ?.entity ||
+      ((payload.payload as Record<string, unknown>)?.order as Record<string, unknown>)
+        ?.entity ||
+      ((payload.payload as Record<string, unknown>)?.payment_link as Record<string, unknown>)
+        ?.entity ||
+      {};
+
+    if (
+      eventType === 'payment.captured' ||
+      eventType === 'order.paid' ||
+      eventType === 'payment_link.paid'
+    ) {
+      await this.markRazorpayPaidFromEntity(entity as Record<string, unknown>);
+    } else if (eventType === 'payment.failed') {
+      const orderId = entity.order_id ? String(entity.order_id) : null;
+      if (orderId) {
+        await this.prisma.invoice.updateMany({
+          where: { razorpayOrderId: orderId, status: 'open' },
+          data: { status: 'uncollectible' },
+        });
+      }
+    }
+
+    return { success: true, duplicate: false, type: eventType };
+  }
+
+  private async markRazorpayPaidFromEntity(entity: Record<string, unknown>) {
+    const orderId = entity.order_id
+      ? String(entity.order_id)
+      : entity.id && String(entity.entity || '') === 'order'
+        ? String(entity.id)
+        : null;
+    const paymentId = entity.id && String(entity.entity || entity.entity_type || '') !== 'order'
+      ? String(entity.id)
+      : entity.payment_id
+        ? String(entity.payment_id)
+        : null;
+
+    const notes = (entity.notes || {}) as Record<string, string>;
+    let invoice = orderId
+      ? await this.prisma.invoice.findFirst({ where: { razorpayOrderId: orderId } })
+      : null;
+
+    if (!invoice && notes.workspaceId) {
+      invoice = await this.prisma.invoice.findFirst({
+        where: {
+          workspaceId: notes.workspaceId,
+          status: 'open',
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+    }
+
+    if (!invoice) return;
+    if (invoice.status === 'paid') return;
+
+    const meta = (invoice.metadata || {}) as Record<string, unknown>;
+    const planCode = String(meta.planCode || notes.planCode || 'starter');
+    const billingCycle =
+      (meta.billingCycle as 'monthly' | 'yearly') ||
+      (notes.billingCycle as 'monthly' | 'yearly') ||
+      'monthly';
+
+    const systemActor: JwtPayload = {
+      sub: 'system',
+      email: 'razorpay-webhook@woxox.local',
+      workspaceId: invoice.workspaceId,
+      role: 'SUPER_ADMIN',
+    };
+
+    const result = await this.assignSubscription(
+      {
+        workspaceId: invoice.workspaceId,
+        plan: planCode,
+        billingCycle,
+        startTrial: false,
+      },
+      { actor: systemActor },
+    );
+
+    const amountPaid = Number(entity.amount || invoice.amountDue || 0);
+    await this.prisma.invoice.update({
+      where: { id: invoice.id },
+      data: {
+        status: 'paid',
+        amountPaid,
+        razorpayPaymentId: paymentId || invoice.razorpayPaymentId,
+        razorpayOrderId: orderId || invoice.razorpayOrderId,
+        paidAt: new Date(),
+        subscriptionId: result.subscription.id,
+      },
+    });
+  }
+
+  private async resolvePayable(dto: {
+    workspaceId: string;
+    plan: string;
+    billingCycle?: 'monthly' | 'yearly';
+    couponCode?: string;
+  }) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: dto.workspaceId },
+    });
+    if (!workspace || workspace.deletedAt) throw new NotFoundException('Workspace not found');
+
+    const plan = await this.resolvePlan(dto.plan);
+    if (!plan.isActive) throw new BadRequestException('Plan is inactive');
+
+    const billingCycle = dto.billingCycle || 'monthly';
+    let amount = billingCycle === 'yearly' ? plan.amountYearly : plan.amountMonthly;
+    if (amount <= 0) throw new BadRequestException('Plan amount must be greater than zero');
+
+    if (dto.couponCode) {
+      await this.validateCoupon(dto.couponCode);
+      amount = await this.applyCouponAmount(amount, dto.couponCode);
+    }
+
+    return {
+      workspace,
+      plan,
+      billingCycle,
+      amount,
+      currency: (plan.currency || 'INR').toUpperCase(),
+      couponCode: dto.couponCode?.toUpperCase() || null,
+    };
+  }
+
+  private async razorpayRequest(method: string, path: string, body?: Record<string, unknown>) {
+    const keyId = process.env.RAZORPAY_KEY_ID;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    if (!keyId || !keySecret) {
+      throw new BadRequestException(
+        'Razorpay is not configured (set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET)',
+      );
+    }
+
+    const auth = Buffer.from(`${keyId}:${keySecret}`).toString('base64');
+    const res = await fetch(`https://api.razorpay.com/v1${path}`, {
+      method,
+      headers: {
+        Authorization: `Basic ${auth}`,
+        'Content-Type': 'application/json',
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    const data = (await res.json().catch(() => ({}))) as Record<string, unknown> & {
+      error?: { description?: string };
+      id?: string;
+      amount?: number;
+      currency?: string;
+      receipt?: string;
+      short_url?: string;
+      status?: string;
+      order_id?: string;
+    };
+
+    if (!res.ok) {
+      throw new BadRequestException(
+        data.error?.description || `Razorpay API failed (${res.status})`,
+      );
+    }
+    return data;
   }
 
   private async upsertInvoiceFromStripe(obj: Record<string, unknown>, status: string) {

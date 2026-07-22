@@ -96,13 +96,23 @@ sudo docker compose -f docker-compose.prod.yml --env-file .env.production exec c
 - Invoice ledger (filled by Stripe webhooks when configured)
 - Revenue KPIs: MRR, ARR, revenue this month
 - Webhook: `POST /api/v1/billing/webhooks/stripe` (idempotent via `StripeEvent`)
+- **Razorpay**: orders, payment links, payment verify, webhook `POST /api/v1/billing/webhooks/razorpay`
 
 Optional env:
 
 ```bash
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
+RAZORPAY_KEY_ID=
+RAZORPAY_KEY_SECRET=
+RAZORPAY_WEBHOOK_SECRET=
 ```
+
+Razorpay Dashboard webhook URL:
+
+`https://platform.woxox.com/api/v1/billing/webhooks/razorpay`
+
+Enable events: `payment.captured`, `order.paid`, `payment_link.paid`, `payment.failed`.
 
 ## Out of scope (later)
 

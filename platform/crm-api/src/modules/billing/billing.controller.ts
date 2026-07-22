@@ -22,9 +22,12 @@ import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.de
 import { BillingService } from './billing.service';
 import {
   AssignSubscriptionDto,
+  CreateRazorpayOrderDto,
+  CreateRazorpayPaymentLinkDto,
   ListSubscriptionsQueryDto,
   UpsertCouponDto,
   UpsertPlanDto,
+  VerifyRazorpayPaymentDto,
 } from './dto/billing.dto';
 
 @ApiTags('billing')
@@ -125,6 +128,85 @@ export class BillingController {
   @UseGuards(JwtAuthGuard, SuperAdminGuard)
   listInvoices(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
     return this.billing.listInvoices(Number(page) || 1, Number(pageSize) || 25);
+  }
+
+  @Post('razorpay/orders')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
+  createRazorpayOrder(
+    @Body() dto: CreateRazorpayOrderDto,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.billing.createRazorpayOrder(dto, this.auditCtx(user, req));
+  }
+
+  @Post('razorpay/payment-links')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
+  createRazorpayPaymentLink(
+    @Body() dto: CreateRazorpayPaymentLinkDto,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.billing.createRazorpayPaymentLink(dto, this.auditCtx(user, req));
+  }
+
+  @Post('razorpay/verify')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
+  verifyRazorpayPayment(
+    @Body() dto: VerifyRazorpayPaymentDto,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.billing.verifyRazorpayPayment(dto, this.auditCtx(user, req));
+  }
+
+  /**
+   * Razorpay webhook — verifies X-Razorpay-Signature when RAZORPAY_WEBHOOK_SECRET is set.
+   * Idempotent via RazorpayEvent table.
+   */
+  @Post('webhooks/razorpay')
+  @HttpCode(200)
+  async razorpayWebhook(
+    @Req() req: RawBodyRequest<Request>,
+    @Headers('x-razorpay-signature') signature: string | undefined,
+    @Headers('x-razorpay-event-id') eventIdHeader: string | undefined,
+  ) {
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    const raw = req.rawBody;
+
+    if (secret) {
+      if (!signature || !raw) {
+        throw new UnauthorizedException('Missing Razorpay signature or raw body');
+      }
+      const expected = createHmac('sha256', secret).update(raw).digest('hex');
+      const a = Buffer.from(expected, 'utf8');
+      const b = Buffer.from(signature, 'utf8');
+      if (a.length !== b.length || !timingSafeEqual(a, b)) {
+        throw new UnauthorizedException('Invalid Razorpay signature');
+      }
+    }
+
+    let payload: Record<string, unknown>;
+    try {
+      const text = raw ? raw.toString('utf8') : JSON.stringify(req.body);
+      payload = JSON.parse(text);
+    } catch {
+      throw new BadRequestException('Invalid JSON');
+    }
+
+    const eventType = String(payload.event || '');
+    if (!eventType) throw new BadRequestException('Missing event type');
+
+    const eventId =
+      eventIdHeader ||
+      String(payload.event_id || '') ||
+      `${eventType}:${Date.now()}`;
+
+    const result = await this.billing.processRazorpayEvent(eventId, eventType, payload);
+    return { received: true, ...result };
   }
 
   /**

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   assignBillingSubscription,
+  createRazorpayPaymentLink,
   getBillingRevenue,
   listBillingCoupons,
   listBillingInvoices,
@@ -60,6 +61,7 @@ export default function BillingCenter() {
   const [planForm, setPlanForm] = useState(emptyPlan)
   const [couponForm, setCouponForm] = useState(emptyCoupon)
   const [assign, setAssign] = useState({ workspaceId: '', plan: 'starter', billingCycle: 'monthly' })
+  const [rzLink, setRzLink] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -166,7 +168,7 @@ export default function BillingCenter() {
       {notice ? <div className='sa-alert sa-alert-ok'>{notice}</div> : null}
 
       <nav className='sa-tabs'>
-        {['overview', 'plans', 'subscriptions', 'coupons', 'invoices'].map(t => (
+        {['overview', 'plans', 'subscriptions', 'coupons', 'invoices', 'razorpay'].map(t => (
           <button
             key={t}
             type='button'
@@ -208,6 +210,10 @@ export default function BillingCenter() {
           <div className='sa-stat'>
             <strong>{stats.stripeConfigured ? 'Yes' : 'No'}</strong>
             <span>Stripe configured</span>
+          </div>
+          <div className='sa-stat'>
+            <strong>{stats.razorpayConfigured ? 'Yes' : 'No'}</strong>
+            <span>Razorpay configured</span>
           </div>
         </section>
       ) : null}
@@ -522,13 +528,98 @@ export default function BillingCenter() {
                 {!invoices.length ? (
                   <tr>
                     <td colSpan={4} className='sa-empty'>
-                      No invoices yet. Stripe webhooks will populate this.
+                      No invoices yet. Razorpay / Stripe webhooks will populate this.
                     </td>
                   </tr>
                 ) : null}
               </tbody>
             </table>
           </div>
+        </section>
+      ) : null}
+
+      {tab === 'razorpay' ? (
+        <section className='sa-panel'>
+          <h2>Razorpay payment link</h2>
+          <p className='sa-help'>
+            Creates a hosted Razorpay link for a company plan payment. On success, webhook activates
+            the subscription. Set RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET.
+          </p>
+          <form
+            className='sa-form'
+            onSubmit={async e => {
+              e.preventDefault()
+              setBusy(true)
+              setError('')
+              setRzLink(null)
+              try {
+                const data = await createRazorpayPaymentLink(assign)
+                setRzLink(data.paymentLink)
+                setNotice('Payment link created')
+                await load()
+              } catch (err) {
+                setError(err.message)
+              } finally {
+                setBusy(false)
+              }
+            }}
+          >
+            <div className='sa-grid-3'>
+              <label>
+                Workspace ID
+                <input
+                  value={assign.workspaceId}
+                  onChange={e => setAssign({ ...assign, workspaceId: e.target.value })}
+                  required
+                />
+              </label>
+              <label>
+                Plan
+                <select
+                  value={assign.plan}
+                  onChange={e => setAssign({ ...assign, plan: e.target.value })}
+                >
+                  {plans.map(p => (
+                    <option key={p.id} value={p.code}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Cycle
+                <select
+                  value={assign.billingCycle}
+                  onChange={e => setAssign({ ...assign, billingCycle: e.target.value })}
+                >
+                  <option value='monthly'>Monthly</option>
+                  <option value='yearly'>Yearly</option>
+                </select>
+              </label>
+            </div>
+            <button type='submit' className='sa-btn sa-btn-primary' disabled={busy}>
+              Create Razorpay link
+            </button>
+          </form>
+          {rzLink?.shortUrl ? (
+            <div className='sa-banner' style={{ marginTop: 16 }}>
+              <div>
+                <h2>Payment link ready</h2>
+                <p className='sa-mono'>
+                  <a href={rzLink.shortUrl} target='_blank' rel='noreferrer'>
+                    {rzLink.shortUrl}
+                  </a>
+                </p>
+              </div>
+              <button
+                type='button'
+                className='sa-btn sa-btn-ghost'
+                onClick={() => navigator.clipboard?.writeText(rzLink.shortUrl)}
+              >
+                Copy
+              </button>
+            </div>
+          ) : null}
         </section>
       ) : null}
     </SuperAdminShell>

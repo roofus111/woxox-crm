@@ -4,12 +4,12 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 function getUpstreamBase() {
-  // Prefer internal Docker URL in production compose
-  return (
+  // Internal Docker service URL (set in docker-compose.prod.yml)
+  const raw =
     process.env.CRM_PLATFORM_API_URL ||
     process.env.NEXT_PUBLIC_CRM_PLATFORM_API_URL ||
-    'http://localhost:4001/api/v1'
-  ).replace(/\/$/, '')
+    'http://crm-api:4001/api/v1'
+  return String(raw).replace(/\/$/, '').replace('localhost', 'crm-api').replace('127.0.0.1', 'crm-api')
 }
 
 async function proxy(request, context) {

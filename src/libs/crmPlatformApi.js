@@ -223,6 +223,13 @@ export async function impersonateSuperAdminTenant(id) {
   })
 }
 
+export async function openLegacyCrmAsTenant(id) {
+  return platformFetch(`/super-admin/tenants/${id}/legacy-open`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  })
+}
+
 export async function stopSuperAdminImpersonation(sessionId) {
   return platformFetch('/super-admin/impersonation/stop', {
     method: 'POST',

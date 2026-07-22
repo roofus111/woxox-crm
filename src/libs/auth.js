@@ -1,6 +1,17 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
+function resolveLoginBase() {
+  if (process.env.API_URL) {
+    // API_URL is http://crmserver:8000/api
+    return process.env.API_URL.replace(/\/$/, "");
+  }
+  if (process.env.BACKEND_API_URL) {
+    return `${process.env.BACKEND_API_URL.replace(/\/$/, "")}/api`;
+  }
+  return `${process.env.NEXT_PUBLIC_API_URL}/api`;
+}
+
 export const authOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
@@ -8,21 +19,34 @@ export const authOptions = {
       name: "Credentials",
       credentials: {
         email: { label: "Email", type: "text" },
-        password: { label: "Password", type: "password" }
+        password: { label: "Password", type: "password" },
+        handoffToken: { label: "Handoff Token", type: "text" }
       },
       async authorize(credentials) {
-        const { email, password } = credentials;
-
-        // Prefer internal Docker URL on the server (avoids Elastic IP hairpin failures).
-        // API_URL is http://crmserver:8000/api → /login
-        // BACKEND_API_URL is http://crmserver:8000 → /api/login
-        const loginUrl = process.env.API_URL
-          ? `${process.env.API_URL}/login`
-          : process.env.BACKEND_API_URL
-            ? `${process.env.BACKEND_API_URL}/api/login`
-            : `${process.env.NEXT_PUBLIC_API_URL}/api/login`;
+        const base = resolveLoginBase();
 
         try {
+          if (credentials?.handoffToken) {
+            const res = await fetch(`${base}/login-impersonation`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ handoffToken: credentials.handoffToken })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.token) {
+              throw new Error(data.message || "Invalid impersonation handoff");
+            }
+            return {
+              ...data,
+              role: data.user.role || "guest",
+              Stoken: data.token,
+              impersonation: data.impersonation || true
+            };
+          }
+
+          const { email, password } = credentials || {};
+          const loginUrl = `${base}/login`;
+
           const res = await fetch(loginUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -34,7 +58,6 @@ export const authOptions = {
           if (res.status === 401) throw new Error("Invalid email or password");
 
           if (res.status === 200 && data.token) {
-            // return everything you need to seed the JWT
             return {
               ...data,
               role: data.user.role || "guest",
@@ -45,7 +68,7 @@ export const authOptions = {
           console.error("[auth] login failed", res.status, data);
           return null;
         } catch (e) {
-          console.error("[auth] login error", loginUrl, e.message);
+          console.error("[auth] login error", e.message);
           throw new Error(e.message);
         }
       }
@@ -63,7 +86,6 @@ export const authOptions = {
 
   callbacks: {
     async jwt({ token, user, trigger, session }) {
-      // First login
       if (user) {
         token.name = user.user.name;
         token.id = user.user.id;
@@ -73,11 +95,10 @@ export const authOptions = {
         token.isEmailVerified = user.user.isEmailVerified;
         token.company = user.user.companyId;
         token.plan = user.user.plan;
+        token.impersonation = user.impersonation || null;
       }
 
-      // session.update() path
       if (trigger === "update" && session) {
-        // Whatever you pass to session.update({...}) will be in `session` here.
         if (session.user) {
           token.name = session.user.name ?? token.name;
           token.role = session.user.role ?? token.role;
@@ -105,6 +126,7 @@ export const authOptions = {
         session.user.company = token.company;
         session.user.plan = token.plan;
         session.user.enabledProducts = token.enabledProducts;
+        session.user.impersonation = token.impersonation;
       }
       session.accessToken = token.accessToken;
       return session;

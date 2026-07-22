@@ -147,6 +147,15 @@ export class SuperAdminController {
     return this.superAdmin.impersonate(id, this.auditCtx(user, req));
   }
 
+  @Post('tenants/:id/legacy-open')
+  legacyOpen(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.superAdmin.openLegacyCrm(id, this.auditCtx(user, req));
+  }
+
   @Post('impersonation/stop')
   stopImpersonation(
     @Body() dto: StopImpersonationDto,

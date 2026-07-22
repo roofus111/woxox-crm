@@ -36,6 +36,7 @@ Then set `SEED_PLATFORM_DB=false`.
 - Soft delete / restore
 - Platform audit timeline
 - Secure platform impersonation (15 minutes, audited) — JWT for Nest platform APIs; legacy Mongo handoff is a later slice
+- **Open in CRM** — one-time 5-minute handoff into the live Mongo CRM as company admin (audited)
 
 ## API (Bearer SUPER_ADMIN JWT)
 
@@ -54,6 +55,7 @@ Then set `SEED_PLATFORM_DB=false`.
 | POST | `/api/v1/super-admin/tenants/:id/reset-password` |
 | GET | `/api/v1/super-admin/tenants/:id/audit` |
 | POST | `/api/v1/super-admin/tenants/:id/impersonate` |
+| POST | `/api/v1/super-admin/tenants/:id/legacy-open` |
 | POST | `/api/v1/super-admin/impersonation/stop` |
 
 All mutating actions write `PlatformAuditLog`.
@@ -81,8 +83,16 @@ sudo docker compose -f docker-compose.prod.yml --env-file .env.production exec c
 2. List loads with stats; search by company name
 3. Open a company → extend trial, toggle module, save note
 4. Impersonate → red banner appears → Stop impersonation
-5. Soft delete → filter Deleted → Restore
+5. **Open in CRM** → new tab signs into customer CRM dashboard
+6. Soft delete → filter Deleted → Restore
+
+## Legacy handoff flow
+
+1. Super Admin clicks **Open in CRM** on a company profile
+2. `crm-api` calls `crmserver` `POST /api/super-admin/impersonate-handoff` (shared secret)
+3. Browser opens `/en/impersonate?token=…` (one-time, 5 minutes)
+4. NextAuth redeems via `POST /api/login-impersonation` and lands on CRM dashboard
 
 ## Out of scope (later)
 
-Billing/Stripe, staff RBAC/MFA, EKS, legacy Mongo browser impersonation, backups/export.
+Billing/Stripe, staff RBAC/MFA, EKS, backups/export.

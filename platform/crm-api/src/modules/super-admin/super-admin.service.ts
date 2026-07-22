@@ -724,6 +724,96 @@ export class SuperAdminService {
     return { success: true, sessionId: id };
   }
 
+  /**
+   * Mint a one-time URL that logs Super Admin into the legacy Mongo CRM as company admin.
+   */
+  async openLegacyCrm(id: string, audit: AuditContext) {
+    const workspace = await this.requireActiveWorkspace(id);
+    if (workspace.status === 'suspended') {
+      throw new ForbiddenException('Cannot open a suspended tenant in CRM');
+    }
+
+    const membership = await this.prisma.workspaceMember.findFirst({
+      where: {
+        workspaceId: id,
+        isActive: true,
+        role: { in: [Role.ADMIN, Role.SUPER_ADMIN] },
+        ...(workspace.ownerUserId ? { userId: workspace.ownerUserId } : {}),
+      },
+      include: { user: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const target =
+      membership ||
+      (await this.prisma.workspaceMember.findFirst({
+        where: { workspaceId: id, role: Role.ADMIN, isActive: true },
+        include: { user: true },
+      }));
+
+    if (!target) throw new NotFoundException('No admin user for this tenant');
+
+    const base = process.env.LEGACY_API_URL || process.env.BACKEND_API_URL;
+    const secret = process.env.SUPER_ADMIN_PROVISION_SECRET;
+    if (!base || !secret) {
+      throw new BadRequestException(
+        'LEGACY_API_URL / SUPER_ADMIN_PROVISION_SECRET not configured',
+      );
+    }
+
+    const res = await fetch(`${base.replace(/\/$/, '')}/api/super-admin/impersonate-handoff`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-super-admin-secret': secret,
+      },
+      body: JSON.stringify({
+        adminEmail: target.user.email,
+        actorEmail: audit.actor.email,
+        reason: 'super-admin-legacy-open',
+      }),
+    });
+
+    const data = (await res.json().catch(() => ({}))) as {
+      message?: string;
+      handoffToken?: string;
+      expiresAt?: string;
+      email?: string;
+    };
+
+    if (!res.ok || !data.handoffToken) {
+      throw new BadRequestException(
+        data.message || `Legacy handoff failed (${res.status})`,
+      );
+    }
+
+    const appOrigin = process.env.APP_ORIGIN || 'https://app.woxox.com';
+    const url = `${appOrigin.replace(/\/$/, '')}/en/impersonate?token=${encodeURIComponent(data.handoffToken)}`;
+
+    await this.writeAudit(audit, {
+      action: 'tenant.legacy_open',
+      entityType: 'workspace',
+      entityId: id,
+      workspaceId: id,
+      metadata: {
+        targetEmail: target.user.email,
+        expiresAt: data.expiresAt,
+      },
+    });
+
+    return {
+      success: true,
+      url,
+      expiresAt: data.expiresAt,
+      targetEmail: target.user.email,
+      tenant: {
+        id: workspace.id,
+        name: workspace.name,
+        tenantCode: workspace.tenantCode,
+      },
+    };
+  }
+
   private async requireActiveWorkspace(id: string) {
     const workspace = await this.prisma.workspace.findUnique({ where: { id } });
     if (!workspace) throw new NotFoundException('Tenant not found');

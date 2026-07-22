@@ -8,6 +8,7 @@ import {
   getSuperAdminTenant,
   impersonateSuperAdminTenant,
   listSuperAdminTenantAudit,
+  openLegacyCrmAsTenant,
   resetSuperAdminTenantPassword,
   restoreSuperAdminTenant,
   setImpersonationState,
@@ -122,7 +123,7 @@ export default function CompanyDetail() {
   const impersonate = async () => {
     if (
       !window.confirm(
-        'You will act as this company admin for 15 minutes. All actions are audited. Continue?'
+        'You will act as this company admin for 15 minutes on the platform API. All actions are audited. Continue?'
       )
     ) {
       return
@@ -143,9 +144,29 @@ export default function CompanyDetail() {
         window.dispatchEvent(new Event('sa-impersonation'))
       }
       setNotice(
-        `Impersonation started for ${data.targetUser?.email}. Token stored (platform session). Use Stop in the red banner.`
+        `Platform impersonation started for ${data.targetUser?.email}. Use Stop in the red banner.`
       )
-      // Keep Super Admin token for control-plane actions; impersonation token is stored separately
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const openInCrm = async () => {
+    if (
+      !window.confirm(
+        'Open the live CRM as this company admin? A one-time secure link (5 minutes) will open in a new tab. This is audited.'
+      )
+    ) {
+      return
+    }
+    setBusy(true)
+    setError('')
+    try {
+      const data = await openLegacyCrmAsTenant(id)
+      setNotice(`Opening CRM as ${data.targetEmail}`)
+      if (data.url) window.open(data.url, '_blank', 'noopener,noreferrer')
     } catch (err) {
       setError(err.message)
     } finally {
@@ -202,7 +223,10 @@ export default function CompanyDetail() {
                 Change owner
               </button>
               <button type='button' onClick={impersonate} disabled={busy || Boolean(tenant.deletedAt)}>
-                Impersonate
+                Platform impersonate
+              </button>
+              <button type='button' onClick={openInCrm} disabled={busy || Boolean(tenant.deletedAt)}>
+                Open in CRM
               </button>
               {tenant.deletedAt ? (
                 <button type='button' onClick={restore} disabled={busy}>

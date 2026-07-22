@@ -2,7 +2,7 @@
 set -e
 
 echo "Running Prisma schema sync..."
-npx prisma db push --skip-generate
+npx prisma db push --skip-generate --accept-data-loss
 
 if [ "${SEED_DB:-false}" = "true" ]; then
   echo "Seeding database..."

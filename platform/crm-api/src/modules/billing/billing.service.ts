@@ -684,21 +684,19 @@ export class BillingService {
       },
     });
 
-    const entity =
-      ((payload.payload as Record<string, unknown>)?.payment as Record<string, unknown>)
-        ?.entity ||
-      ((payload.payload as Record<string, unknown>)?.order as Record<string, unknown>)
-        ?.entity ||
+    const entity = (((payload.payload as Record<string, unknown>)?.payment as Record<string, unknown>)
+      ?.entity ||
+      ((payload.payload as Record<string, unknown>)?.order as Record<string, unknown>)?.entity ||
       ((payload.payload as Record<string, unknown>)?.payment_link as Record<string, unknown>)
         ?.entity ||
-      {};
+      {}) as Record<string, unknown>;
 
     if (
       eventType === 'payment.captured' ||
       eventType === 'order.paid' ||
       eventType === 'payment_link.paid'
     ) {
-      await this.markRazorpayPaidFromEntity(entity as Record<string, unknown>);
+      await this.markRazorpayPaidFromEntity(entity);
     } else if (eventType === 'payment.failed') {
       const orderId = entity.order_id ? String(entity.order_id) : null;
       if (orderId) {

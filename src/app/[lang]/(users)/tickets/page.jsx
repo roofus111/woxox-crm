@@ -86,10 +86,11 @@ const TicketSection = () => {
                     },
                 })
                 .then((response) => {
-                    setTickets(response.data);
+                    setTickets(Array.isArray(response.data) ? response.data : []);
                 })
                 .catch((error) => {
                     console.error("Error getting tickets", error);
+                    setTickets([]);
                 });
         } catch (error) {
             console.error("Unexpected error:", error);

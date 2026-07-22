@@ -2,9 +2,9 @@
 
 import Autocomplete from '@mui/material/Autocomplete';
 import React, { useEffect, useState } from "react";
-import Link from "next/link";
 import axios from "axios";
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
+import { toast } from 'react-toastify';
 
 import {
     Box,
@@ -25,162 +25,206 @@ import {
 } from "@mui/material";
 
 const TicketSection = () => {
-    const [selectedFiles, setSelectedFiles] = useState([]);
+    const router = useRouter();
+    const params = useParams();
+    const searchParams = useSearchParams();
+    const locale = params?.lang || 'en';
 
     const formatToDateTime = (dateString) => {
         if (!dateString) return '';
         const date = new Date(dateString);
         const year = date.getFullYear();
-        const month = (date.getMonth() + 1).toString().padStart(2, '0'); // Months are zero-based
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
         const day = date.getDate().toString().padStart(2, '0');
 
         let hours = date.getHours();
         const minutes = date.getMinutes().toString().padStart(2, '0');
         const ampm = hours >= 12 ? 'PM' : 'AM';
-
-        // Convert to 12-hour format
         hours = hours % 12 || 12;
 
-        return `${day}/${month}/${year} ${hours}:${minutes} ${ampm}`; // Format as DD/MM/YYYY HH:MM AM/PM
+        return `${day}/${month}/${year} ${hours}:${minutes} ${ampm}`;
     };
-
-    // Handle file change
-    const handleFileChange = (event) => {
-        const files = event.target.files;
-        const fileNames = Array.from(files).map((file) => file.name);
-        setSelectedFiles(fileNames); // Store the file names in the state
-    };
-
-    const allTickets = [
-        {
-            ticket_id: "",
-            priority: "",
-            Customer: "",
-            category: "",
-            sub_category: "",
-            created_at: "",
-            updated_at: "",
-            status: "",
-        }
-    ];
 
     const [tickets, setTickets] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState("");
-    const [sortOrder, setSortOrder] = useState("asc");
-    const [openDialog, setOpenDialog] = useState(false); // State to manage dialog open/close
+    const [sortOrder, setSortOrder] = useState("desc");
+    const [openDialog, setOpenDialog] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [customers, setCustomers] = useState([]);
     const [newTicket, setNewTicket] = useState({
         Customer: "",
-        subject: "",
-        description: "",
-        category: "",
-        sub_category: "",
-        priority: "",
-        status: "",
+        issue_details: {
+            subject: "",
+            description: "",
+            category: "",
+            sub_category: "",
+            priority: "Medium",
+            status: "Open",
+        },
         attachments: [],
     });
 
     const fetchTickets = async () => {
         try {
+            setLoading(true);
             const token = localStorage.getItem('token');
             const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-            await axios
-                .get(`${apiUrl}/api/ticket/gettickets`, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                })
-                .then((response) => {
-                    setTickets(response.data);
-                })
-                .catch((error) => {
-                    console.log(tickets);
-
-                    setTickets([]);
-                    console.error("Error getting tickets", error);
-                });
+            const response = await axios.get(`${apiUrl}/api/ticket/gettickets`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            setTickets(Array.isArray(response.data) ? response.data : []);
         } catch (error) {
-            console.error("Unexpected error:", error);
+            console.error("Error getting tickets", error);
+            setTickets([]);
+            if (error.response?.status !== 404) {
+                toast.error(error.response?.data?.message || 'Failed to load tickets');
+            }
+        } finally {
+            setLoading(false);
         }
     };
 
-    useEffect(() => {
-        fetchTickets();
-    }, []);
-
-    const [customers, setCustomers] = useState([]); // Store customers
-
-    // Fetch customers from backend
     const fetchCustomers = async () => {
         try {
             const token = localStorage.getItem("token");
             const apiUrl = process.env.NEXT_PUBLIC_API_URL;
             const response = await axios.get(`${apiUrl}/api/customer/getcustomers`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
+                headers: { Authorization: `Bearer ${token}` },
             });
-            setCustomers(response.data.customers);
-            console.log(response.data) // Assuming response.data is an array of customers
+            setCustomers(response.data?.customers || []);
         } catch (error) {
             console.error("Error fetching customers:", error);
+            setCustomers([]);
         }
     };
 
     useEffect(() => {
         fetchTickets();
-        fetchCustomers(); // Fetch customers when component mounts
+        fetchCustomers();
     }, []);
 
-    // Function to handle sorting by created date
+    // Open create dialog when landing from menu: /manager/tickets?create=1
+    useEffect(() => {
+        if (searchParams.get('create') === '1') {
+            setOpenDialog(true);
+        }
+    }, [searchParams]);
+
     const handleSort = () => {
         const sortedTickets = [...tickets].sort((a, b) => {
-            const dateA = new Date(a.created_at);
-            const dateB = new Date(b.created_at);
+            const dateA = new Date(a.timestamps?.created_at || a.created_at || 0);
+            const dateB = new Date(b.timestamps?.created_at || b.created_at || 0);
             return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
         });
         setTickets(sortedTickets);
         setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     };
 
-    // Function to handle status filter
-    const handleFilter = (event) => {
-        setStatusFilter(event.target.value);
+    const getTicketStatus = (ticket) =>
+        ticket?.issue_details?.status || ticket?.history?.[ticket.history.length - 1]?.status || 'Open';
+
+    const filteredTickets = statusFilter
+        ? tickets.filter((ticket) => getTicketStatus(ticket) === statusFilter)
+        : tickets;
+
+    const handleCardClick = (ticketId) => {
+        router.push(`/${locale}/manager/tickets/details?ticketId=${ticketId}`);
     };
 
-    const getStatusColor = (status) => {
-        switch (status) {
-            case "Open":
-                return "#4caf50"; // Green
-            case "In Progress":
-                return "#ff9800"; // Orange
-            case "Pending":
-                return "#f44336"; // Red
-            default:
-                return "#9e9e9e"; // Gray
+    const handleOpenDialog = () => setOpenDialog(true);
+    const handleCloseDialog = () => {
+        setOpenDialog(false);
+        setNewTicket({
+            Customer: "",
+            issue_details: {
+                subject: "",
+                description: "",
+                category: "",
+                sub_category: "",
+                priority: "Medium",
+                status: "Open",
+            },
+            attachments: [],
+        });
+    };
+
+    const handleInputChange = ({ target: { name, value } }) => {
+        if (name in newTicket.issue_details) {
+            setNewTicket((prev) => ({
+                ...prev,
+                issue_details: {
+                    ...prev.issue_details,
+                    [name]: value,
+                },
+            }));
+        } else {
+            setNewTicket((prev) => ({
+                ...prev,
+                [name]: value,
+            }));
+        }
+    };
+
+    const handleSubmitTicket = async () => {
+        const token = localStorage.getItem("token");
+        if (!newTicket.Customer) {
+            toast.error('Please select a customer');
+            return;
+        }
+        if (!newTicket.issue_details.subject?.trim() || !newTicket.issue_details.description?.trim()) {
+            toast.error('Subject and description are required');
+            return;
+        }
+        if (!newTicket.issue_details.category) {
+            toast.error('Category is required');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("customerId", newTicket.Customer);
+        formData.append("subject", newTicket.issue_details.subject.trim());
+        formData.append("description", newTicket.issue_details.description.trim());
+        formData.append("category", newTicket.issue_details.category);
+        formData.append("sub_category", newTicket.issue_details.sub_category || "");
+        formData.append("priority", newTicket.issue_details.priority || "Medium");
+
+        if (Array.isArray(newTicket.attachments)) {
+            newTicket.attachments.forEach((file) => formData.append("attachments", file));
+        }
+
+        try {
+            setSubmitting(true);
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+            await axios.post(`${apiUrl}/api/ticket/create`, formData, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "multipart/form-data",
+                },
+            });
+            toast.success('Ticket created successfully');
+            await fetchTickets();
+            handleCloseDialog();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to create ticket');
+            console.error("Error adding new ticket:", error.response?.data || error);
+        } finally {
+            setSubmitting(false);
         }
     };
 
     const getPriorityColor = (priority) => {
         switch (priority) {
             case "High":
-                return "#f44336"; // Red
+            case "Critical":
+                return "#f44336";
             case "Medium":
-                return "#ff9800"; // Orange
+                return "#ff9800";
             case "Low":
-                return "#4caf50"; // Green
+                return "#4caf50";
             default:
-                return "#9e9e9e"; // Gray
+                return "#9e9e9e";
         }
-    };
-
-    const filteredTickets = statusFilter
-        ? tickets.filter((ticket) => ticket.status === statusFilter)
-        : tickets;
-
-    const router = useRouter();
-
-    const handleCardClick = (ticketId) => {
-        router.push(`/en/manager/tickets/details?ticketId=${ticketId}`);
     };
 
     return (
@@ -192,12 +236,9 @@ const TicketSection = () => {
                 border: "1px solid",
                 borderColor: "rgba(229, 231, 235, 1)",
                 borderRadius: "1.5rem",
-                "@media (max-width: 600px)": {
-                    p: 2,
-                },
+                "@media (max-width: 600px)": { p: 2 },
             }}
         >
-            {/* Sort and Filter Section */}
             <Box
                 sx={{
                     display: "flex",
@@ -206,120 +247,218 @@ const TicketSection = () => {
                     mb: 3,
                     flexWrap: "wrap",
                     gap: 2,
+                    p: 2,
+                    backgroundColor: '#fff',
+                    borderRadius: 2,
+                    border: '1px solid #e5e7eb',
                 }}
             >
-                <Button variant="contained" onClick={handleSort}>
-                    Sort {sortOrder === "asc" ? <i className="ri-arrow-up-s-line"></i> : <i className="ri-arrow-down-s-line"></i>}
-                </Button>
-                {/* <FormControl sx={{ minWidth: 120 }}>
-      <InputLabel></InputLabel>
-      <Select value={statusFilter} onChange={handleFilter} displayEmpty>
-        <MenuItem value="">All</MenuItem>
-        <MenuItem value="Open">Open</MenuItem>
-        <MenuItem value="In Progress">In Progress</MenuItem>
-        <MenuItem value="Closed">Closed</MenuItem>
-        <MenuItem value="Resolved">Resolved</MenuItem>
-      </Select>
-    </FormControl> */}
+                <Typography variant="h5" fontWeight={700}>
+                    Support Tickets
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <FormControl sx={{ minWidth: 140 }} size="small">
+                        <InputLabel>Status</InputLabel>
+                        <Select
+                            label="Status"
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                        >
+                            <MenuItem value="">All</MenuItem>
+                            <MenuItem value="Open">Open</MenuItem>
+                            <MenuItem value="In Progress">In Progress</MenuItem>
+                            <MenuItem value="Resolved">Resolved</MenuItem>
+                            <MenuItem value="Closed">Closed</MenuItem>
+                        </Select>
+                    </FormControl>
+                    <Button variant="outlined" onClick={handleSort}>
+                        Sort {sortOrder === "asc" ? <i className="ri-arrow-up-s-line"></i> : <i className="ri-arrow-down-s-line"></i>}
+                    </Button>
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        size="large"
+                        onClick={handleOpenDialog}
+                        startIcon={<i className="ri-add-line" />}
+                        sx={{ fontWeight: 700, px: 3 }}
+                    >
+                        Create Ticket
+                    </Button>
+                </Box>
             </Box>
 
-            {/* Tickets Section */}
-            {tickets.length !== 0 ? <Grid container spacing={3}>
-                {filteredTickets?.map((ticket) => (
-                    <Grid item xs={12} key={ticket._id}>
-                        <Card
-                            sx={{
-                                p: 3,
-                                display: "flex",
-                                flexDirection: { xs: "column", sm: "column", md: "row" }, // Center items on small screens
-                                justifyContent: { xs: "center", sm: "center", md: "space-between" },
-                                alignItems: { xs: "center", sm: "center", md: "flex-start" },
-                                border: "1px solid",
-                                boxShadow: "none",
-                                borderColor: "rgba(229, 231, 235, 1)",
-                                borderRadius: "1.5rem",
-                                textAlign: { xs: "center", sm: "center", md: "left" },
-                                transition: "transform 0.2s ease-in-out",
-                                cursor: "pointer",
-                                "&:hover": { transform: "scale(1.02)" },
-                            }}
-                            onClick={() => handleCardClick(ticket._id)}
-                        >
-                            {/* Left Content */}
-                            <CardContent
+            {loading ? (
+                <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px">
+                    <p>Loading tickets...</p>
+                </Box>
+            ) : tickets.length !== 0 ? (
+                <Grid container spacing={3}>
+                    {filteredTickets.map((ticket) => (
+                        <Grid item xs={12} key={ticket._id}>
+                            <Card
                                 sx={{
-                                    flex: 1,
+                                    p: 3,
                                     display: "flex",
-                                    flexDirection: "column",
-                                    gap: 1,
+                                    flexDirection: { xs: "column", sm: "column", md: "row" },
+                                    justifyContent: { xs: "center", sm: "center", md: "space-between" },
                                     alignItems: { xs: "center", sm: "center", md: "flex-start" },
+                                    border: "1px solid",
+                                    boxShadow: "none",
+                                    borderColor: "rgba(229, 231, 235, 1)",
+                                    borderRadius: "1.5rem",
+                                    textAlign: { xs: "center", sm: "center", md: "left" },
+                                    transition: "transform 0.2s ease-in-out",
+                                    cursor: "pointer",
+                                    "&:hover": { transform: "scale(1.02)" },
                                 }}
+                                onClick={() => handleCardClick(ticket._id)}
                             >
-                                <Typography variant="body2" sx={{ color: "#9e9e9e" }}>
-                                    {formatToDateTime(ticket.timestamps?.created_at)}
-                                </Typography>
-                                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                                    <Typography variant="h6" fontWeight="bold" sx={{ color: "#333" }}>
-                                        #{ticket.ticket_id}
+                                <CardContent
+                                    sx={{
+                                        flex: 1,
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        gap: 1,
+                                        alignItems: { xs: "center", sm: "center", md: "flex-start" },
+                                    }}
+                                >
+                                    <Typography variant="body2" sx={{ color: "#9e9e9e" }}>
+                                        {formatToDateTime(ticket.timestamps?.created_at)}
                                     </Typography>
-                                    <Box
-                                        sx={{
-                                            px: 4,
-                                            py: 0.5,
-                                            border: `2px solid ${getPriorityColor(ticket.issue_details?.priority)}`, // Outline border
-                                            color: getPriorityColor(ticket.issue_details?.priority), // Text color matches the border
-                                            borderRadius: 2,
-                                            fontSize: "0.8rem",
-                                            fontWeight: "semibold",
-                                            textTransform: "uppercase",
-                                            backgroundColor: "transparent", // Make the background transparent
-                                        }}
-                                    >
-                                        {ticket.issue_details?.priority}
+                                    <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: 'wrap' }}>
+                                        <Typography variant="h6" fontWeight="bold" sx={{ color: "#333" }}>
+                                            #{ticket.ticket_id}
+                                        </Typography>
+                                        <Box
+                                            sx={{
+                                                px: 2,
+                                                py: 0.5,
+                                                border: `2px solid ${getPriorityColor(ticket.issue_details?.priority)}`,
+                                                color: getPriorityColor(ticket.issue_details?.priority),
+                                                borderRadius: 2,
+                                                fontSize: "0.8rem",
+                                                fontWeight: "semibold",
+                                                textTransform: "uppercase",
+                                            }}
+                                        >
+                                            {ticket.issue_details?.priority}
+                                        </Box>
+                                        <Typography variant="body2" sx={{ color: '#666' }}>
+                                            {getTicketStatus(ticket)}
+                                        </Typography>
                                     </Box>
-                                </Box>
-                                <Typography variant="body1" sx={{ color: "#757575", fontWeight: "500" }}>
-                                    {ticket.Customer}
-                                </Typography>
-                                <Typography variant="body2" sx={{ color: "#9e9e9e" }}>
-                                    {ticket.issue_details?.category} / {ticket.issue_details?.sub_category}
-                                </Typography>
-                                <Typography variant="body1" sx={{ color: "#757575", fontWeight: "500" }}>
-                                    {ticket.customer?.firstName}
-                                </Typography>
-                            </CardContent>
+                                    <Typography variant="body1" sx={{ color: "#757575", fontWeight: "500" }}>
+                                        {ticket.issue_details?.subject}
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ color: "#9e9e9e" }}>
+                                        {ticket.issue_details?.category}
+                                        {ticket.issue_details?.sub_category ? ` / ${ticket.issue_details.sub_category}` : ''}
+                                    </Typography>
+                                    <Typography variant="body1" sx={{ color: "#757575", fontWeight: "500" }}>
+                                        {ticket.customer
+                                            ? `${ticket.customer.firstName || ''} ${ticket.customer.lastName || ''}`.trim()
+                                            : 'No customer'}
+                                    </Typography>
+                                </CardContent>
 
-                            {/* Right Content */}
-                            <Box
-                                sx={{
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    alignItems: { xs: "center", sm: "center", md: "flex-end", marginTop: "20px" },
-                                    gap: 1,
-                                }}
-                            >
-                                {/* <Box
-                sx={{
-                  px: 4,
-                  py: 1,
-                  backgroundColor: getStatusColor(ticket.issue_details?.status),
-                  color: "#fff",
-                  borderRadius: 3,
-                  fontWeight: "bold",
-                  textTransform: "uppercase",
-                  fontSize: "0.9rem",
-                }}
-              >
-                {ticket.issue_details?.status}
-              </Box> */}
-                                <Typography variant="body2" sx={{ color: "#9e9e9e" }}>
-                                    Updated: {formatToDateTime(ticket.timestamps?.updated_at)}
-                                </Typography>
-                            </Box>
-                        </Card>
-                    </Grid>
-                ))}
-            </Grid> : <Box display={'flex'} justifyContent={'center'} alignItems={'center'} minHeight={"300px"} bgcolor={'#e8e9ee'}><p>No Tickets</p></Box>}
+                                <Box
+                                    sx={{
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        alignItems: { xs: "center", sm: "center", md: "flex-end", marginTop: "20px" },
+                                        gap: 1,
+                                    }}
+                                >
+                                    <Typography variant="body2" sx={{ color: "#9e9e9e" }}>
+                                        Updated: {formatToDateTime(ticket.timestamps?.updated_at)}
+                                    </Typography>
+                                </Box>
+                            </Card>
+                        </Grid>
+                    ))}
+                </Grid>
+            ) : (
+                <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" minHeight="300px" bgcolor="#e8e9ee" borderRadius={2} gap={2}>
+                    <Typography>No tickets yet</Typography>
+                    <Button variant="contained" onClick={handleOpenDialog}>Create your first ticket</Button>
+                </Box>
+            )}
+
+            <Dialog open={openDialog} onClose={handleCloseDialog} fullWidth maxWidth="sm">
+                <DialogTitle>Create Ticket</DialogTitle>
+                <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+                    <Autocomplete
+                        options={customers}
+                        getOptionLabel={(option) =>
+                            option ? `${option.firstName || ''} ${option.lastName || ''}`.trim() || option.email || 'Customer' : ''
+                        }
+                        onChange={(_, value) =>
+                            setNewTicket((prev) => ({ ...prev, Customer: value?._id || '' }))
+                        }
+                        renderInput={(params) => <TextField {...params} label="Customer *" margin="dense" />}
+                    />
+                    {customers.length === 0 && (
+                        <Typography variant="caption" color="error">
+                            No customers found. Add a customer first, then create a ticket.
+                        </Typography>
+                    )}
+                    <TextField
+                        label="Subject *"
+                        name="subject"
+                        value={newTicket.issue_details.subject}
+                        onChange={handleInputChange}
+                        fullWidth
+                    />
+                    <TextField
+                        label="Description *"
+                        name="description"
+                        value={newTicket.issue_details.description}
+                        onChange={handleInputChange}
+                        fullWidth
+                        multiline
+                        rows={3}
+                    />
+                    <TextField
+                        select
+                        label="Category *"
+                        name="category"
+                        value={newTicket.issue_details.category}
+                        onChange={handleInputChange}
+                        fullWidth
+                    >
+                        <MenuItem value="Support">Support</MenuItem>
+                        <MenuItem value="Billing">Billing</MenuItem>
+                        <MenuItem value="Technical">Technical</MenuItem>
+                        <MenuItem value="General">General</MenuItem>
+                    </TextField>
+                    <TextField
+                        label="Sub category"
+                        name="sub_category"
+                        value={newTicket.issue_details.sub_category}
+                        onChange={handleInputChange}
+                        fullWidth
+                    />
+                    <TextField
+                        select
+                        label="Priority"
+                        name="priority"
+                        value={newTicket.issue_details.priority}
+                        onChange={handleInputChange}
+                        fullWidth
+                    >
+                        <MenuItem value="Low">Low</MenuItem>
+                        <MenuItem value="Medium">Medium</MenuItem>
+                        <MenuItem value="High">High</MenuItem>
+                        <MenuItem value="Critical">Critical</MenuItem>
+                    </TextField>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseDialog} disabled={submitting}>Cancel</Button>
+                    <Button variant="contained" onClick={handleSubmitTicket} disabled={submitting || customers.length === 0}>
+                        {submitting ? 'Creating...' : 'Create'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };

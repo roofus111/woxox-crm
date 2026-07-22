@@ -38,7 +38,7 @@ export const DEMO_ENABLED_PRODUCTS = [
 ]
 
 /** Bump when default product set changes so older localStorage lists are upgraded. */
-export const PRODUCTS_CATALOG_VERSION = '8'
+export const PRODUCTS_CATALOG_VERSION = '9'
 export const PRODUCTS_CATALOG_VERSION_KEY = 'woxox.productsCatalogVersion'
 
 const localeHref = (path) => (locale) => `/${locale}${path}`
@@ -110,6 +110,11 @@ export const PRODUCTS = {
         ]
       },
       {
+        label: 'Pipelines',
+        icon: 'ri-flow-chart',
+        href: localeHref('/manager/pipeline')
+      },
+      {
         label: 'Contacts',
         icon: 'ri-contacts-book-line',
         href: localeHref('/manager/customer')
@@ -138,7 +143,10 @@ export const PRODUCTS = {
       {
         label: 'Tickets',
         icon: 'ri-coupon-2-line',
-        href: localeHref('/manager/tickets')
+        children: [
+          { label: 'All Tickets', href: localeHref('/manager/tickets') },
+          { label: 'Create Ticket', href: localeHref('/manager/tickets?create=1') }
+        ]
       },
       {
         label: 'Team',
@@ -148,11 +156,11 @@ export const PRODUCTS = {
       {
         label: 'Project Manager Max',
         icon: 'ri-projector-line',
+        addonId: 'PRJ0825',
         children: [
           { label: 'Max Dashboard', href: localeHref('/apps/projects/max') },
           { label: 'Projects', href: localeHref('/apps/projects/max/projects') },
           { label: 'Task Desk', href: localeHref('/apps/projects/max/tasks') },
-          { label: 'Pipelines', href: localeHref('/manager/pipeline') },
           { label: 'Kanban Boards', href: localeHref('/apps/kanban') },
           { label: 'Documentation Board', href: localeHref('/manager/documentation') },
           { label: 'Files', href: localeHref('/manager/myfiles') }

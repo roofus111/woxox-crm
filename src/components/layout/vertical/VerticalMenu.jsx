@@ -197,7 +197,8 @@ const VerticalMenu = ({ dictionary, scrollMenu }) => {
               label={'Tickets'}
               icon={<i className='ri-coupon-2-line' />}
             >
-              <MenuItem href={`/${locale}/manager/tickets`}>View</MenuItem>
+              <MenuItem href={`/${locale}/manager/tickets`}>All Tickets</MenuItem>
+              <MenuItem href={`/${locale}/manager/tickets?create=1`}>Create Ticket</MenuItem>
             </SubMenu>
           </MenuSection>
           {isModuleActive('SLM0825') && (

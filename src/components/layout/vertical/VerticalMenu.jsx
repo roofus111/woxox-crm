@@ -236,11 +236,17 @@ const VerticalMenu = ({ dictionary, scrollMenu }) => {
               <MenuItem icon={<i className='ri-price-tag-3-line' />} href={`/${locale}/manager/tagSection`}>Tag Manager</MenuItem>
             </MenuSection>
           )}
-          {isModuleActive('FLM0825') && (
-            <MenuSection label={'Documents'}>
-              <MenuItem icon={<i className='ri-file-line' />} href={`/${locale}/manager/myfiles`}>Files</MenuItem>
-            </MenuSection>
-          )}
+          <MenuSection label={'Documents'}>
+            <MenuItem icon={<i className='ri-folder-3-line' />} href={`/${locale}/manager/myfiles`}>
+              Files & Folders
+            </MenuItem>
+            <MenuItem icon={<i className='ri-file-edit-line' />} href={`/${locale}/manager/doceditor`}>
+              Document Editor
+            </MenuItem>
+            <MenuItem icon={<i className='ri-file-copy-2-line' />} href={`/${locale}/manager/doctemplate`}>
+              Templates
+            </MenuItem>
+          </MenuSection>
           {/* Finance & HRMS are separate WOXOX products — see Product switcher */}
 
 
@@ -249,13 +255,6 @@ const VerticalMenu = ({ dictionary, scrollMenu }) => {
 
 
 
-          <SubMenu
-            label={'Documentation'}
-            icon={<i className='ri-home-smile-line' />}
-          // suffix={<Chip label='5' size='small' color='error' />}
-          >
-            <MenuItem href={`/${locale}/manager/myfiles`}>Files</MenuItem>
-          </SubMenu>
           {/* <SubMenu
             label={'Finance'}
             icon={<i className='ri-home-smile-line' />}

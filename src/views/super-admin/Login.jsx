@@ -9,6 +9,7 @@ import {
   setCrmPlatformToken,
 } from '@/libs/crmPlatformApi'
 import { SUPER_ADMIN_CSS } from './constants'
+import BrandLogo from './BrandLogo'
 
 export default function SuperAdminLogin() {
   const router = useRouter()
@@ -62,11 +63,11 @@ export default function SuperAdminLogin() {
       <style>{SUPER_ADMIN_CSS}</style>
       <div className='sa-login-panel'>
         <div className='sa-brand'>
-          <span className='sa-logo'>W</span>
+          <BrandLogo size='md' />
           <div>
-            <p className='sa-kicker'>WOXOX</p>
-            <h1>Control Center</h1>
-            <p className='sa-lead'>Company tenant management for WOXOX staff</p>
+            <p className='sa-kicker'>Control Center</p>
+            <h1>Sign in</h1>
+            <p className='sa-lead'>Manage companies, billing, and platform staff</p>
           </div>
         </div>
 

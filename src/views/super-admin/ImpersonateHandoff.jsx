@@ -3,6 +3,8 @@
 import { Suspense, useEffect, useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import BrandLogo from './BrandLogo'
+import { SUPER_ADMIN_CSS } from './constants'
 
 function ImpersonateInner() {
   const router = useRouter()
@@ -46,35 +48,24 @@ function ImpersonateInner() {
   }, [token, lang, router])
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'grid',
-        placeItems: 'center',
-        background: '#0b1220',
-        color: '#fff',
-        fontFamily: 'Segoe UI, system-ui, sans-serif',
-        padding: 24,
-      }}
-    >
-      <div
-        style={{
-          width: 'min(420px, 100%)',
-          background: '#fff',
-          color: '#0f172a',
-          borderRadius: 16,
-          padding: 28,
-          boxShadow: '0 24px 60px rgba(0,0,0,0.35)',
-        }}
-      >
-        <p style={{ margin: 0, color: '#0f766e', fontWeight: 700, fontSize: 12, letterSpacing: '0.08em' }}>
-          WOXOX CONTROL CENTER
-        </p>
-        <h1 style={{ margin: '8px 0 12px', fontSize: 22 }}>Secure company login</h1>
+    <div className='sa-root sa-login-root'>
+      <style>{SUPER_ADMIN_CSS}</style>
+      <div className='sa-login-panel'>
+        <div className='sa-brand' style={{ marginBottom: 16 }}>
+          <BrandLogo size='md' />
+          <div>
+            <p className='sa-kicker'>Control Center</p>
+            <h1 style={{ margin: 0, fontSize: '1.35rem' }}>Secure company login</h1>
+          </div>
+        </div>
         {error ? (
-          <p style={{ color: '#991b1b', margin: 0 }}>{error}</p>
+          <p className='sa-alert sa-alert-error' style={{ marginBottom: 0 }}>
+            {error}
+          </p>
         ) : (
-          <p style={{ color: '#64748b', margin: 0 }}>{status}</p>
+          <p className='sa-lead' style={{ margin: 0 }}>
+            {status}
+          </p>
         )}
         {error ? (
           <a

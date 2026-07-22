@@ -12,6 +12,7 @@ import {
 } from '@/libs/crmPlatformApi'
 import { SUPER_ADMIN_CSS } from './constants'
 import ImpersonationBanner from './ImpersonationBanner'
+import BrandLogo from './BrandLogo'
 
 function readStaffCache() {
   try {
@@ -127,9 +128,9 @@ export default function SuperAdminShell({ children, title = 'Companies' }) {
 
       <header className='sa-topbar'>
         <div className='sa-topbar-left'>
-          <span className='sa-logo sa-logo-sm'>W</span>
+          <BrandLogo size='sm' />
           <div>
-            <p className='sa-kicker'>WOXOX Control Center</p>
+            <p className='sa-kicker'>Control Center</p>
             <h1>{title}</h1>
             {staff?.roleLabel ? (
               <p className='sa-muted' style={{ margin: 0 }}>

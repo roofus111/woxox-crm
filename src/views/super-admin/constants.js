@@ -42,14 +42,19 @@ export const SUPER_ADMIN_CSS = `
     box-shadow: 0 24px 60px rgba(0,0,0,0.28);
   }
   .sa-brand { display: flex; gap: 14px; align-items: center; margin-bottom: 22px; }
-  .sa-brand h1 { margin: 0; font-size: 1.6rem; }
+  .sa-brand h1 { margin: 0; font-size: 1.55rem; letter-spacing: -0.02em; }
   .sa-lead { margin: 4px 0 0; color: #64748b; font-size: 0.92rem; }
-  .sa-logo {
-    width: 48px; height: 48px; border-radius: 14px;
-    display: grid; place-items: center;
-    background: #0f766e; color: #fff; font-weight: 800; font-size: 1.25rem;
+  .sa-brand-logo-wrap {
+    display: inline-flex; align-items: center; justify-content: center;
+    background: #0b1220; border-radius: 14px; padding: 10px 14px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
   }
-  .sa-logo-sm { width: 40px; height: 40px; border-radius: 12px; font-size: 1.05rem; }
+  .sa-brand-logo-wrap-sm { border-radius: 12px; padding: 6px 10px; }
+  .sa-brand-logo {
+    display: block; height: 36px; width: auto; max-width: 160px;
+    object-fit: contain;
+  }
+  .sa-brand-logo-sm { height: 28px; max-width: 120px; }
   .sa-kicker {
     margin: 0; text-transform: uppercase; letter-spacing: 0.08em;
     font-size: 0.72rem; color: #0f766e; font-weight: 700;

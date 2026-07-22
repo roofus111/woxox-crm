@@ -13,27 +13,37 @@ datasource db {
 // ─── Tenancy & identity ─────────────────────────────────────────────────────
 
 model Workspace {
-  id              String    @id @default(cuid())
-  name            String
-  slug            String    @unique
-  tenantCode      String?   @unique
-  plan            String    @default("starter")
-  status          String    @default("active") // active | suspended
-  trialEndsAt     DateTime?
-  enabledModules  String[]  @default(["crm"])
-  settings        Json      @default("{}")
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id                 String    @id @default(cuid())
+  name               String
+  slug               String    @unique
+  tenantCode         String?   @unique
+  plan               String    @default("starter")
+  status             String    @default("active") // active | suspended | trial
+  trialEndsAt        DateTime?
+  enabledModules     String[]  @default(["crm"])
+  settings           Json      @default("{}")
+  ownerUserId        String?
+  accountManagerNote String?
+  deletedAt          DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
-  users         WorkspaceMember[]
-  leads         Lead[]
-  contacts      Contact[]
-  companies     Company[]
-  deals         Deal[]
-  pipelines     Pipeline[]
-  activities    Activity[]
-  tasks         Task[]
-  auditLogs     AuditLog[]
+  users                 WorkspaceMember[]
+  leads                 Lead[]
+  contacts              Contact[]
+  companies             Company[]
+  deals                 Deal[]
+  pipelines             Pipeline[]
+  activities            Activity[]
+  tasks                 Task[]
+  auditLogs             AuditLog[]
+  platformAudits        PlatformAuditLog[]
+  impersonationSessions ImpersonationSession[]
+
+  @@index([status])
+  @@index([plan])
+  @@index([deletedAt])
+  @@index([createdAt])
 }
 
 model User {
@@ -48,8 +58,11 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  memberships WorkspaceMember[]
-  auditLogs   AuditLog[]
+  memberships              WorkspaceMember[]
+  auditLogs                AuditLog[]
+  platformAudits           PlatformAuditLog[]
+  impersonationsAsActor    ImpersonationSession[] @relation("ImpersonationActor")
+  impersonationsAsTarget   ImpersonationSession[] @relation("ImpersonationTarget")
 }
 
 model WorkspaceMember {
@@ -350,4 +363,46 @@ model AuditLog {
 
   @@index([workspaceId, createdAt])
   @@index([workspaceId, entity, entityId])
+}
+
+/// Global Super Admin / control-plane audit trail
+model PlatformAuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String?
+  actorEmail  String?
+  action      String
+  entityType  String
+  entityId    String?
+  workspaceId String?
+  ipAddress   String?
+  userAgent   String?
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now())
+
+  actor     User?      @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([workspaceId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
+}
+
+model ImpersonationSession {
+  id          String    @id @default(cuid())
+  actorUserId String
+  targetUserId String
+  workspaceId String
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  ipAddress   String?
+  createdAt   DateTime  @default(now())
+
+  actor     User      @relation("ImpersonationActor", fields: [actorUserId], references: [id], onDelete: Cascade)
+  target    User      @relation("ImpersonationTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([actorUserId, createdAt])
+  @@index([workspaceId, createdAt])
+  @@index([expiresAt])
 }

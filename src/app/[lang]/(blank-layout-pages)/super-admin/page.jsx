@@ -1,9 +1,9 @@
-import SuperAdmin from '@/views/SuperAdmin'
+import SuperAdminLogin from '@/views/super-admin/Login'
 
 export const metadata = {
   title: 'WOXOX Super Admin',
 }
 
-const SuperAdminPage = () => <SuperAdmin />
+const SuperAdminPage = () => <SuperAdminLogin />
 
 export default SuperAdminPage

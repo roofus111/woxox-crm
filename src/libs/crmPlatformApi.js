@@ -6,6 +6,7 @@
  */
 
 const PLATFORM_TOKEN_KEY = 'crmPlatformToken'
+const IMPERSONATION_KEY = 'crmPlatformImpersonation'
 
 export function isCrmPlatformEnabled() {
   return process.env.NEXT_PUBLIC_USE_CRM_PLATFORM_DASHBOARD === 'true'
@@ -13,7 +14,6 @@ export function isCrmPlatformEnabled() {
 
 export function getCrmPlatformBase() {
   if (typeof window !== 'undefined') {
-    // Same-origin Next.js proxy → crm-api (no CORS, no nginx subdomain needed)
     return `${window.location.origin}/api/platform-proxy`
   }
   return (
@@ -48,6 +48,30 @@ export function clearCrmPlatformToken() {
   } catch {
     /* ignore */
   }
+}
+
+export function getImpersonationState() {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(IMPERSONATION_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+export function setImpersonationState(state) {
+  if (typeof window === 'undefined') return
+  try {
+    if (!state) window.localStorage.removeItem(IMPERSONATION_KEY)
+    else window.localStorage.setItem(IMPERSONATION_KEY, JSON.stringify(state))
+  } catch {
+    /* ignore */
+  }
+}
+
+export function clearImpersonationState() {
+  setImpersonationState(null)
 }
 
 /** Login to platform API (call after legacy login with same credentials). */
@@ -85,7 +109,10 @@ async function platformFetch(path, options = {}) {
   })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
-    const err = new Error(data.message || `Request failed (${res.status})`)
+    const message = Array.isArray(data.message)
+      ? data.message.join(', ')
+      : data.message || `Request failed (${res.status})`
+    const err = new Error(message)
     err.status = res.status
     throw err
   }
@@ -111,8 +138,19 @@ export async function fetchPipelineBoard(pipelineId) {
   return platformFetch(`/pipelines/${pipelineId}/board`)
 }
 
-export async function listSuperAdminTenants() {
-  return platformFetch('/super-admin/tenants')
+export async function getSuperAdminStats() {
+  return platformFetch('/super-admin/stats')
+}
+
+export async function listSuperAdminTenants(params = {}) {
+  const qs = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')
+  ).toString()
+  return platformFetch(`/super-admin/tenants${qs ? `?${qs}` : ''}`)
+}
+
+export async function getSuperAdminTenant(id) {
+  return platformFetch(`/super-admin/tenants/${id}`)
 }
 
 export async function createSuperAdminTenant(payload) {
@@ -133,5 +171,61 @@ export async function resetSuperAdminTenantPassword(id, newPassword) {
   return platformFetch(`/super-admin/tenants/${id}/reset-password`, {
     method: 'POST',
     body: JSON.stringify({ newPassword }),
+  })
+}
+
+export async function extendSuperAdminTrial(id, days) {
+  return platformFetch(`/super-admin/tenants/${id}/extend-trial`, {
+    method: 'POST',
+    body: JSON.stringify({ days }),
+  })
+}
+
+export async function changeSuperAdminOwner(id, payload) {
+  return platformFetch(`/super-admin/tenants/${id}/change-owner`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function softDeleteSuperAdminTenant(id) {
+  return platformFetch(`/super-admin/tenants/${id}/soft-delete`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  })
+}
+
+export async function restoreSuperAdminTenant(id) {
+  return platformFetch(`/super-admin/tenants/${id}/restore`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  })
+}
+
+export async function bulkUpdateSuperAdminTenants(ids, action) {
+  return platformFetch('/super-admin/tenants/bulk', {
+    method: 'POST',
+    body: JSON.stringify({ ids, action }),
+  })
+}
+
+export async function listSuperAdminTenantAudit(id, params = {}) {
+  const qs = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')
+  ).toString()
+  return platformFetch(`/super-admin/tenants/${id}/audit${qs ? `?${qs}` : ''}`)
+}
+
+export async function impersonateSuperAdminTenant(id) {
+  return platformFetch(`/super-admin/tenants/${id}/impersonate`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  })
+}
+
+export async function stopSuperAdminImpersonation(sessionId) {
+  return platformFetch('/super-admin/impersonation/stop', {
+    method: 'POST',
+    body: JSON.stringify(sessionId ? { sessionId } : {}),
   })
 }

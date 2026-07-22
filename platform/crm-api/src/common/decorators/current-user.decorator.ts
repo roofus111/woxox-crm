@@ -5,6 +5,8 @@ export type JwtPayload = {
   email: string;
   workspaceId: string;
   role: string;
+  impersonatorId?: string;
+  impersonationSessionId?: string;
 };
 
 export const CurrentUser = createParamDecorator(

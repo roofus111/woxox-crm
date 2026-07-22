@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -11,11 +12,15 @@ import {
   CreateRazorpayOrderDto,
   CreateRazorpayPaymentLinkDto,
   ListSubscriptionsQueryDto,
+  PublicSignupDto,
   UpsertCouponDto,
   UpsertPlanDto,
   VerifyRazorpayPaymentDto,
 } from './dto/billing.dto';
 import { createHmac, timingSafeEqual } from 'crypto';
+import { MailService } from '../../common/mail.service';
+import { Role } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
 type AuditContext = {
   actor: JwtPayload;
@@ -27,7 +32,10 @@ const ACTIVE_STATUSES = ['active', 'trialing'];
 
 @Injectable()
 export class BillingService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mail: MailService,
+  ) {}
 
   async ensureDefaultPlans() {
     const defaults: UpsertPlanDto[] = [
@@ -710,6 +718,280 @@ export class BillingService {
     return { success: true, duplicate: false, type: eventType };
   }
 
+  async listPublicPlans() {
+    await this.ensureDefaultPlans();
+    const plans = await this.prisma.plan.findMany({
+      where: { isActive: true },
+      orderBy: { sortOrder: 'asc' },
+      select: {
+        code: true,
+        name: true,
+        description: true,
+        currency: true,
+        amountMonthly: true,
+        amountYearly: true,
+        enabledModules: true,
+        maxUsers: true,
+        trialDays: true,
+      },
+    });
+    return {
+      success: true,
+      plans,
+      razorpayKeyId: process.env.RAZORPAY_KEY_ID || null,
+    };
+  }
+
+  async publicSignup(dto: PublicSignupDto) {
+    await this.ensureDefaultPlans();
+    const email = dto.adminEmail.toLowerCase().trim();
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    if (existing) throw new ConflictException('Email already registered');
+
+    const plan = await this.resolvePlan(dto.plan);
+    if (!plan.isActive) throw new BadRequestException('Plan is inactive');
+
+    const billingCycle = dto.billingCycle || 'monthly';
+    const amount =
+      plan.code === 'trial'
+        ? 0
+        : billingCycle === 'yearly'
+          ? plan.amountYearly
+          : plan.amountMonthly;
+
+    const baseSlug =
+      dto.companyName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')
+        .slice(0, 40) || 'company';
+    const tenantCount = await this.prisma.workspace.count();
+    const tenantCode = `WOX-${String(tenantCount + 1).padStart(6, '0')}`;
+    const slug = `${baseSlug}-${Date.now().toString(36)}`;
+    const passwordHash = await bcrypt.hash(dto.adminPassword, 12);
+    const trialDays = plan.trialDays || 14;
+    const trialEndsAt =
+      plan.code === 'trial' || amount === 0
+        ? new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000)
+        : null;
+
+    const created = await this.prisma.$transaction(async (tx) => {
+      const workspace = await tx.workspace.create({
+        data: {
+          name: dto.companyName.trim(),
+          slug,
+          tenantCode,
+          plan: plan.code,
+          status: amount === 0 ? 'trial' : 'pending_payment',
+          trialEndsAt,
+          enabledModules: plan.enabledModules?.length ? plan.enabledModules : ['crm'],
+          settings: {
+            onboardingComplete: false,
+            onboardingStep: 'profile',
+            provisionedBy: 'self-serve',
+          },
+        },
+      });
+      const user = await tx.user.create({
+        data: {
+          email,
+          passwordHash,
+          name: dto.adminName?.trim() || 'Company Admin',
+          emailVerified: new Date(),
+        },
+      });
+      await tx.workspaceMember.create({
+        data: { workspaceId: workspace.id, userId: user.id, role: Role.ADMIN },
+      });
+      await tx.workspace.update({
+        where: { id: workspace.id },
+        data: { ownerUserId: user.id },
+      });
+      await tx.pipeline.create({
+        data: {
+          workspaceId: workspace.id,
+          name: 'Sales Pipeline',
+          isDefault: true,
+          stages: {
+            create: [
+              { name: 'Qualification', probability: 10, sortOrder: 0 },
+              { name: 'Proposal', probability: 40, sortOrder: 1 },
+              { name: 'Negotiation', probability: 70, sortOrder: 2 },
+              { name: 'Won', probability: 100, sortOrder: 3, isWon: true },
+              { name: 'Lost', probability: 0, sortOrder: 4, isLost: true },
+            ],
+          },
+        },
+      });
+      return { workspace, user };
+    });
+
+    const loginUrl = process.env.APP_ORIGIN
+      ? `${process.env.APP_ORIGIN}/en/login`
+      : 'https://app.woxox.com/en/login';
+
+    if (amount === 0) {
+      const periodEnd = trialEndsAt || new Date(Date.now() + trialDays * 86400000);
+      await this.prisma.subscription.create({
+        data: {
+          workspaceId: created.workspace.id,
+          planId: plan.id,
+          status: 'trialing',
+          billingCycle,
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: periodEnd,
+          trialEndsAt,
+        },
+      });
+      await this.mail.sendWelcomeEmail({
+        to: email,
+        companyName: created.workspace.name,
+        adminName: created.user.name || undefined,
+        loginUrl,
+        plan: plan.code,
+      });
+      return {
+        success: true,
+        paymentRequired: false,
+        workspaceId: created.workspace.id,
+        tenantCode: created.workspace.tenantCode,
+        loginUrl,
+        onboardingUrl: `${loginUrl.replace('/login', '/onboarding')}`,
+        plan: plan.code,
+      };
+    }
+
+    const order = await this.razorpayRequest('POST', '/orders', {
+      amount,
+      currency: (plan.currency || 'INR').toUpperCase(),
+      receipt: `ss-${created.workspace.id.slice(-10)}`,
+      notes: {
+        workspaceId: created.workspace.id,
+        planCode: plan.code,
+        billingCycle,
+        selfServe: 'true',
+      },
+    });
+
+    await this.prisma.invoice.create({
+      data: {
+        workspaceId: created.workspace.id,
+        number: `SS-${Date.now()}`,
+        amountDue: amount,
+        amountPaid: 0,
+        currency: (plan.currency || 'INR').toUpperCase(),
+        status: 'open',
+        razorpayOrderId: String(order.id),
+        metadata: {
+          planCode: plan.code,
+          billingCycle,
+          provider: 'razorpay',
+          selfServe: true,
+        },
+      },
+    });
+
+    return {
+      success: true,
+      paymentRequired: true,
+      workspaceId: created.workspace.id,
+      tenantCode: created.workspace.tenantCode,
+      keyId: process.env.RAZORPAY_KEY_ID,
+      order: {
+        id: order.id,
+        amount: order.amount,
+        currency: order.currency,
+      },
+      plan: { code: plan.code, name: plan.name },
+      billingCycle,
+      customer: { email, name: created.user.name },
+      loginUrl,
+    };
+  }
+
+  async publicVerifyPayment(dto: VerifyRazorpayPaymentDto) {
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    if (!keySecret) throw new BadRequestException('Razorpay is not configured');
+
+    const signed = `${dto.razorpayOrderId}|${dto.razorpayPaymentId}`;
+    const expected = createHmac('sha256', keySecret).update(signed).digest('hex');
+    const a = Buffer.from(expected, 'utf8');
+    const b = Buffer.from(dto.razorpaySignature || '', 'utf8');
+    if (a.length !== b.length || !timingSafeEqual(a, b)) {
+      throw new BadRequestException('Invalid Razorpay payment signature');
+    }
+
+    const invoice = await this.prisma.invoice.findFirst({
+      where: { razorpayOrderId: dto.razorpayOrderId },
+      include: { workspace: true },
+    });
+    if (!invoice) throw new NotFoundException('Order not found');
+
+    const meta = (invoice.metadata || {}) as Record<string, unknown>;
+    const planCode = String(meta.planCode || 'starter');
+    const billingCycle = (meta.billingCycle as 'monthly' | 'yearly') || 'monthly';
+    const systemActor: JwtPayload = {
+      sub: 'system',
+      email: 'self-serve@woxox.local',
+      workspaceId: invoice.workspaceId,
+      role: 'SUPER_ADMIN',
+    };
+
+    const result = await this.assignSubscription(
+      {
+        workspaceId: invoice.workspaceId,
+        plan: planCode,
+        billingCycle,
+        startTrial: false,
+      },
+      { actor: systemActor },
+    );
+
+    await this.prisma.invoice.update({
+      where: { id: invoice.id },
+      data: {
+        status: 'paid',
+        amountPaid: invoice.amountDue,
+        razorpayPaymentId: dto.razorpayPaymentId,
+        paidAt: new Date(),
+        subscriptionId: result.subscription.id,
+      },
+    });
+
+    await this.prisma.workspace.update({
+      where: { id: invoice.workspaceId },
+      data: { status: 'active' },
+    });
+
+    const membership = await this.prisma.workspaceMember.findFirst({
+      where: { workspaceId: invoice.workspaceId, role: Role.ADMIN },
+      include: { user: true },
+    });
+
+    const loginUrl = process.env.APP_ORIGIN
+      ? `${process.env.APP_ORIGIN}/en/login`
+      : 'https://app.woxox.com/en/login';
+
+    if (membership?.user?.email) {
+      await this.mail.sendWelcomeEmail({
+        to: membership.user.email,
+        companyName: invoice.workspace.name,
+        adminName: membership.user.name || undefined,
+        loginUrl,
+        plan: planCode,
+      });
+    }
+
+    return {
+      success: true,
+      workspaceId: invoice.workspaceId,
+      loginUrl,
+      onboardingUrl: process.env.APP_ORIGIN
+        ? `${process.env.APP_ORIGIN}/en/onboarding`
+        : 'https://app.woxox.com/en/onboarding',
+    };
+  }
+
   private async markRazorpayPaidFromEntity(entity: Record<string, unknown>) {
     const orderId = entity.order_id
       ? String(entity.order_id)
@@ -776,6 +1058,31 @@ export class BillingService {
         subscriptionId: result.subscription.id,
       },
     });
+
+    await this.prisma.workspace.update({
+      where: { id: invoice.workspaceId },
+      data: { status: 'active' },
+    });
+
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: invoice.workspaceId },
+    });
+    const membership = await this.prisma.workspaceMember.findFirst({
+      where: { workspaceId: invoice.workspaceId, role: Role.ADMIN },
+      include: { user: true },
+    });
+    const loginUrl = process.env.APP_ORIGIN
+      ? `${process.env.APP_ORIGIN}/en/login`
+      : 'https://app.woxox.com/en/login';
+    if (membership?.user?.email && workspace) {
+      await this.mail.sendWelcomeEmail({
+        to: membership.user.email,
+        companyName: workspace.name,
+        adminName: membership.user.name || undefined,
+        loginUrl,
+        plan: planCode,
+      });
+    }
   }
 
   private async resolvePayable(dto: {

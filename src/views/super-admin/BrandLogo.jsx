@@ -10,6 +10,7 @@ export default function BrandLogo({ size = 'md', className = '' }) {
         src={LOGO_SRC}
         alt='WOXOX'
         className={isSm ? 'sa-brand-logo sa-brand-logo-sm' : 'sa-brand-logo'}
+        style={{ background: 'transparent' }}
       />
     </span>
   )

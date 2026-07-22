@@ -178,6 +178,12 @@ export default function SuperAdminShell({ children, title = 'Companies' }) {
               Staff
             </a>
           ) : null}
+          <a
+            href={`${base}/security`}
+            className={pathname?.includes('/security') ? 'sa-tab active' : 'sa-tab'}
+          >
+            Security
+          </a>
           {isDetail ? <span className='sa-tab active'>Company profile</span> : null}
         </nav>
         {children}

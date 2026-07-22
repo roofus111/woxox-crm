@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   UnauthorizedException,
@@ -6,19 +7,34 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.module';
-import { LoginDto, RegisterWorkspaceDto } from './dto/auth.dto';
-import { Role } from '@prisma/client';
+import {
+  LoginDto,
+  MfaCodeDto,
+  MfaVerifyDto,
+  OnboardingUpdateDto,
+  RegisterWorkspaceDto,
+} from './dto/auth.dto';
+import { Role, Prisma } from '@prisma/client';
 import {
   isPlatformStaffRole,
   permissionsForRole,
   PLATFORM_STAFF_ROLES,
 } from '../../common/platform-rbac';
+import {
+  buildOtpAuthUrl,
+  generateTotpSecret,
+  getOtpAuthUri,
+  verifyTotp,
+} from '../../common/totp.util';
+import { JwtPayload } from '../../common/decorators/current-user.decorator';
+import { MailService } from '../../common/mail.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    private readonly mail: MailService,
   ) {}
 
   async register(dto: RegisterWorkspaceDto) {
@@ -39,7 +55,11 @@ export class AuthService {
 
     const result = await this.prisma.$transaction(async (tx) => {
       const workspace = await tx.workspace.create({
-        data: { name: dto.workspaceName, slug: `${slug}-${Date.now().toString(36)}` },
+        data: {
+          name: dto.workspaceName,
+          slug: `${slug}-${Date.now().toString(36)}`,
+          settings: { onboardingComplete: false, onboardingStep: 'profile' },
+        },
       });
       const user = await tx.user.create({
         data: {
@@ -83,7 +103,6 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    // Prefer any platform staff membership for control-plane login
     const membership =
       user.memberships.find((m) => isPlatformStaffRole(m.role)) ||
       user.memberships.find((m) => m.workspace.status !== 'suspended') ||
@@ -100,12 +119,190 @@ export class AuthService {
       throw new UnauthorizedException('Workspace is suspended');
     }
 
+    if (user.twoFactorEnabled && user.twoFactorSecret && isPlatformStaffRole(membership.role)) {
+      const mfaToken = this.jwt.sign(
+        {
+          sub: user.id,
+          email: user.email,
+          workspaceId: membership.workspaceId,
+          role: membership.role,
+          mfaPending: true,
+        },
+        { expiresIn: '5m' },
+      );
+      return {
+        success: true,
+        mfaRequired: true,
+        mfaToken,
+        user: { id: user.id, email: user.email, role: membership.role },
+      };
+    }
+
     await this.prisma.user.update({
       where: { id: user.id },
       data: { lastLoginAt: new Date() },
     });
 
     return this.issueToken(user.id, user.email, membership.workspaceId, membership.role);
+  }
+
+  async verifyMfa(dto: MfaVerifyDto) {
+    let payload: JwtPayload & { mfaPending?: boolean };
+    try {
+      payload = this.jwt.verify(dto.mfaToken);
+    } catch {
+      throw new UnauthorizedException('MFA session expired — sign in again');
+    }
+    if (!payload.mfaPending) {
+      throw new BadRequestException('Invalid MFA session');
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
+    if (!user?.twoFactorSecret || !user.twoFactorEnabled) {
+      throw new UnauthorizedException('MFA is not enabled');
+    }
+    if (!verifyTotp(user.twoFactorSecret, dto.code)) {
+      throw new UnauthorizedException('Invalid authenticator code');
+    }
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+
+    return this.issueToken(
+      user.id,
+      user.email,
+      payload.workspaceId,
+      payload.role as Role,
+    );
+  }
+
+  async setupMfa(actor: JwtPayload) {
+    if (!isPlatformStaffRole(actor.role)) {
+      throw new UnauthorizedException('Platform staff only');
+    }
+    const secret = generateTotpSecret();
+    await this.prisma.user.update({
+      where: { id: actor.sub },
+      data: { twoFactorSecret: secret, twoFactorEnabled: false },
+    });
+    return {
+      success: true,
+      secret,
+      otpauthUrl: getOtpAuthUri(secret, actor.email),
+      qrUrl: buildOtpAuthUrl(secret, actor.email),
+      message: 'Scan the QR code, then call /auth/mfa/enable with a 6-digit code',
+    };
+  }
+
+  async enableMfa(actor: JwtPayload, dto: MfaCodeDto) {
+    const user = await this.prisma.user.findUnique({ where: { id: actor.sub } });
+    if (!user?.twoFactorSecret) {
+      throw new BadRequestException('Call /auth/mfa/setup first');
+    }
+    if (!verifyTotp(user.twoFactorSecret, dto.code)) {
+      throw new UnauthorizedException('Invalid authenticator code');
+    }
+    await this.prisma.user.update({
+      where: { id: actor.sub },
+      data: { twoFactorEnabled: true },
+    });
+    return { success: true, twoFactorEnabled: true };
+  }
+
+  async disableMfa(actor: JwtPayload, dto: MfaCodeDto) {
+    const user = await this.prisma.user.findUnique({ where: { id: actor.sub } });
+    if (!user?.twoFactorSecret || !user.twoFactorEnabled) {
+      return { success: true, twoFactorEnabled: false };
+    }
+    if (!verifyTotp(user.twoFactorSecret, dto.code)) {
+      throw new UnauthorizedException('Invalid authenticator code');
+    }
+    await this.prisma.user.update({
+      where: { id: actor.sub },
+      data: { twoFactorEnabled: false, twoFactorSecret: null },
+    });
+    return { success: true, twoFactorEnabled: false };
+  }
+
+  async getOnboarding(actor: JwtPayload) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: actor.workspaceId },
+    });
+    if (!workspace) throw new UnauthorizedException('Workspace not found');
+    const settings = (workspace.settings || {}) as Record<string, unknown>;
+    return {
+      success: true,
+      onboardingComplete: Boolean(settings.onboardingComplete),
+      step: String(settings.onboardingStep || 'profile'),
+      workspace: {
+        id: workspace.id,
+        name: workspace.name,
+        plan: workspace.plan,
+        enabledModules: workspace.enabledModules,
+      },
+      data: settings.onboardingData || {},
+    };
+  }
+
+  async updateOnboarding(actor: JwtPayload, dto: OnboardingUpdateDto) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: actor.workspaceId },
+    });
+    if (!workspace) throw new UnauthorizedException('Workspace not found');
+    const settings = {
+      ...((workspace.settings || {}) as Record<string, unknown>),
+    };
+    const data = {
+      ...((settings.onboardingData as Record<string, unknown>) || {}),
+      ...(dto.companyName ? { companyName: dto.companyName } : {}),
+      ...(dto.industry ? { industry: dto.industry } : {}),
+      ...(dto.teamSize ? { teamSize: dto.teamSize } : {}),
+      ...(dto.inviteEmail ? { inviteEmail: dto.inviteEmail } : {}),
+      ...(dto.modules ? { modules: dto.modules } : {}),
+    };
+    settings.onboardingData = data;
+    settings.onboardingStep = dto.step || settings.onboardingStep || 'profile';
+
+    const updated = await this.prisma.workspace.update({
+      where: { id: workspace.id },
+      data: {
+        ...(dto.companyName ? { name: dto.companyName.trim() } : {}),
+        ...(dto.modules?.length ? { enabledModules: dto.modules } : {}),
+        settings: settings as Prisma.InputJsonValue,
+      },
+    });
+
+    if (dto.inviteEmail) {
+      const loginUrl = process.env.APP_ORIGIN
+        ? `${process.env.APP_ORIGIN}/en/login`
+        : 'https://app.woxox.com/en/login';
+      await this.mail.send({
+        to: dto.inviteEmail,
+        subject: `You're invited to ${updated.name} on WOXOX`,
+        html: `<p>You've been invited to join <strong>${updated.name}</strong> on WOXOX.</p><p><a href="${loginUrl}">Open WOXOX</a></p>`,
+      });
+    }
+
+    return { success: true, step: settings.onboardingStep, data };
+  }
+
+  async completeOnboarding(actor: JwtPayload) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: actor.workspaceId },
+    });
+    if (!workspace) throw new UnauthorizedException('Workspace not found');
+    const settings = {
+      ...((workspace.settings || {}) as Record<string, unknown>),
+      onboardingComplete: true,
+      onboardingStep: 'done',
+    };
+    await this.prisma.workspace.update({
+      where: { id: workspace.id },
+      data: { settings },
+    });
+    return { success: true, onboardingComplete: true };
   }
 
   private issueToken(userId: string, email: string, workspaceId: string, role: Role) {
@@ -119,6 +316,7 @@ export class AuthService {
     });
     return {
       success: true,
+      mfaRequired: false,
       accessToken,
       user: {
         id: userId,

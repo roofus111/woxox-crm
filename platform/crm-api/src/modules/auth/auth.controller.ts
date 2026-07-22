@@ -1,7 +1,15 @@
-import { Body, Controller, Post } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { LoginDto, RegisterWorkspaceDto } from './dto/auth.dto';
+import {
+  LoginDto,
+  MfaCodeDto,
+  MfaVerifyDto,
+  OnboardingUpdateDto,
+  RegisterWorkspaceDto,
+} from './dto/auth.dto';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -16,5 +24,52 @@ export class AuthController {
   @Post('register')
   register(@Body() dto: RegisterWorkspaceDto) {
     return this.auth.register(dto);
+  }
+
+  @Post('mfa/verify')
+  verifyMfa(@Body() dto: MfaVerifyDto) {
+    return this.auth.verifyMfa(dto);
+  }
+
+  @Post('mfa/setup')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  setupMfa(@CurrentUser() user: JwtPayload) {
+    return this.auth.setupMfa(user);
+  }
+
+  @Post('mfa/enable')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  enableMfa(@CurrentUser() user: JwtPayload, @Body() dto: MfaCodeDto) {
+    return this.auth.enableMfa(user, dto);
+  }
+
+  @Post('mfa/disable')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  disableMfa(@CurrentUser() user: JwtPayload, @Body() dto: MfaCodeDto) {
+    return this.auth.disableMfa(user, dto);
+  }
+
+  @Get('onboarding')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  getOnboarding(@CurrentUser() user: JwtPayload) {
+    return this.auth.getOnboarding(user);
+  }
+
+  @Post('onboarding')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  updateOnboarding(@CurrentUser() user: JwtPayload, @Body() dto: OnboardingUpdateDto) {
+    return this.auth.updateOnboarding(user, dto);
+  }
+
+  @Post('onboarding/complete')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  completeOnboarding(@CurrentUser() user: JwtPayload) {
+    return this.auth.completeOnboarding(user);
   }
 }

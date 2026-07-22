@@ -26,6 +26,7 @@ import {
   CreateRazorpayOrderDto,
   CreateRazorpayPaymentLinkDto,
   ListSubscriptionsQueryDto,
+  PublicSignupDto,
   UpsertCouponDto,
   UpsertPlanDto,
   VerifyRazorpayPaymentDto,
@@ -175,6 +176,22 @@ export class BillingController {
     @Req() req: Request,
   ) {
     return this.billing.verifyRazorpayPayment(dto, this.auditCtx(user, req));
+  }
+
+  /** Public self-serve pricing (no auth) */
+  @Get('public/plans')
+  listPublicPlans() {
+    return this.billing.listPublicPlans();
+  }
+
+  @Post('public/signup')
+  publicSignup(@Body() dto: PublicSignupDto) {
+    return this.billing.publicSignup(dto);
+  }
+
+  @Post('public/verify')
+  publicVerify(@Body() dto: VerifyRazorpayPaymentDto) {
+    return this.billing.publicVerifyPayment(dto);
   }
 
   /**

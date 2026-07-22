@@ -1,15 +1,10 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-  ConflictException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.module';
 import { JwtPayload } from '../../common/decorators/current-user.decorator';
+import { MailService } from '../../common/mail.service';
 import {
   BulkTenantsDto,
   ChangeOwnerDto,
@@ -34,6 +29,7 @@ export class SuperAdminService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    private readonly mail: MailService,
   ) {}
 
   async getStats() {
@@ -296,6 +292,7 @@ export class SuperAdminService {
           enabledModules: modules,
           settings: {
             onboardingComplete: false,
+            onboardingStep: 'profile',
             provisionedBy: 'super-admin',
           },
         },
@@ -392,6 +389,19 @@ export class SuperAdminService {
       },
     });
 
+    const loginUrl = process.env.APP_ORIGIN
+      ? `${process.env.APP_ORIGIN}/en/login`
+      : 'https://app.woxox.com/en/login';
+
+    const welcome = await this.mail.sendWelcomeEmail({
+      to: email,
+      companyName: result.workspace.name,
+      adminName: result.user.name || undefined,
+      loginUrl,
+      plan,
+      temporaryPasswordHint: true,
+    });
+
     return {
       success: true,
       tenant: {
@@ -408,11 +418,10 @@ export class SuperAdminService {
           email: result.user.email,
           name: result.user.name,
         },
-        loginUrl: process.env.APP_ORIGIN
-          ? `${process.env.APP_ORIGIN}/en/login`
-          : 'https://app.woxox.com/en/login',
+        loginUrl,
         legacyProvisioned: legacy.ok,
         legacyMessage: legacy.message,
+        welcomeEmailSent: welcome.sent,
       },
     };
   }
@@ -844,6 +853,10 @@ export class SuperAdminService {
   async me(actor: JwtPayload) {
     const { permissionsForRole, PLATFORM_ROLE_LABELS, isPlatformStaffRole } =
       await import('../../common/platform-rbac');
+    const dbUser = await this.prisma.user.findUnique({
+      where: { id: actor.sub },
+      select: { twoFactorEnabled: true },
+    });
     return {
       success: true,
       user: {
@@ -853,6 +866,7 @@ export class SuperAdminService {
         roleLabel: PLATFORM_ROLE_LABELS[actor.role] || actor.role,
         permissions: permissionsForRole(actor.role),
         isPlatformStaff: isPlatformStaffRole(actor.role),
+        twoFactorEnabled: Boolean(dbUser?.twoFactorEnabled),
       },
     };
   }

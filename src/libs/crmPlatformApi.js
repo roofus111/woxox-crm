@@ -91,10 +91,79 @@ export async function loginCrmPlatform(email, password) {
   if (!res.ok) {
     throw new Error(data.message || `Platform login failed (${res.status})`)
   }
-  if (data.accessToken) {
+  if (data.accessToken && !data.mfaRequired) {
     setCrmPlatformToken(data.accessToken)
   }
   return data
+}
+
+export async function verifyCrmPlatformMfa(mfaToken, code) {
+  const url = `${getCrmPlatformBase()}/auth/mfa/verify`
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mfaToken, code }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(data.message || `MFA failed (${res.status})`)
+  }
+  if (data.accessToken) setCrmPlatformToken(data.accessToken)
+  return data
+}
+
+export async function setupCrmPlatformMfa() {
+  return platformFetch('/auth/mfa/setup', { method: 'POST', body: JSON.stringify({}) })
+}
+
+export async function enableCrmPlatformMfa(code) {
+  return platformFetch('/auth/mfa/enable', {
+    method: 'POST',
+    body: JSON.stringify({ code }),
+  })
+}
+
+export async function disableCrmPlatformMfa(code) {
+  return platformFetch('/auth/mfa/disable', {
+    method: 'POST',
+    body: JSON.stringify({ code }),
+  })
+}
+
+export async function getOnboardingStatus() {
+  return platformFetch('/auth/onboarding')
+}
+
+export async function updateOnboarding(payload) {
+  return platformFetch('/auth/onboarding', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function completeOnboarding() {
+  return platformFetch('/auth/onboarding/complete', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  })
+}
+
+export async function listPublicPlans() {
+  return platformFetch('/billing/public/plans')
+}
+
+export async function publicSignup(payload) {
+  return platformFetch('/billing/public/signup', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function publicVerifyPayment(payload) {
+  return platformFetch('/billing/public/verify', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
 }
 
 async function platformFetch(path, options = {}) {

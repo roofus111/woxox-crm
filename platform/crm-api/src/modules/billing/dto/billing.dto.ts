@@ -1,6 +1,7 @@
 import {
   IsArray,
   IsBoolean,
+  IsEmail,
   IsIn,
   IsInt,
   IsOptional,
@@ -263,4 +264,34 @@ export class CreateRazorpayPaymentLinkDto {
   @IsOptional()
   @IsString()
   couponCode?: string;
+}
+
+export class PublicSignupDto {
+  @ApiProperty({ example: 'ABC Industries' })
+  @IsString()
+  @MinLength(2)
+  companyName!: string;
+
+  @ApiProperty()
+  @IsEmail()
+  adminEmail!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(6)
+  adminPassword!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  adminName?: string;
+
+  @ApiProperty({ example: 'starter' })
+  @IsString()
+  plan!: string;
+
+  @ApiPropertyOptional({ enum: ['monthly', 'yearly'] })
+  @IsOptional()
+  @IsIn(['monthly', 'yearly'])
+  billingCycle?: 'monthly' | 'yearly';
 }

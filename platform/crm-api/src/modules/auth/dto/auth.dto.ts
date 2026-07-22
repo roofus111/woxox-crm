@@ -1,5 +1,5 @@
-import { IsEmail, IsString, MinLength } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsEmail, IsOptional, IsString, MinLength, Length } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class LoginDto {
   @ApiProperty({ example: 'admin@woxox.local' })
@@ -27,6 +27,56 @@ export class RegisterWorkspaceDto {
   password!: string;
 
   @ApiProperty({ required: false })
+  @IsOptional()
   @IsString()
   name?: string;
+}
+
+export class MfaVerifyDto {
+  @ApiProperty()
+  @IsString()
+  mfaToken!: string;
+
+  @ApiProperty({ example: '123456' })
+  @IsString()
+  @Length(6, 6)
+  code!: string;
+}
+
+export class MfaCodeDto {
+  @ApiProperty({ example: '123456' })
+  @IsString()
+  @Length(6, 6)
+  code!: string;
+}
+
+export class OnboardingUpdateDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  companyName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  industry?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  teamSize?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsEmail()
+  inviteEmail?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  modules?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  step?: string;
 }

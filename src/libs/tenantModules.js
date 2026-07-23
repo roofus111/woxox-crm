@@ -163,7 +163,9 @@ export function filterProductsByRole(productIds, role) {
     return productIds.filter(id => ['crm', 'projectsLite', 'projectsMax'].includes(id))
   }
   if (role === 'user') {
-    return productIds.filter(id => ['crm', 'hrms', 'projectsLite', 'projectsMax'].includes(id))
+    return productIds.filter(id =>
+      ['crm', 'hrms', 'projectsLite', 'projectsMax', 'docsign'].includes(id)
+    )
   }
   return productIds
 }

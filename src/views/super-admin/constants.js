@@ -3,6 +3,7 @@ export const MODULE_OPTIONS = [
   { id: 'finance', label: 'Finance' },
   { id: 'hrms', label: 'HR' },
   { id: 'legalos', label: 'LegalOS' },
+  { id: 'docsign', label: 'Doc Sign' },
   { id: 'projectsLite', label: 'Projects Lite' },
   { id: 'projectsMax', label: 'Projects Max' },
   { id: 'academy', label: 'Academy' },

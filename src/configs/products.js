@@ -15,6 +15,7 @@ export const ADDON_TO_PRODUCT = {
   FTM0825: 'finance',
   HRM0825: 'hrms',
   LOS0825: 'legalos',
+  DSG0825: 'docsign',
   ACAD0825: 'academy',
   ECOM0825: 'ecommerce',
   PRJLITE0825: 'projectsLite',
@@ -29,6 +30,7 @@ export const ADDON_TO_PRODUCT = {
 export const DEMO_ENABLED_PRODUCTS = [
   'crm',
   'legalos',
+  'docsign',
   'hrms',
   'finance',
   'academy',
@@ -38,7 +40,7 @@ export const DEMO_ENABLED_PRODUCTS = [
 ]
 
 /** Bump when default product set changes so older localStorage lists are upgraded. */
-export const PRODUCTS_CATALOG_VERSION = '11'
+export const PRODUCTS_CATALOG_VERSION = '15'
 export const PRODUCTS_CATALOG_VERSION_KEY = 'woxox.productsCatalogVersion'
 
 const localeHref = (path) => (locale) => `/${locale}${path}`
@@ -90,7 +92,6 @@ export const PRODUCTS = {
       '/manager/marketplace',
       '/manager/subscription',
       '/manager/my-whatsapp',
-      '/manager/email',
       '/manager/settings'
     ],
     /** Core product — always available once tenant has company access */
@@ -116,6 +117,11 @@ export const PRODUCTS = {
         label: 'Pipelines',
         icon: 'ri-flow-chart',
         href: localeHref('/manager/pipeline')
+      },
+      {
+        label: 'Tag Manager',
+        icon: 'ri-price-tag-3-line',
+        href: localeHref('/manager/tagSection')
       },
       {
         label: 'Contacts',
@@ -185,16 +191,6 @@ export const PRODUCTS = {
         href: localeHref('/manager/my-whatsapp')
       },
       {
-        label: 'Email',
-        icon: 'ri-mail-open-line',
-        children: [
-          { label: 'Inbox', href: localeHref('/manager/email/inbox') },
-          { label: 'Compose', href: localeHref('/manager/email/compose') },
-          { label: 'Connect mailbox', href: localeHref('/manager/email/smtp') },
-          { label: 'Email settings', href: localeHref('/manager/email/settings') }
-        ]
-      },
-      {
         label: 'Reports',
         icon: 'ri-bar-chart-box-line',
         href: localeHref('/dashboards/analytics')
@@ -204,7 +200,6 @@ export const PRODUCTS = {
         icon: 'ri-settings-3-line',
         children: [
           { label: 'My WhatsApp', href: localeHref('/manager/my-whatsapp'), icon: 'ri-whatsapp-line' },
-          { label: 'Connect mailbox', href: localeHref('/manager/email/smtp'), icon: 'ri-mail-settings-line' },
           { label: 'Marketplace', href: localeHref('/manager/marketplace') },
           { label: 'Subscription', href: localeHref('/manager/subscription') }
         ]
@@ -225,6 +220,25 @@ export const PRODUCTS = {
     addonId: 'LOS0825',
     demoDefault: true,
     menu: buildLegalOsNavMenu(localeHref)
+  },
+
+  docsign: {
+    id: 'docsign',
+    name: 'Doc Sign',
+    shortName: 'Sign',
+    description: 'E-signature envelopes, multi-signer workflows & audit trail',
+    icon: 'ri-pen-nib-line',
+    color: '#0f766e',
+    homePath: '/apps/docsign',
+    pathPrefixes: ['/apps/docsign', '/sign'],
+    isCore: false,
+    addonId: 'DSG0825',
+    demoDefault: true,
+    menu: [
+      { label: 'Envelopes', icon: 'ri-mail-send-line', href: localeHref('/apps/docsign') },
+      { label: 'New envelope', icon: 'ri-add-circle-line', href: localeHref('/apps/docsign/new') },
+      { label: 'Settings', icon: 'ri-settings-3-line', href: localeHref('/manager/subscription') }
+    ]
   },
 
   hrms: {
@@ -570,6 +584,7 @@ export const PRODUCTS = {
 export const PRODUCT_ORDER = [
   'crm',
   'legalos',
+  'docsign',
   'hrms',
   'finance',
   'academy',

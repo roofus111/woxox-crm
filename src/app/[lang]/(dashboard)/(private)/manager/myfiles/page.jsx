@@ -595,10 +595,10 @@ const Page = () => {
             if (isInPeopleFolder) {
                 // Use the leads document upload endpoint
                 formData.append('leadId', currentFolderId); // Add leadId for people documents
-            } else {
-                // Use the regular file upload endpoint
-
+            } else if (currentFolderId) {
                 formData.append('parent', currentFolderId);
+            } else {
+                formData.append('root', 'true');
             }
 
             const response = await axios.post(
@@ -606,8 +606,8 @@ const Page = () => {
                 formData,
                 {
                     headers: {
-                        Authorization: `Bearer ${token}`,
-                        'Content-Type': 'multipart/form-data'
+                        Authorization: `Bearer ${token}`
+                        // Let browser/axios set multipart boundary — do not force Content-Type
                     }
                 }
             );
@@ -750,8 +750,10 @@ const Page = () => {
             const isInPeopleFolder = currentPath[currentPath.length - 2] === "People";
             if (isInPeopleFolder) {
                 formData.append('leadId', currentFolderId);
-            } else {
+            } else if (currentFolderId) {
                 formData.append('parent', currentFolderId);
+            } else {
+                formData.append('root', 'true');
             }
 
             // Upload the document
@@ -760,8 +762,7 @@ const Page = () => {
                 formData,
                 {
                     headers: {
-                        Authorization: `Bearer ${token}`,
-                        'Content-Type': 'multipart/form-data'
+                        Authorization: `Bearer ${token}`
                     }
                 }
             );

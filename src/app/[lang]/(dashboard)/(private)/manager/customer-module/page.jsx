@@ -179,8 +179,7 @@ const fetchCustomerDocuments = async (customerIdParam) => {
         formData,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data'
+            Authorization: `Bearer ${token}`
           },
           onUploadProgress: (ProgressEvent) => {
             const percentCompleted = Math.round((ProgressEvent.loaded * 100) / ProgressEvent.total)

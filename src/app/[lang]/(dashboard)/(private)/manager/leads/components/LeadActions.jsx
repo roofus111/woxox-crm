@@ -434,7 +434,7 @@ const handleProfileSave = async () => {
                     onDataUpdate()
                 }
             } else {
-                setErrorMessage(data.error || 'Upload failed')
+                setErrorMessage(data.message || data.error || 'Upload failed')
             }
         } catch (error) {
             console.error(error)

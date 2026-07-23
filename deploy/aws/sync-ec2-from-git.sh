@@ -13,6 +13,7 @@ cp -a "${ENV_FILE}" /tmp/env.production.bak
 
 echo "==> Syncing CRM to origin/main..."
 cd "${CRM_DIR}"
+chown -R ubuntu:ubuntu "${CRM_DIR}/.git" 2>/dev/null || true
 git fetch origin
 git checkout main
 git reset --hard origin/main
@@ -24,6 +25,7 @@ fi
 
 echo "==> Syncing crmserver to origin/main..."
 cd "${SERVER_DIR}"
+chown -R ubuntu:ubuntu "${SERVER_DIR}/.git" 2>/dev/null || true
 git fetch origin
 git checkout main
 git reset --hard origin/main

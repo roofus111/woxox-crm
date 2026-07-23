@@ -27,9 +27,16 @@ import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
-import { DialogContentText, Select, MenuItem, InputLabel } from '@mui/material'
+import { DialogContentText, Select, MenuItem, InputLabel, FormControl, FormHelperText, Stepper, Step, StepLabel } from '@mui/material'
 import { toast } from 'react-toastify'
 import axios from 'axios'
+
+const MAPPABLE_FIELDS = [
+  { key: 'name', label: 'Name', required: true },
+  { key: 'phone', label: 'Phone', required: true },
+  { key: 'email', label: 'Email', required: false },
+  { key: 'district', label: 'District', required: false }
+]
 
 const Leads = ({ campid, onClose }) => {
 
@@ -144,56 +151,144 @@ const Leads = ({ campid, onClose }) => {
 
   const handleClickOpen = () => setOpen(true)
 
+  const resetBulkUpload = () => {
+    setUploading(false)
+    setReadingHeaders(false)
+    setUploadStep(0)
+    setFiles([])
+    setFileHeaders([])
+    setSampleRows([])
+    setRowCount(0)
+    setFieldMap({ name: '', phone: '', email: '', district: '' })
+    setErrorMessage('')
+  }
+
   const handleClose = () => {
     setOpen(false)
-    setUploading(false)
+    resetBulkUpload()
   }
 
   // States
   const [files, setFiles] = useState([])
   const [errorMessage, setErrorMessage] = useState('')
+  const [uploadStep, setUploadStep] = useState(0)
+  const [readingHeaders, setReadingHeaders] = useState(false)
+  const [fileHeaders, setFileHeaders] = useState([])
+  const [sampleRows, setSampleRows] = useState([])
+  const [rowCount, setRowCount] = useState(0)
+  const [fieldMap, setFieldMap] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    district: ''
+  })
 
   // Dropzone Hooks
   const { getRootProps, getInputProps } = useDropzone({
     multiple: false,
     accept: {
-      'application/vnd.ms-excel': ['.xls', '.xlsx']
+      'application/vnd.ms-excel': ['.xls', '.xlsx'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'text/csv': ['.csv'],
+      'application/csv': ['.csv']
     },
     onDrop: acceptedFiles => {
       const file = acceptedFiles[0]
+      if (!file) return
       if (file.size > MAX_FILE_SIZE) {
-        setErrorMessage('File size exceeds 5MB')
+        setErrorMessage('File size exceeds 50MB')
         return
       }
 
       setErrorMessage('')
-      setFiles([Object.assign(file)])
+      setFiles([file])
+      setUploadStep(0)
+      setFileHeaders([])
+      setSampleRows([])
+      setRowCount(0)
+      setFieldMap({ name: '', phone: '', email: '', district: '' })
     }
   })
 
   useEffect(() => {
     return () => {
-      files.forEach(file => URL.revokeObjectURL(file.preview))
+      files.forEach(file => file.preview && URL.revokeObjectURL(file.preview))
     }
   }, [files])
 
+  const handleReadHeaders = async () => {
+    if (!files.length) {
+      toast.error('Please select an Excel or CSV file to upload.', { position: 'bottom-right' })
+      return
+    }
+    if (!uploadData.campaignid) {
+      toast.error('Please select a campaign.', { position: 'bottom-right' })
+      return
+    }
+
+    setReadingHeaders(true)
+    try {
+      const token = localStorage.getItem('token')
+      const formData = new FormData()
+      formData.append('file', files[0])
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/excel/headers`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData
+      })
+      const data = await response.json()
+
+      if (!response.ok) {
+        toast.error(data.error || data.details || 'Failed to read file columns.', { position: 'bottom-right' })
+        return
+      }
+
+      setFileHeaders(data.headers || [])
+      setSampleRows(data.sampleRows || [])
+      setRowCount(data.rowCount || 0)
+      setFieldMap({
+        name: data.suggestedMapping?.name || '',
+        phone: data.suggestedMapping?.phone || '',
+        email: data.suggestedMapping?.email || '',
+        district: data.suggestedMapping?.district || ''
+      })
+      setUploadStep(1)
+    } catch (err) {
+      toast.error('Failed to read file columns. Please try again.', { position: 'bottom-right' })
+    } finally {
+      setReadingHeaders(false)
+    }
+  }
+
   const handleUploadSubmit = async e => {
-    e.preventDefault()
+    e?.preventDefault?.()
+    if (!files.length) {
+      toast.error('Please select an Excel or CSV file to upload.', { position: 'bottom-right' })
+      return
+    }
+    if (!uploadData.campaignid) {
+      toast.error('Please select a campaign.', { position: 'bottom-right' })
+      return
+    }
+    if (!fieldMap.name || !fieldMap.phone) {
+      toast.error('Please map Name and Phone columns before importing.', { position: 'bottom-right' })
+      return
+    }
+
     setUploading(true)
     try {
       const token = localStorage.getItem('token')
       const formData = new FormData()
-
-      // Assuming files is an array with a single file
-      formData.append('file', files[0]) // Upload the first file
+      formData.append('file', files[0])
       formData.append('campaignid', uploadData.campaignid)
-      formData.append('source', uploadData.source)
+      formData.append('source', uploadData.source || '')
+      formData.append('fieldMap', JSON.stringify(fieldMap))
 
-      // Example API call to submit the form
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/excel/upload`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/excel/upload-mapped`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}` // Only include Authorization, no need for Content-Type
+          Authorization: `Bearer ${token}`
         },
         body: formData
       })
@@ -201,18 +296,17 @@ const Leads = ({ campid, onClose }) => {
       const data = await response.json()
 
       if (response.ok) {
-        toast.success('Successfully uploaded', {
-          position: 'bottom-right'
-        })
-        setUploading(false)
+        const created = data.created ?? 0
+        const duplicates = data.duplicates ?? 0
+        const skipped = data.skipped ?? 0
+        toast.success(
+          `Upload complete: ${created} lead(s) created${duplicates ? `, ${duplicates} duplicate(s) skipped` : ''}${skipped ? `, ${skipped} row(s) skipped` : ''}.`,
+          { position: 'bottom-right' }
+        )
+        setUploadData({ campaignid: campid?._id || '', source: '' })
         handleClose()
-        setFiles([])
-        setUploadData({
-          campaign: '',
-          source: ''
-        })
       } else {
-        toast.error('An error occurred. Please try again.', {
+        toast.error(data.error || data.details || data.message || 'An error occurred. Please try again.', {
           position: 'bottom-right'
         })
       }
@@ -220,6 +314,8 @@ const Leads = ({ campid, onClose }) => {
       toast.error('An error occurred. Please try again.', {
         position: 'bottom-right'
       })
+    } finally {
+      setUploading(false)
     }
   }
   const [campaigns, setCampaigns] = useState([])
@@ -258,121 +354,175 @@ const Leads = ({ campid, onClose }) => {
           Bulk Upload
         </Button>
       </Box>
-      <Dialog open={open} onClose={handleClose} aria-labelledby='form-dialog-title'>
-        <DialogTitle id='form-dialog-title'>Upload XLSX</DialogTitle>
+      <Dialog open={open} onClose={handleClose} aria-labelledby='form-dialog-title' maxWidth='sm' fullWidth>
+        <DialogTitle id='form-dialog-title'>Bulk Upload Leads</DialogTitle>
         <DialogContent>
-          <DialogContentText className='mbe-3'>
-            {/* To subscribe to this website, please enter your email address here. We will send updates occasionally. */}
-          </DialogContentText>
-          <Grid container spacing={5}>
-            <Grid item xs={12} sm={12}>
-              {/* <TextField
-                fullWidth
-                label='Campaign'
-                value={uploadData.campaign}
-                placeholder='Campaign'
-                onChange={e => setUploadData({ ...uploadData, campaign: e.target.value })}
-              /> */}
-              {/* <InputLabel id="campaign-select-label">Campaign</InputLabel>
-              <Select
-                fullWidth
-                style={{ color: 'black' }}
-                labelId="campaign-select-label"
-                id="campaign-select"
-                value={uploadData.campaign}
-                onChange={(e) => setUploadData({ ...uploadData, campaignid: e.target.value })}
-              >
-                <MenuItem value="" disabled>
-                  Choose Campaign
-                </MenuItem>
-                {campaigns.map((campaign, index) => (
-                  <MenuItem key={index} value={campaign._id}>
-                    {campaign.name}
-                  </MenuItem>
-                ))}
-              </Select> */}
-              {campid ? <TextField
-                disabled
-                fullWidth
-                label='Campaign'
-                value={campid.name}
-              /> :
-                <>  <InputLabel id="campaign-select-label">Campaign</InputLabel>
-                  <Select
-                    fullWidth
-                    style={{ color: 'black' }}
-                    labelId="campaign-select-label"
-                    id="campaign-select"
-                    value={uploadData.campaignid}
-                    onChange={(e) => setUploadData({ ...uploadData, campaignid: e.target.value })}
-                  >
-                    <MenuItem value="" disabled>
-                      Choose Campaign
-                    </MenuItem>
-                    {campaigns.map((campaign, index) => (
-                      <MenuItem key={index} value={campaign._id}>
-                        {campaign.name}
-                      </MenuItem>
-                    ))}
-                  </Select> </>}
-            </Grid>
+          <Box sx={{ mb: 3, mt: 1 }}>
+            <Stepper activeStep={uploadStep} alternativeLabel>
+              <Step>
+                <StepLabel>Upload file</StepLabel>
+              </Step>
+              <Step>
+                <StepLabel>Map columns</StepLabel>
+              </Step>
+            </Stepper>
+          </Box>
 
-            <Grid item xs={12} sm={12}>
-              <Box {...getRootProps({ className: 'dropzone' })} {...files.length}>
-                <input {...getInputProps()} />
-                {files.length ? (
-                  <>
-                    <Box display={'flex'} justifyContent={'space-between'}>
-                      <Typography variant='h6'>{files[0].name}</Typography>
-                      <Button>change</Button>
-                    </Box>
-                  </>
+          {uploadStep === 0 && (
+            <Grid container spacing={5}>
+              <Grid item xs={12}>
+                <DialogContentText>
+                  Choose a campaign, optional source, then upload an Excel or CSV file. Next you will map columns
+                  (Name and Phone are required).
+                </DialogContentText>
+              </Grid>
+              <Grid item xs={12} sm={12}>
+                {campid ? (
+                  <TextField disabled fullWidth label='Campaign' value={campid.name} />
                 ) : (
-                  <Box
-                    className='flex items-center flex-col'
-                    sx={{
-                      border: '2px dotted', // Dotted border
-                      borderColor: 'gray', // You can choose any color, e.g., primary.main
-                      padding: 5, // Padding inside the box
-                      borderRadius: 1 // Optional: border radius for rounded corners
-                    }}
-                  >
-                    <Avatar variant='rounded' className='bs-12 is-12 mbe-9'>
-                      <i className='ri-upload-2-line' />
-                    </Avatar>
-                    <Typography variant='h4' className='mbe-2.5'>
-                      Drop XLS or XLSX file here or click to upload.
-                    </Typography>
-                    <Typography color='text.secondary'>
-                      Drop files here or click{' '}
-                      <a href='/' onClick={e => e.preventDefault()} className='text-textPrimary no-underline'>
-                        browse
-                      </a>{' '}
-                      through your machine
-                    </Typography>
-                  </Box>
+                  <>
+                    <InputLabel id='campaign-select-label'>Campaign</InputLabel>
+                    <Select
+                      fullWidth
+                      style={{ color: 'black' }}
+                      labelId='campaign-select-label'
+                      id='campaign-select'
+                      value={uploadData.campaignid}
+                      onChange={e => setUploadData({ ...uploadData, campaignid: e.target.value })}
+                    >
+                      <MenuItem value='' disabled>
+                        Choose Campaign
+                      </MenuItem>
+                      {campaigns.map((campaign, index) => (
+                        <MenuItem key={index} value={campaign._id}>
+                          {campaign.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </>
                 )}
-                {errorMessage && <Typography color='error'>{errorMessage}</Typography>}
-              </Box>
+              </Grid>
+
+              <Grid item xs={12} sm={12}>
+                <Box {...getRootProps({ className: 'dropzone' })}>
+                  <input {...getInputProps()} />
+                  {files.length ? (
+                    <Box display={'flex'} justifyContent={'space-between'} alignItems='center'>
+                      <Typography variant='h6'>{files[0].name}</Typography>
+                      <Button type='button'>Change</Button>
+                    </Box>
+                  ) : (
+                    <Box
+                      className='flex items-center flex-col'
+                      sx={{
+                        border: '2px dotted',
+                        borderColor: 'gray',
+                        padding: 5,
+                        borderRadius: 1
+                      }}
+                    >
+                      <Avatar variant='rounded' className='bs-12 is-12 mbe-9'>
+                        <i className='ri-upload-2-line' />
+                      </Avatar>
+                      <Typography variant='h4' className='mbe-2.5'>
+                        Drop XLS, XLSX, or CSV here
+                      </Typography>
+                      <Typography color='text.secondary'>
+                        Drop files here or click browse through your machine
+                      </Typography>
+                    </Box>
+                  )}
+                  {errorMessage && <Typography color='error'>{errorMessage}</Typography>}
+                </Box>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label='Source'
+                  value={uploadData.source}
+                  placeholder='facebook,instagram'
+                  onChange={e => setUploadData({ ...uploadData, source: e.target.value })}
+                />
+              </Grid>
             </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label='Source'
-                value={uploadData.source}
-                placeholder='facebook,instagram'
-                onChange={e => setUploadData({ ...uploadData, source: e.target.value })}
-              />
+          )}
+
+          {uploadStep === 1 && (
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <Typography variant='body2' color='text.secondary'>
+                  {rowCount} data row(s) found in <strong>{files[0]?.name}</strong>. Columns were auto-matched where
+                  possible — change any mapping below before importing.
+                </Typography>
+              </Grid>
+              {MAPPABLE_FIELDS.map(field => {
+                const sample =
+                  fieldMap[field.key] && sampleRows[0]
+                    ? String(sampleRows[0][fieldMap[field.key]] ?? '')
+                    : ''
+                return (
+                  <Grid item xs={12} key={field.key}>
+                    <FormControl fullWidth>
+                      <InputLabel id={`map-${field.key}-label`}>
+                        {field.label}
+                        {field.required ? ' *' : ''}
+                      </InputLabel>
+                      <Select
+                        labelId={`map-${field.key}-label`}
+                        label={`${field.label}${field.required ? ' *' : ''}`}
+                        value={fieldMap[field.key] || ''}
+                        onChange={e =>
+                          setFieldMap(prev => ({
+                            ...prev,
+                            [field.key]: e.target.value
+                          }))
+                        }
+                      >
+                        <MenuItem value=''>
+                          <em>Skip / not mapped</em>
+                        </MenuItem>
+                        {fileHeaders.map(header => (
+                          <MenuItem key={header} value={header}>
+                            {header}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      {sample ? (
+                        <FormHelperText>Sample: {sample}</FormHelperText>
+                      ) : (
+                        <FormHelperText>
+                          {field.required ? 'Required' : 'Optional'}
+                        </FormHelperText>
+                      )}
+                    </FormControl>
+                  </Grid>
+                )
+              })}
             </Grid>
-          </Grid>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose} variant='outlined' color='secondary'>
             Cancel
           </Button>
-          <Button onClick={handleUploadSubmit} type='submit' variant='contained' disabled={uploading}>
-            {uploading ? <CircularProgress size={24} /> : 'Upload'}
-          </Button>
+          {uploadStep === 1 && (
+            <Button onClick={() => setUploadStep(0)} variant='outlined'>
+              Back
+            </Button>
+          )}
+          {uploadStep === 0 ? (
+            <Button onClick={handleReadHeaders} variant='contained' disabled={readingHeaders}>
+              {readingHeaders ? <CircularProgress size={24} /> : 'Next: Map columns'}
+            </Button>
+          ) : (
+            <Button
+              onClick={handleUploadSubmit}
+              variant='contained'
+              disabled={uploading || !fieldMap.name || !fieldMap.phone}
+            >
+              {uploading ? <CircularProgress size={24} /> : 'Import leads'}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
       <Card>

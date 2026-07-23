@@ -1,14 +1,13 @@
 // Third-party Imports
 import { createSlice } from '@reduxjs/toolkit'
 
-// Data Imports
-import { events } from '@/fake-db/apps/calendar'
-
 const initialState = {
-  events: events,
-  filteredEvents: events,
+  events: [],
+  filteredEvents: [],
   selectedEvent: null,
-  selectedCalendars: ['Personal', 'Business', 'Family', 'Holiday', 'ETC']
+  selectedCalendars: ['Personal', 'Business', 'Family', 'Holiday', 'ETC'],
+  loading: false,
+  loadError: null
 }
 
 const filterEventsUsingCheckbox = (events, selectedCalendars) => {
@@ -19,6 +18,19 @@ export const calendarSlice = createSlice({
   name: 'calendar',
   initialState: initialState,
   reducers: {
+    setEvents: (state, action) => {
+      state.events = action.payload || []
+      state.filteredEvents = action.payload || []
+      state.loading = false
+      state.loadError = null
+    },
+    setEventsLoading: (state, action) => {
+      state.loading = !!action.payload
+    },
+    setEventsError: (state, action) => {
+      state.loading = false
+      state.loadError = action.payload || 'Failed to load events'
+    },
     filterEvents: state => {
       state.filteredEvents = state.events
     },
@@ -70,6 +82,9 @@ export const calendarSlice = createSlice({
   }
 })
 export const {
+  setEvents,
+  setEventsLoading,
+  setEventsError,
   filterEvents,
   addEvent,
   updateEvent,

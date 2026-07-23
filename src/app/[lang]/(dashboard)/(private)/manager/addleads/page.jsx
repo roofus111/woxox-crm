@@ -27,7 +27,7 @@ import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
-import { DialogContentText, Select, MenuItem, InputLabel, FormControl, FormHelperText, Stepper, Step, StepLabel } from '@mui/material'
+import { DialogContentText, Select, MenuItem, InputLabel, FormControl, FormHelperText, Stepper, Step, StepLabel, Checkbox, ListItemText, Switch, FormControlLabel, Slider, Stack, Chip } from '@mui/material'
 import { toast } from 'react-toastify'
 import axios from 'axios'
 
@@ -160,6 +160,9 @@ const Leads = ({ campid, onClose }) => {
     setSampleRows([])
     setRowCount(0)
     setFieldMap({ name: '', phone: '', email: '', district: '' })
+    setSelectedCounselors([])
+    setCounselorPercentages({})
+    setAssignOnUpload(true)
     setErrorMessage('')
   }
 
@@ -182,6 +185,10 @@ const Leads = ({ campid, onClose }) => {
     email: '',
     district: ''
   })
+  const [counselors, setCounselors] = useState([])
+  const [selectedCounselors, setSelectedCounselors] = useState([])
+  const [counselorPercentages, setCounselorPercentages] = useState({})
+  const [assignOnUpload, setAssignOnUpload] = useState(true)
 
   // Dropzone Hooks
   const { getRootProps, getInputProps } = useDropzone({
@@ -237,7 +244,19 @@ const Leads = ({ campid, onClose }) => {
         headers: { Authorization: `Bearer ${token}` },
         body: formData
       })
-      const data = await response.json()
+      const raw = await response.text()
+      let data = {}
+      try {
+        data = raw ? JSON.parse(raw) : {}
+      } catch {
+        toast.error(
+          response.ok
+            ? 'Unexpected server response while reading columns.'
+            : `Failed to read file columns (${response.status}). Please try again.`,
+          { position: 'bottom-right' }
+        )
+        return
+      }
 
       if (!response.ok) {
         toast.error(data.error || data.details || 'Failed to read file columns.', { position: 'bottom-right' })
@@ -255,7 +274,7 @@ const Leads = ({ campid, onClose }) => {
       })
       setUploadStep(1)
     } catch (err) {
-      toast.error('Failed to read file columns. Please try again.', { position: 'bottom-right' })
+      toast.error(err?.message || 'Failed to read file columns. Please try again.', { position: 'bottom-right' })
     } finally {
       setReadingHeaders(false)
     }
@@ -276,6 +295,28 @@ const Leads = ({ campid, onClose }) => {
       return
     }
 
+    let assignmentPlan = []
+    if (assignOnUpload) {
+      if (!selectedCounselors.length) {
+        toast.error('Select at least one counselor, or turn off assignment.', { position: 'bottom-right' })
+        return
+      }
+      const totalPct = selectedCounselors.reduce(
+        (sum, id) => sum + (Number(counselorPercentages[id]) || 0),
+        0
+      )
+      if (totalPct < 99 || totalPct > 101) {
+        toast.error(`Counselor percentages must total 100% (currently ${totalPct}%).`, {
+          position: 'bottom-right'
+        })
+        return
+      }
+      assignmentPlan = selectedCounselors.map(id => ({
+        userId: id,
+        percentage: Number(counselorPercentages[id]) || 0
+      }))
+    }
+
     setUploading(true)
     try {
       const token = localStorage.getItem('token')
@@ -284,6 +325,9 @@ const Leads = ({ campid, onClose }) => {
       formData.append('campaignid', uploadData.campaignid)
       formData.append('source', uploadData.source || '')
       formData.append('fieldMap', JSON.stringify(fieldMap))
+      if (assignmentPlan.length) {
+        formData.append('assignmentPlan', JSON.stringify(assignmentPlan))
+      }
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/excel/upload-mapped`, {
         method: 'POST',
@@ -318,6 +362,44 @@ const Leads = ({ campid, onClose }) => {
       setUploading(false)
     }
   }
+
+  const counselorLabel = user =>
+    `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.name || user.email || 'Counselor'
+
+  const totalAssignmentPct = selectedCounselors.reduce(
+    (sum, id) => sum + (Number(counselorPercentages[id]) || 0),
+    0
+  )
+
+  const splitEqually = ids => {
+    if (!ids.length) return {}
+    const base = Math.floor(100 / ids.length)
+    let remainder = 100 - base * ids.length
+    const next = {}
+    ids.forEach((id, index) => {
+      next[id] = base + (index < remainder ? 1 : 0)
+    })
+    return next
+  }
+
+  const handleCounselorSelect = event => {
+    const value = event.target.value
+    const ids = typeof value === 'string' ? value.split(',') : value
+    setSelectedCounselors(ids)
+    setCounselorPercentages(prev => {
+      const kept = {}
+      ids.forEach(id => {
+        if (prev[id] != null) kept[id] = prev[id]
+      })
+      return Object.keys(kept).length === ids.length ? kept : splitEqually(ids)
+    })
+  }
+
+  const setCounselorPct = (id, value) => {
+    const pct = Math.max(0, Math.min(100, Number(value) || 0))
+    setCounselorPercentages(prev => ({ ...prev, [id]: pct }))
+  }
+
   const [campaigns, setCampaigns] = useState([])
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -327,11 +409,22 @@ const Leads = ({ campid, onClose }) => {
       }
     })
       .then(response => {
-        setCampaigns(response.data) // Update data if component is still mounted
-        console.log(response.data)
+        setCampaigns(response.data)
       })
       .catch(error => {
         console.error('Failed to fetch data:', error)
+      })
+
+    axios
+      .get(`${process.env.NEXT_PUBLIC_API_URL}/api/user-profiles/users/active`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      .then(response => {
+        const list = response.data?.data || response.data || []
+        setCounselors(Array.isArray(list) ? list : [])
+      })
+      .catch(error => {
+        console.error('Failed to fetch counselors:', error)
       })
   }, [open])
 
@@ -365,6 +458,9 @@ const Leads = ({ campid, onClose }) => {
               <Step>
                 <StepLabel>Map columns</StepLabel>
               </Step>
+              <Step>
+                <StepLabel>Assign counselors</StepLabel>
+              </Step>
             </Stepper>
           </Box>
 
@@ -373,7 +469,7 @@ const Leads = ({ campid, onClose }) => {
               <Grid item xs={12}>
                 <DialogContentText>
                   Choose a campaign, optional source, then upload an Excel or CSV file. Next you will map columns
-                  (Name and Phone are required).
+                  (Name and Phone are required), then assign leads to counselors by percentage.
                 </DialogContentText>
               </Grid>
               <Grid item xs={12} sm={12}>
@@ -452,7 +548,7 @@ const Leads = ({ campid, onClose }) => {
               <Grid item xs={12}>
                 <Typography variant='body2' color='text.secondary'>
                   {rowCount} data row(s) found in <strong>{files[0]?.name}</strong>. Columns were auto-matched where
-                  possible — change any mapping below before importing.
+                  possible — change any mapping below before continuing.
                 </Typography>
               </Grid>
               {MAPPABLE_FIELDS.map(field => {
@@ -500,25 +596,146 @@ const Leads = ({ campid, onClose }) => {
               })}
             </Grid>
           )}
+
+          {uploadStep === 2 && (
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={assignOnUpload}
+                      onChange={e => setAssignOnUpload(e.target.checked)}
+                    />
+                  }
+                  label='Assign leads to counselors during upload'
+                />
+                <Typography variant='body2' color='text.secondary'>
+                  Set each counselor&apos;s share so percentages total 100%. Leads are distributed by those shares as
+                  they are imported (~{rowCount} rows).
+                </Typography>
+              </Grid>
+
+              {assignOnUpload && (
+                <>
+                  <Grid item xs={12}>
+                    <FormControl fullWidth>
+                      <InputLabel id='counselor-multi-label'>Counselors</InputLabel>
+                      <Select
+                        multiple
+                        labelId='counselor-multi-label'
+                        label='Counselors'
+                        value={selectedCounselors}
+                        onChange={handleCounselorSelect}
+                        renderValue={selected =>
+                          selected
+                            .map(id => {
+                              const user = counselors.find(c => c._id === id)
+                              return user ? counselorLabel(user) : id
+                            })
+                            .join(', ')
+                        }
+                      >
+                        {counselors.map(user => (
+                          <MenuItem key={user._id} value={user._id}>
+                            <Checkbox checked={selectedCounselors.includes(user._id)} />
+                            <ListItemText primary={counselorLabel(user)} secondary={user.role || ''} />
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      <FormHelperText>
+                        {counselors.length
+                          ? 'Select one or more counselors'
+                          : 'No active counselors found for this company'}
+                      </FormHelperText>
+                    </FormControl>
+                  </Grid>
+
+                  {selectedCounselors.length > 0 && (
+                    <Grid item xs={12}>
+                      <Stack direction='row' justifyContent='space-between' alignItems='center' sx={{ mb: 1 }}>
+                        <Chip
+                          size='small'
+                          color={totalAssignmentPct === 100 ? 'success' : 'warning'}
+                          label={`Total: ${totalAssignmentPct}%`}
+                        />
+                        <Button size='small' onClick={() => setCounselorPercentages(splitEqually(selectedCounselors))}>
+                          Split equally
+                        </Button>
+                      </Stack>
+                      {selectedCounselors.map(id => {
+                        const user = counselors.find(c => c._id === id)
+                        const pct = Number(counselorPercentages[id]) || 0
+                        const estimated = Math.round((rowCount * pct) / 100)
+                        return (
+                          <Box key={id} sx={{ mb: 2.5 }}>
+                            <Stack direction='row' justifyContent='space-between' alignItems='center'>
+                              <Typography variant='subtitle2'>{user ? counselorLabel(user) : id}</Typography>
+                              <Typography variant='caption' color='text.secondary'>
+                                ~{estimated} lead(s)
+                              </Typography>
+                            </Stack>
+                            <Stack direction='row' spacing={2} alignItems='center'>
+                              <Slider
+                                value={pct}
+                                min={0}
+                                max={100}
+                                step={1}
+                                onChange={(_, value) => setCounselorPct(id, value)}
+                                sx={{ flex: 1 }}
+                              />
+                              <TextField
+                                size='small'
+                                type='number'
+                                value={pct}
+                                onChange={e => setCounselorPct(id, e.target.value)}
+                                inputProps={{ min: 0, max: 100 }}
+                                sx={{ width: 88 }}
+                                InputProps={{ endAdornment: <Typography variant='caption'>%</Typography> }}
+                              />
+                            </Stack>
+                          </Box>
+                        )
+                      })}
+                    </Grid>
+                  )}
+                </>
+              )}
+            </Grid>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose} variant='outlined' color='secondary'>
             Cancel
           </Button>
-          {uploadStep === 1 && (
-            <Button onClick={() => setUploadStep(0)} variant='outlined'>
+          {uploadStep > 0 && (
+            <Button onClick={() => setUploadStep(prev => prev - 1)} variant='outlined'>
               Back
             </Button>
           )}
-          {uploadStep === 0 ? (
+          {uploadStep === 0 && (
             <Button onClick={handleReadHeaders} variant='contained' disabled={readingHeaders}>
               {readingHeaders ? <CircularProgress size={24} /> : 'Next: Map columns'}
             </Button>
-          ) : (
+          )}
+          {uploadStep === 1 && (
+            <Button
+              onClick={() => setUploadStep(2)}
+              variant='contained'
+              disabled={!fieldMap.name || !fieldMap.phone}
+            >
+              Next: Assign counselors
+            </Button>
+          )}
+          {uploadStep === 2 && (
             <Button
               onClick={handleUploadSubmit}
               variant='contained'
-              disabled={uploading || !fieldMap.name || !fieldMap.phone}
+              disabled={
+                uploading ||
+                !fieldMap.name ||
+                !fieldMap.phone ||
+                (assignOnUpload && (!selectedCounselors.length || totalAssignmentPct < 99 || totalAssignmentPct > 101))
+              }
             >
               {uploading ? <CircularProgress size={24} /> : 'Import leads'}
             </Button>

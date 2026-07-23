@@ -35,7 +35,8 @@ const Calendar = props => {
     calendarsColor,
     dispatch,
     handleAddEventSidebarToggle,
-    handleLeftSidebarToggle
+    handleLeftSidebarToggle,
+    onFollowUpNavigate
   } = props
 
   // Refs
@@ -107,18 +108,20 @@ const Calendar = props => {
     },
     eventClick({ event: clickedEvent, jsEvent }) {
       jsEvent.preventDefault()
+
+      if (clickedEvent.extendedProps?.leadId && typeof onFollowUpNavigate === 'function') {
+        onFollowUpNavigate({
+          extendedProps: clickedEvent.extendedProps
+        })
+        return
+      }
+
       dispatch(selectedEvent(clickedEvent))
       handleAddEventSidebarToggle()
 
       if (clickedEvent.url) {
-        // Open the URL in a new tab
         window.open(clickedEvent.url, '_blank')
       }
-
-      //* Only grab required field otherwise it goes in infinity loop
-      //! Always grab all fields rendered by form (even if it get `undefined`)
-      // event.value = grabEventDataFromEventApi(clickedEvent)
-      // isAddNewEventSidebarActive.value = true
     },
     customButtons: {
       sidebarToggle: {

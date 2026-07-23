@@ -109,8 +109,22 @@ export const authOptions = {
           if (session.user.enabledProducts) {
             token.enabledProducts = session.user.enabledProducts;
           }
+          if (session.user.enabledModules) {
+            token.enabledModules = session.user.enabledModules;
+          }
+          if (session.user.planModules) {
+            token.planModules = session.user.planModules;
+          }
         }
         if (session.accessToken) token.accessToken = session.accessToken;
+      }
+
+      if (user?.workspace?.enabledModules?.length) {
+        token.enabledModules = user.workspace.enabledModules;
+        token.enabledProducts = user.workspace.enabledModules;
+      }
+      if (user?.workspace?.planModules?.length) {
+        token.planModules = user.workspace.planModules;
       }
 
       return token;
@@ -126,6 +140,8 @@ export const authOptions = {
         session.user.company = token.company;
         session.user.plan = token.plan;
         session.user.enabledProducts = token.enabledProducts;
+        session.user.enabledModules = token.enabledModules;
+        session.user.planModules = token.planModules;
         session.user.impersonation = token.impersonation;
       }
       session.accessToken = token.accessToken;

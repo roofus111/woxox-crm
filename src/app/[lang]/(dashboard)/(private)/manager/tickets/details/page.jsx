@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useSession } from 'next-auth/react';  // Importing useSession hook
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useParams, useRouter } from "next/navigation";
 import {
     Box,
     Button,
@@ -42,6 +42,9 @@ export default function TicketDetails() {
     const [notes, setNotes] = useState([]);
     const { data: session } = useSession();
     const searchParams = useSearchParams();
+    const params = useParams();
+    const router = useRouter();
+    const locale = params?.lang || 'en';
     const ticketId = searchParams.get("ticketId");
 
     // Console log the session and current user
@@ -396,6 +399,30 @@ export default function TicketDetails() {
                     <p className="text-gray-700">
                         <strong className="font-semibold">Phone:</strong> {ticketData.customer?.phone}
                     </p>
+                    {ticketData.leadId && (
+                        <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={() => {
+                                const id = ticketData.leadId?._id || ticketData.leadId;
+                                router.push(`/${locale}/manager/leads/byid/${id}`);
+                            }}
+                        >
+                            Open linked lead
+                            {ticketData.leadId?.first_name || ticketData.leadId?.name
+                                ? `: ${ticketData.leadId.name || [ticketData.leadId.first_name, ticketData.leadId.last_name].filter(Boolean).join(' ')}`
+                                : ''}
+                        </Button>
+                    )}
+                    {ticketData.customer?._id && (
+                        <Button
+                            variant="text"
+                            size="small"
+                            onClick={() => router.push(`/${locale}/manager/customer?customerId=${ticketData.customer._id}`)}
+                        >
+                            View contact
+                        </Button>
+                    )}
                 </div>
             </div>
 

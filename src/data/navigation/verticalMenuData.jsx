@@ -175,9 +175,9 @@ const verticalMenuData = dictionary => [
       },
       {
         label: dictionary['navigation'].email,
-        href: '/apps/email',
+        href: '/manager/email/smtp',
         exactMatch: false,
-        activeUrl: '/apps/email',
+        activeUrl: '/manager/email',
         icon: 'ri-mail-open-line'
       },
       {

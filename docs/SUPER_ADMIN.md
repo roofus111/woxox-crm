@@ -112,6 +112,8 @@ SMTP_PASS=
 SMTP_FROM="WOXOX <noreply@woxox.com>"
 ```
 
+Welcome emails (register, get-started, paid signup) require `SMTP_USER` and `SMTP_PASS` on **crm-api**. Without them, signup still succeeds but no email is sent.
+
 Razorpay webhook URL: `https://platform.woxox.com/api/v1/billing/webhooks/razorpay`
 
 ### Marketing website (www)

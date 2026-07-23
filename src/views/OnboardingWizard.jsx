@@ -9,6 +9,7 @@ import {
   loginCrmPlatform,
   updateOnboarding,
 } from '@/libs/crmPlatformApi'
+import { storeEnabledProducts } from '@/libs/tenantModules'
 import BrandLogo from '@/views/super-admin/BrandLogo'
 import { MODULE_OPTIONS, SUPER_ADMIN_CSS } from '@/views/super-admin/constants'
 
@@ -26,6 +27,7 @@ export default function OnboardingWizard() {
   const [teamSize, setTeamSize] = useState('1-10')
   const [inviteEmail, setInviteEmail] = useState('')
   const [modules, setModules] = useState(['crm'])
+  const [planModules, setPlanModules] = useState(['crm'])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -42,6 +44,8 @@ export default function OnboardingWizard() {
           return
         }
         setCompanyName(data.workspace?.name || '')
+        const paid = data.workspace?.planModules || data.workspace?.enabledModules || ['crm']
+        setPlanModules(paid.includes('crm') ? paid : ['crm', ...paid])
         setModules(data.workspace?.enabledModules || ['crm'])
       })
       .catch(() => setNeedsLogin(true))
@@ -56,6 +60,8 @@ export default function OnboardingWizard() {
       setNeedsLogin(false)
       const data = await getOnboardingStatus()
       setCompanyName(data.workspace?.name || '')
+      const paid = data.workspace?.planModules || data.workspace?.enabledModules || ['crm']
+      setPlanModules(paid.includes('crm') ? paid : ['crm', ...paid])
       setModules(data.workspace?.enabledModules || ['crm'])
     } catch (err) {
       setError(err.message)
@@ -85,6 +91,7 @@ export default function OnboardingWizard() {
       } else {
         await updateOnboarding({ modules, step: 'done' })
         await completeOnboarding()
+        storeEnabledProducts(modules)
         setNotice('Onboarding complete')
         router.replace(`/${lang}/dashboards/crm`)
       }
@@ -96,6 +103,8 @@ export default function OnboardingWizard() {
   }
 
   const toggleModule = id => {
+    if (id === 'crm') return
+    if (!planModules.includes(id)) return
     setModules(prev =>
       prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]
     )
@@ -185,18 +194,28 @@ export default function OnboardingWizard() {
 
             {step === 2 ? (
               <>
-                <p className='sa-label'>Enable modules</p>
+                <p className='sa-label'>Enable modules included in your plan</p>
                 <div className='sa-modules'>
-                  {MODULE_OPTIONS.map(mod => (
-                    <label key={mod.id} className='sa-chip'>
-                      <input
-                        type='checkbox'
-                        checked={modules.includes(mod.id)}
-                        onChange={() => toggleModule(mod.id)}
-                      />
-                      {mod.label}
-                    </label>
-                  ))}
+                  {MODULE_OPTIONS.map(mod => {
+                    const included = planModules.includes(mod.id)
+                    const locked = mod.id === 'crm'
+                    return (
+                      <label
+                        key={mod.id}
+                        className='sa-chip'
+                        style={{ opacity: included ? 1 : 0.45, cursor: included && !locked ? 'pointer' : 'not-allowed' }}
+                      >
+                        <input
+                          type='checkbox'
+                          checked={modules.includes(mod.id)}
+                          disabled={locked || !included}
+                          onChange={() => toggleModule(mod.id)}
+                        />
+                        {mod.label}
+                        {!included ? ' (not in plan)' : ''}
+                      </label>
+                    )
+                  })}
                 </div>
               </>
             ) : null}

@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { useParams, useRouter } from "next/navigation";
 import {
     Button,
     Chip,
@@ -32,6 +33,9 @@ import AddCustomerForm from "@/views/apps/customer/Addcustomer";
 import { state } from "@formkit/drag-and-drop";
 
 const Customer = () => {
+    const router = useRouter();
+    const params = useParams();
+    const locale = params?.lang || "en";
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState(null);
     const [sortBy, setSortBy] = useState({ field: null, direction: "asc" });
@@ -450,8 +454,14 @@ const Customer = () => {
 
     // Handle sorting
 
-    const handleViewLead = (id) => console.log(`Viewing lead with ID: ${id}`);
-    const handleEditLead = (id) => console.log(`Editing lead with ID: ${id}`);
+    const handleViewLead = (id) => {
+        if (!id) return;
+        router.push(`/${locale}/manager/leads/byid/${id}`);
+    };
+    const handleEditLead = (id) => {
+        if (!id) return;
+        router.push(`/${locale}/manager/leads/byid/${id}`);
+    };
 
     const refreshCustomers = () => {
         fetchCustomers(); // Call fetchCustomers to reload the customer list
@@ -974,7 +984,7 @@ const Customer = () => {
 
                         {tabValue === 1 && (
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, padding: 2 }}>
-                                {leadsData.map((lead) => (
+                                {(leadData?.length ? leadData : []).map((lead) => (
                                     <Card
                                         key={lead.id}
                                         sx={{
@@ -987,18 +997,19 @@ const Customer = () => {
                                             transition: 'all 0.3s',
                                             '&:hover': { boxShadow: 3 },
                                         }}
+                                        onClick={() => handleViewLead(lead.id)}
                                     >
                                         <CardContent sx={{ display: 'flex', justifyContent: 'space-between' }}>
                                             {/* Left Side */}
                                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                                                 <Typography variant="body2" sx={{ color: '#6c757d' }}>
-                                                    Created Date: {lead.createdDate}
+                                                    Created Date: {lead.Date ? new Date(lead.Date).toLocaleDateString() : '—'}
                                                 </Typography>
                                                 <Typography variant="h6" sx={{ fontWeight: 'semibold', color: '#000' }}>
-                                                    {lead.campaignName}
+                                                    {lead.Name}
                                                 </Typography>
                                                 <Typography variant="body2" sx={{ color: '#495057' }}>
-                                                    {lead.campaignDescription}
+                                                    {lead.Description}
                                                 </Typography>
                                             </Box>
 
@@ -1007,9 +1018,9 @@ const Customer = () => {
                                                 <Chip
                                                     label={lead.status}
                                                     color={
-                                                        lead.status === 'Active'
+                                                        lead.status === 'Active' || lead.status === 'Converted'
                                                             ? 'success'
-                                                            : lead.status === 'Pending'
+                                                            : lead.status === 'Pending' || lead.status === 'New'
                                                                 ? 'warning'
                                                                 : 'default'
                                                     }
@@ -1022,8 +1033,8 @@ const Customer = () => {
                                                             <Typography variant="body2" sx={{ color: '#495057', fontWeight: 'semibold' }}>
                                                                 Assigned to:
                                                                 <Avatar
-                                                                    src={lead.assignedTo.avatar}
-                                                                    alt={lead.assignedTo.name}
+                                                                    src={lead.assignedTo?.avatar}
+                                                                    alt={lead.assignedTo?.name}
                                                                     sx={{ width: 40, height: 40 }}
                                                                 />
                                                             </Typography>
@@ -1034,42 +1045,11 @@ const Customer = () => {
                                         </CardContent>
                                     </Card>
                                 ))}
-
-                                {/* Invoice Data */}
-                                {/* {invoiceData.map((invoice) => (
-                                    <Card
-                                        key={invoice.id}
-                                        sx={{
-                                            width: '100%',
-                                            // boxShadow: 3,
-                                            borderRadius: 2,
-                                            padding: 2,
-                                            transition: 'all 0.3s',
-                                            '&:hover': { boxShadow: 3 },
-                                        }}
-                                    >
-                                        <CardContent sx={{ display: 'flex', justifyContent: 'space-between' }}> */}
-                                {/* Left Side */}
-                                {/* <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                    <i class="ri-receipt-fill" sx={{ color: '#007bff', fontSize: 40 }} />
-                                                    <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#007bff' }}>
-                                                        Invoice
-                                                    </Typography>
-                                                </Box>
-                                                <Typography variant="body2" sx={{ color: '#6c757d' }}>
-                                                    Created At: {invoice.createdAt}
-                                                </Typography>
-                                                <Typography variant="body2" sx={{ color: '#495057' }}>
-                                                    Bill Number: {invoice.billNumber}
-                                                </Typography>
-                                                <Typography variant="body2" sx={{ color: '#495057' }}>
-                                                    Ref ID: {invoice.refId}
-                                                </Typography>
-                                            </Box>
-
-                                            {/* Right Side */}
-
+                                {!leadData?.length && (
+                                    <Typography variant="body2" color="text.secondary">
+                                        No linked leads for this contact.
+                                    </Typography>
+                                )}
                             </Box>
                         )}
                         {tabValue === 2 && (

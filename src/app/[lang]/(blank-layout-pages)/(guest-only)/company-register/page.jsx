@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import axios from 'axios'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
+import { bridgeCrmPlatformWithLegacyToken, isCrmPlatformEnabled } from '@/libs/crmPlatformApi'
 
 const Page = () => {
   const router = useRouter();
@@ -186,6 +187,13 @@ const Page = () => {
           accessToken: response.data.token
         })
         localStorage.setItem('token', response.data.token)
+        if (isCrmPlatformEnabled()) {
+          try {
+            await bridgeCrmPlatformWithLegacyToken(response.data.token)
+          } catch (platformErr) {
+            console.warn('CRM platform bridge skipped:', platformErr.message)
+          }
+        }
         console.log('Session updated successfully')
         // Next: choose WOXOX products for product-based navigation
         router.replace('/en/select-products')
@@ -205,6 +213,14 @@ const Page = () => {
       if (newToken) {
         console.log('New token received:', newToken)
         localStorage.setItem('token', newToken)
+
+        if (isCrmPlatformEnabled()) {
+          try {
+            await bridgeCrmPlatformWithLegacyToken(newToken)
+          } catch (platformErr) {
+            console.warn('CRM platform bridge skipped:', platformErr.message)
+          }
+        }
 
         // Verify the token was actually saved
         const savedToken = localStorage.getItem('token')

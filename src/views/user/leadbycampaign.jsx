@@ -97,25 +97,40 @@ const Transactions = (props) => {
       setLoadingTags(true)
       try {
         const token = localStorage.getItem('token')
+        if (!token) {
+          setAllTags([])
+          return
+        }
+
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/api/tagmanager/alltags`,
           { headers: { Authorization: `Bearer ${token}` } }
         )
+
+        if (!response.ok) {
+          setAllTags([])
+          if (response.status !== 401) {
+            toast.error('Failed to load tags. Please try again.')
+          }
+          return
+        }
+
         const data = await response.json()
 
         if (Array.isArray(data)) {
           setAllTags(data)
-        } else if (data && data.success && Array.isArray(data.data)) {
+        } else if (data?.success && Array.isArray(data.data)) {
           setAllTags(data.data)
         } else {
-          console.error("Unexpected tags response format:", data)
-          toast.error("Unexpected tags format received")
+          setAllTags([])
         }
       } catch (err) {
-        console.error("Error fetching tags", err)
-        toast.error("Failed to load tags. Please try again.")
+        console.error('Error fetching tags', err)
+        setAllTags([])
+        toast.error('Failed to load tags. Please try again.')
+      } finally {
+        setLoadingTags(false)
       }
-      setLoadingTags(false)
     }
     fetchTags()
   }, [])

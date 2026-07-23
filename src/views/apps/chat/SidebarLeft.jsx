@@ -18,7 +18,7 @@ import classnames from 'classnames'
 import PerfectScrollbar from 'react-perfect-scrollbar'
 
 // Slice Imports
-import { addNewChat } from '@/redux-store/slices/chat'
+import { addNewChat, setSidebarFilter } from '@/redux-store/slices/chat'
 
 // Component Imports
 import CustomAvatar from '@core/components/mui/Avatar'
@@ -40,21 +40,44 @@ export const statusObj = {
 const renderChat = props => {
   // Props
   const { chatStore, getActiveUserData, setSidebarOpen, backdropOpen, setBackdropOpen, isBelowMdScreen } = props
+  const filter = chatStore.sidebarFilter || 'all'
 
-  return chatStore.chats.map(chat => {
+  const sorted = [...chatStore.chats].sort((a, b) => {
+    const aPref = chatStore.preferences?.[`${a.chatType || 'user'}:${a.userId}`]
+    const bPref = chatStore.preferences?.[`${b.chatType || 'user'}:${b.userId}`]
+    const aPin = aPref?.pinned ? 1 : 0
+    const bPin = bPref?.pinned ? 1 : 0
+    if (aPin !== bPin) return bPin - aPin
+    const aTime = a.chat[a.chat.length - 1]?.time || 0
+    const bTime = b.chat[b.chat.length - 1]?.time || 0
+    return new Date(bTime) - new Date(aTime)
+  })
+
+  return sorted.map(chat => {
+    const chatType = chat.chatType || 'user'
+    const pref = chatStore.preferences?.[`${chatType}:${chat.userId}`] || {}
+    if (filter === 'archived' && !pref.archived) return null
+    if (filter !== 'archived' && pref.archived) return null
+    if (filter === 'groups' && chatType !== 'group') return null
+    if (filter === 'direct' && chatType !== 'user') return null
+    if (filter === 'unread' && !(chat.unseenMsgs > 0)) return null
+
     const contact = chatStore.contacts.find(
-      contact => contact.id?.toString() === chat.userId?.toString()
+      c => c.id?.toString() === chat.userId?.toString() && (!!c.isGroup === (chatType === 'group'))
     )
     if (!contact) return null
 
-    const isChatActive = chatStore.activeUser?.id?.toString() === contact.id?.toString()
+    const isChatActive =
+      chatStore.activeUser?.id?.toString() === contact.id?.toString() &&
+      (chatStore.activeChatType || 'user') === chatType
 
     return (
       <li
-        key={chat.id}
+        key={`${chatType}-${chat.id}`}
         className={classnames('flex items-start gap-4 pli-3 plb-2 cursor-pointer rounded-lg mbe-1', {
           'bg-primary shadow-xs': isChatActive,
-          'text-[var(--mui-palette-primary-contrastText)]': isChatActive
+          'text-[var(--mui-palette-primary-contrastText)]': isChatActive,
+          'opacity-70': pref.muted
         })}
         onClick={() => {
           getActiveUserData(chat.userId)
@@ -66,11 +89,16 @@ const renderChat = props => {
           src={contact.avatar}
           isChatActive={isChatActive}
           alt={contact.fullName}
-          badgeColor={statusObj[contact.status]}
+          badgeColor={contact.isGroup ? 'info' : statusObj[contact.status]}
           color={contact.avatarColor}
         />
         <div className='min-is-0 flex-auto'>
-          <Typography color='inherit'>{contact?.fullName}</Typography>
+          <Typography color='inherit'>
+            {pref.pinned ? '📌 ' : ''}
+            {contact?.fullName}
+            {contact.isGroup ? ' · Group' : ''}
+            {pref.muted ? ' 🔇' : ''}
+          </Typography>
           {chat.chat.length ? (
             <Typography variant='body2' color={isChatActive ? 'inherit' : 'text.secondary'} className='truncate'>
               {chat.chat[chat.chat.length - 1].messageType !== 'text'
@@ -124,6 +152,7 @@ const SidebarLeft = props => {
     isBelowSmScreen,
     messageInputRef,
     onOpenNewChat,
+    onOpenNewGroup,
   } = props
 
   // States
@@ -135,13 +164,21 @@ const SidebarLeft = props => {
     const contact = chatStore.contacts.find(contact => contact.fullName === newValue)
     if (!contact) return
     setSearchValue(newValue)
-    dispatch(addNewChat({ id: contact.id }))
+    dispatch(addNewChat({ id: contact.id, chatType: contact.isGroup ? 'group' : 'user', isGroup: contact.isGroup }))
     getActiveUserData(contact.id)
     isBelowMdScreen && setSidebarOpen(false)
     setBackdropOpen(false)
     setSearchValue(null)
     messageInputRef.current?.focus()
   }
+
+  const filters = [
+    { id: 'all', label: 'All' },
+    { id: 'direct', label: 'Direct' },
+    { id: 'groups', label: 'Groups' },
+    { id: 'unread', label: 'Unread' },
+    { id: 'archived', label: 'Archived' },
+  ]
 
   return (
     <>
@@ -232,6 +269,11 @@ const SidebarLeft = props => {
             />
             {isBelowMdScreen ? (
               <>
+                <Tooltip title='New group'>
+                  <IconButton className='p-0 mis-1' onClick={onOpenNewGroup}>
+                    <i className='ri-group-line text-xl' />
+                  </IconButton>
+                </Tooltip>
                 <Tooltip title='New chat'>
                   <IconButton className='p-0 mis-1' onClick={onOpenNewChat}>
                     <i className='ri-edit-box-line text-xl' />
@@ -248,13 +290,33 @@ const SidebarLeft = props => {
                 </IconButton>
               </>
             ) : (
-              <Tooltip title='New chat'>
-                <IconButton color='primary' onClick={onOpenNewChat} className='mis-1'>
-                  <i className='ri-edit-box-line text-xl' />
-                </IconButton>
-              </Tooltip>
+              <>
+                <Tooltip title='New group'>
+                  <IconButton color='primary' onClick={onOpenNewGroup} className='mis-1'>
+                    <i className='ri-group-line text-xl' />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title='New chat'>
+                  <IconButton color='primary' onClick={onOpenNewChat} className='mis-1'>
+                    <i className='ri-edit-box-line text-xl' />
+                  </IconButton>
+                </Tooltip>
+              </>
             )}
           </div>
+        </div>
+        <div className='flex items-center gap-1 flex-wrap pli-4 plb-2 border-be'>
+          {filters.map(f => (
+            <Chip
+              key={f.id}
+              size='small'
+              label={f.label}
+              color={(chatStore.sidebarFilter || 'all') === f.id ? 'primary' : 'default'}
+              variant={(chatStore.sidebarFilter || 'all') === f.id ? 'filled' : 'outlined'}
+              onClick={() => dispatch(setSidebarFilter(f.id))}
+              className='cursor-pointer'
+            />
+          ))}
         </div>
         <div className='flex items-center justify-between pli-5 plb-2 border-be'>
           <Typography variant='body2' color='text.secondary'>

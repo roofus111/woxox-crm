@@ -151,37 +151,37 @@ const handleCloseDrawer = () => {
   refetchAllPages()
 }
 
-  // Fetch available tags for Autocomplete
   useEffect(() => {
     const fetchTags = async () => {
       setLoadingTags(true)
       try {
         const token = localStorage.getItem('token')
+        if (!token) {
+          setAllTags([])
+          return
+        }
+
         const response = await axios.get(
           `${process.env.NEXT_PUBLIC_API_URL}/api/tagmanager/alltags`,
           { headers: { Authorization: `Bearer ${token}` } }
         )
 
-        // Check if response is an array directly (as seen in Postman)
         if (Array.isArray(response.data)) {
-          console.log("Fetched tags (array):", response.data)
           setAllTags(response.data)
-        }
-        // Or check if it's wrapped in a success property
-        else if (response.data && response.data.success && Array.isArray(response.data.data)) {
-          console.log("Fetched tags (success.data):", response.data.data)
+        } else if (response.data?.success && Array.isArray(response.data.data)) {
           setAllTags(response.data.data)
-        }
-        // If neither format works, log the issue
-        else {
-          console.error("Unexpected tags response format:", response.data)
-          toast.error("Unexpected tags format received")
+        } else {
+          setAllTags([])
         }
       } catch (err) {
-        console.error("Error fetching tags", err)
-        toast.error("Failed to load tags. Please try again.")
+        console.error('Error fetching tags', err)
+        setAllTags([])
+        if (err.response?.status !== 401) {
+          toast.error('Failed to load tags. Please try again.')
+        }
+      } finally {
+        setLoadingTags(false)
       }
-      setLoadingTags(false)
     }
     fetchTags()
   }, [])

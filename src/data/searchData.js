@@ -189,7 +189,7 @@ const data = [
   {
     id: '27',
     name: 'Email',
-    url: '/apps/email',
+    url: '/manager/email/smtp',
     icon: 'ri-mail-open-line',
     section: 'Apps'
   },

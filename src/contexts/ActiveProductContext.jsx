@@ -5,6 +5,7 @@ import { usePathname, useRouter, useParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { ACTIVE_PRODUCT_KEY, matchProductFromPath, getProduct } from '@configs/products'
 import { getEnabledProductIds, getEnabledProducts } from '@/libs/tenantModules'
+import { getCrmPlatformToken, syncTenantModulesFromPlatform, bridgeCrmPlatformWithLegacyToken, ensureCrmPlatformSession, clearCrmPlatformToken } from '@/libs/crmPlatformApi'
 
 const ActiveProductContext = createContext(null)
 
@@ -18,22 +19,66 @@ function readStoredActiveProduct() {
 }
 
 export function ActiveProductProvider({ children }) {
-  const { data: session, status } = useSession()
+  const { data: session, status, update: updateSession } = useSession()
   const pathname = usePathname() || ''
   const router = useRouter()
   const params = useParams()
   const locale = params?.lang || 'en'
+  const [modulesSynced, setModulesSynced] = useState(false)
+
+  // Pull workspace modules from billing platform on every authenticated session.
+  useEffect(() => {
+    if (status !== 'authenticated' || modulesSynced) return
+
+    const run = async () => {
+      try {
+        const legacy =
+          session?.accessToken ||
+          (typeof window !== 'undefined' ? localStorage.getItem('token') : null)
+
+        if (legacy) {
+          // Refresh platform JWT when missing; also re-bridge if onboarding sync fails
+          await ensureCrmPlatformSession(legacy)
+          const synced = await syncTenantModulesFromPlatform(updateSession)
+          if (!synced && legacy) {
+            clearCrmPlatformToken()
+            await ensureCrmPlatformSession(legacy, { force: true })
+            await syncTenantModulesFromPlatform(updateSession)
+          }
+        } else if (!getCrmPlatformToken() && session?.accessToken) {
+          await bridgeCrmPlatformWithLegacyToken(session.accessToken)
+          await syncTenantModulesFromPlatform(updateSession)
+        }
+      } catch {
+        /* platform sync optional */
+      } finally {
+        setModulesSynced(true)
+      }
+    }
+
+    run()
+  }, [status, modulesSynced, updateSession, session?.accessToken])
 
   const enabledIds = useMemo(
     () => (status === 'loading' ? ['crm'] : getEnabledProductIds(session)),
-    [session, status]
+    [session, status, modulesSynced]
   )
   const enabledProducts = useMemo(
     () => (status === 'loading' ? [getProduct('crm')].filter(Boolean) : getEnabledProducts(session)),
-    [session, status]
+    [session, status, modulesSynced]
   )
 
   const [activeProductId, setActiveProductIdState] = useState('crm')
+
+  // Block direct URL access to modules not included in the subscription.
+  useEffect(() => {
+    if (status !== 'authenticated') return
+    const fromPath = matchProductFromPath(pathname)
+    if (!fromPath || fromPath === 'crm') return
+    if (!enabledIds.includes(fromPath)) {
+      router.replace(`/${locale}/dashboards/crm`)
+    }
+  }, [pathname, enabledIds, status, locale, router])
 
   // Sync from route → product (Dynamics / Salesforce style).
   // Prefer the currently stored product when several products share a path (files, tags, workflow…).

@@ -66,7 +66,26 @@ services:
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
       REFRESH_TOKEN_SECRET: ${JWT_SECRET:?set JWT_SECRET}
       CORS_ORIGIN: ${APP_ORIGIN:?set APP_ORIGIN}
+      PUBLIC_API_URL: ${API_ORIGIN:-https://api.woxox.com}
+      API_ORIGIN: ${API_ORIGIN:-https://api.woxox.com}
+      API_BASE_URL: ${API_ORIGIN:-https://api.woxox.com}
+      FRONTEND_URL: ${APP_ORIGIN:?set APP_ORIGIN}
+      APP_ORIGIN: ${APP_ORIGIN:?set APP_ORIGIN}
       SUPER_ADMIN_PROVISION_SECRET: ${SUPER_ADMIN_PROVISION_SECRET:-woxox-super-admin-secret}
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      MICROSOFT_OAUTH_CLIENT_ID: ${MICROSOFT_OAUTH_CLIENT_ID:-}
+      MICROSOFT_OAUTH_CLIENT_SECRET: ${MICROSOFT_OAUTH_CLIENT_SECRET:-}
+      EMAIL_ENCRYPTION_KEY: ${EMAIL_ENCRYPTION_KEY:-${JWT_SECRET}}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      PERSONAL_WA_AUTH_DIR: /app/data/wa-sessions
+    volumes:
+      - woxox_crmserver_uploads:/app/uploads
+      - woxox_wa_sessions:/app/data/wa-sessions
     networks:
       - woxox
 
@@ -179,6 +198,8 @@ volumes:
   woxox_mongo:
   woxox_pg:
   woxox_redis:
+  woxox_crmserver_uploads:
+  woxox_wa_sessions:
 
 networks:
   woxox:

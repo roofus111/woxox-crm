@@ -50,6 +50,12 @@ export class MfaCodeDto {
   code!: string;
 }
 
+export class LegacyBridgeDto {
+  @ApiProperty({ description: 'Valid legacy CRM JWT from localStorage token' })
+  @IsString()
+  legacyToken!: string;
+}
+
 export class OnboardingUpdateDto {
   @ApiPropertyOptional()
   @IsOptional()

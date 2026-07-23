@@ -168,6 +168,9 @@ const VerticalMenu = ({ dictionary, scrollMenu }) => {
             <MenuItem href={`/${locale}/manager/team`}>Members</MenuItem>
           </SubMenu>
           <MenuSection label={'Customer'}>
+            <MenuItem icon={<i className='ri-contacts-book-line' />} href={`/${locale}/manager/customer`}>
+              Contacts
+            </MenuItem>
             <SubMenu
               label={'Leads'}
               icon={<i className='ri-user-star-line' />}
@@ -183,7 +186,7 @@ const VerticalMenu = ({ dictionary, scrollMenu }) => {
             >
               <MenuItem href={`/${locale}/manager/followup/myfollowup?my=true`}>My Schedules</MenuItem>
               <MenuItem href={`/${locale}/manager/followup`}>All Schedules</MenuItem>
-
+              <MenuItem href={`/${locale}/apps/calendar`}>Calendar</MenuItem>
             </SubMenu>
             <SubMenu
               label={'Task Manager'}
@@ -203,8 +206,8 @@ const VerticalMenu = ({ dictionary, scrollMenu }) => {
           </MenuSection>
           {isModuleActive('SLM0825') && (
             <MenuSection label={'Sales'}>
-              {/* <MenuItem icon={<i className='ri-file-line' />} href={`/${locale}/manager/saleRequest`}>New Sale</MenuItem> */}
-              <MenuItem icon={<i className='ri-file-line' />} href={`/${locale}/manager/saleRequest`}>Sales Request</MenuItem>
+              {/* Deals / sales requests */}
+              <MenuItem icon={<i className='ri-file-line' />} href={`/${locale}/manager/saleRequest`}>Sales / Deals</MenuItem>
               <MenuItem icon={<i className='ri-file-line' />} href={`/${locale}/manager/saleRequest/invoice`}>Invoice</MenuItem>
               <MenuItem icon={<i className='ri-file-line' />} href={`/${locale}/manager/saleRequest/transaction`}>History</MenuItem>
             </MenuSection>
@@ -248,6 +251,17 @@ const VerticalMenu = ({ dictionary, scrollMenu }) => {
             </MenuItem>
             <MenuItem icon={<i className='ri-sticky-note-line' />} href={`/${locale}/manager/notes`}>
               Notes
+            </MenuItem>
+          </MenuSection>
+          <MenuSection label={'Reports'}>
+            <MenuItem icon={<i className='ri-dashboard-line' />} href={`/${locale}/dashboards/crm`}>
+              CRM Overview
+            </MenuItem>
+            <MenuItem icon={<i className='ri-bar-chart-2-line' />} href={`/${locale}/dashboards/leads`}>
+              Lead Insights
+            </MenuItem>
+            <MenuItem icon={<i className='ri-megaphone-line' />} href={`/${locale}/dashboards/campaigns`}>
+              Campaign Insights
             </MenuItem>
           </MenuSection>
           {/* Finance & HRMS are separate WOXOX products — see Product switcher */}
@@ -639,15 +653,18 @@ const VerticalMenu = ({ dictionary, scrollMenu }) => {
           <MenuItem icon={<i className='ri-shopping-bag-line' />} href={`/${locale}/manager/marketplace`}>
             Marketplace
           </MenuItem>
+          <MenuItem icon={<i className='ri-settings-3-line' />} href={`/${locale}/manager/settings`}>
+            Settings
+          </MenuItem>
+          <MenuItem icon={<i className='ri-whatsapp-line' />} href={`/${locale}/manager/my-whatsapp`}>
+            My WhatsApp
+          </MenuItem>
           <SubMenu
             label={'Account'}
             icon={<i className='ri-user-settings-line' />}
           >
             <MenuItem href={`/${locale}/manager/subscription`}>Subscription</MenuItem>
-            {/* <MenuItem href={`/${locale}/manager/addleads`}>Add Leads</MenuItem>
-            <MenuItem href={`/${locale}/manager/leads`}>Leads</MenuItem>
-            <MenuItem href={`/${locale}/manager/leadcampaign`}>Campaign</MenuItem>
-            <MenuItem className='text-red-500' href={`/${locale}/manager/logout`}>Logout</MenuItem> */}
+            <MenuItem href={`/${locale}/pages/account-settings`}>Account Settings</MenuItem>
           </SubMenu>
           {/* </MenuSection> */}
         </Menu>

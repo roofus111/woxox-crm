@@ -132,6 +132,7 @@ const BasicDataTables = () => {
     const searchParams = useSearchParams();
 
     const my = searchParams.get('my');
+    const filterLeadId = searchParams.get('leadId');
 
     // New state variable for insights
     const [insights, setInsights] = useState({
@@ -187,13 +188,18 @@ const BasicDataTables = () => {
                 assignedByFilter === 'all' ||
                 (assignedByFilter === 'me' && followUp.createdBy?._id === session?.user?.id) ||
                 (assignedByFilter === 'others' && followUp.createdBy?._id !== session?.user?.id);
-            console.log(assignedByFilter, followUp.assignedTo?._id, session?.user?.id);
-            return assigneeMatch && tagMatch && assignedByMatch;
+
+            const leadMatch =
+                !filterLeadId ||
+                followUp.leadId?._id === filterLeadId ||
+                followUp.leadId === filterLeadId;
+
+            return assigneeMatch && tagMatch && assignedByMatch && leadMatch;
         });
 
         filterTime.current = performance.now() - startTime;
         return filtered;
-    }, [selectedAssignee, selectedTag, assignedByFilter, session?.user?._id]);
+    }, [selectedAssignee, selectedTag, assignedByFilter, session?.user?._id, filterLeadId]);
 
     // Debounced filter handlers
     const debouncedSetAssignee = useCallback(

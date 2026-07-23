@@ -244,14 +244,47 @@ export async function ensureCrmPlatformSession(legacyToken, { force = false } = 
   try {
     const data = await bridgeCrmPlatformWithLegacyToken(legacyToken)
     return data?.accessToken || getCrmPlatformToken()
-  } catch {
+  } catch (err) {
+    console.warn('ensureCrmPlatformSession bridge failed:', err?.message || err)
     clearCrmPlatformToken()
     return null
   }
 }
 
-export async function fetchDashboardSummary() {
+export async function fetchDashboardSummary(legacyToken) {
+  // Prefer live Mongo CRM data (legacy API). Platform Postgres is often empty for tenants.
+  const legacy = await fetchLegacyDashboardSummary(legacyToken).catch(() => null)
+  if (legacy?.kpis) return legacy
   return platformFetch('/dashboard/summary')
+}
+
+/** Operating dashboard from crmserver Mongo (leads, sales, follow-ups, activities). */
+export async function fetchLegacyDashboardSummary(legacyToken) {
+  const base = process.env.NEXT_PUBLIC_API_URL
+  if (!base || typeof window === 'undefined') {
+    throw new Error('Legacy API URL not configured')
+  }
+  const token =
+    legacyToken ||
+    window.localStorage.getItem('token')
+  if (!token) {
+    const err = new Error('Missing bearer token')
+    err.status = 401
+    throw err
+  }
+  const res = await fetch(`${base}/api/insights/dashboard/summary`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    const err = new Error(data.message || `Dashboard request failed (${res.status})`)
+    err.status = res.status
+    throw err
+  }
+  return data
 }
 
 export async function fetchLeads(params = {}) {

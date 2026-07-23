@@ -85,6 +85,7 @@ export default function GetStartedPage() {
           loginUrl: data.loginUrl,
           onboardingUrl: data.onboardingUrl,
           tenantCode: data.tenantCode,
+          welcomeEmailSent: data.welcomeEmailSent,
         })
         return
       }
@@ -113,6 +114,7 @@ export default function GetStartedPage() {
               loginUrl: verified.loginUrl,
               onboardingUrl: verified.onboardingUrl,
               tenantCode: data.tenantCode,
+              welcomeEmailSent: verified.welcomeEmailSent,
             })
           } catch (err) {
             setError(err.message || 'Payment verification failed')
@@ -151,8 +153,10 @@ export default function GetStartedPage() {
             <div>
               <h2>You&apos;re ready</h2>
               <p>
-                Workspace <strong>{done.tenantCode}</strong> is set up. Check your email for a welcome
-                note, then continue onboarding.
+                Workspace <strong>{done.tenantCode}</strong> is set up.
+                {done.welcomeEmailSent
+                  ? ' Check your email for login and onboarding links, then continue below.'
+                  : ' Sign in below to continue onboarding (welcome email was not sent — check SMTP settings).'}
               </p>
             </div>
             <div className='sa-row-actions'>

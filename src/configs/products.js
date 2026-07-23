@@ -38,7 +38,7 @@ export const DEMO_ENABLED_PRODUCTS = [
 ]
 
 /** Bump when default product set changes so older localStorage lists are upgraded. */
-export const PRODUCTS_CATALOG_VERSION = '9'
+export const PRODUCTS_CATALOG_VERSION = '11'
 export const PRODUCTS_CATALOG_VERSION_KEY = 'woxox.productsCatalogVersion'
 
 const localeHref = (path) => (locale) => `/${locale}${path}`
@@ -88,7 +88,10 @@ export const PRODUCTS = {
       '/apps/calendar',
       '/apps/chat',
       '/manager/marketplace',
-      '/manager/subscription'
+      '/manager/subscription',
+      '/manager/my-whatsapp',
+      '/manager/email',
+      '/manager/settings'
     ],
     /** Core product — always available once tenant has company access */
     isCore: true,
@@ -129,11 +132,16 @@ export const PRODUCTS = {
       },
       {
         label: 'Follow Up',
-        icon: 'ri-task-line',
+        icon: 'ri-calendar-schedule-line',
         children: [
           { label: 'My Schedules', href: localeHref('/manager/followup/myfollowup?my=true') },
           { label: 'All Schedules', href: localeHref('/manager/followup') }
         ]
+      },
+      {
+        label: 'Task Manager',
+        icon: 'ri-task-line',
+        href: localeHref('/manager/taskmanager')
       },
       {
         label: 'Calendar',
@@ -167,6 +175,26 @@ export const PRODUCTS = {
         ]
       },
       {
+        label: 'Chat',
+        icon: 'ri-wechat-line',
+        href: localeHref('/apps/chat')
+      },
+      {
+        label: 'My WhatsApp',
+        icon: 'ri-whatsapp-line',
+        href: localeHref('/manager/my-whatsapp')
+      },
+      {
+        label: 'Email',
+        icon: 'ri-mail-open-line',
+        children: [
+          { label: 'Inbox', href: localeHref('/manager/email/inbox') },
+          { label: 'Compose', href: localeHref('/manager/email/compose') },
+          { label: 'Connect mailbox', href: localeHref('/manager/email/smtp') },
+          { label: 'Email settings', href: localeHref('/manager/email/settings') }
+        ]
+      },
+      {
         label: 'Reports',
         icon: 'ri-bar-chart-box-line',
         href: localeHref('/dashboards/analytics')
@@ -175,6 +203,8 @@ export const PRODUCTS = {
         label: 'Settings',
         icon: 'ri-settings-3-line',
         children: [
+          { label: 'My WhatsApp', href: localeHref('/manager/my-whatsapp'), icon: 'ri-whatsapp-line' },
+          { label: 'Connect mailbox', href: localeHref('/manager/email/smtp'), icon: 'ri-mail-settings-line' },
           { label: 'Marketplace', href: localeHref('/manager/marketplace') },
           { label: 'Subscription', href: localeHref('/manager/subscription') }
         ]

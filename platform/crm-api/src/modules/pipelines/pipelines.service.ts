@@ -780,11 +780,21 @@ export class PipelinesService {
       },
     });
 
+    // Resolve company email for Mongo tenant match when caller didn't pass one
+    let companyEmail = dto.legacyCompanyEmail;
+    if (!companyEmail && actorId) {
+      const actor = await this.prisma.user.findUnique({
+        where: { id: actorId },
+        select: { email: true },
+      });
+      companyEmail = actor?.email || undefined;
+    }
+
     const sync = await this.bridge.syncPublished({
       legacyMongoId: pipeline.legacyMongoId,
       name: pipeline.name,
       description: pipeline.description,
-      companyEmail: dto.legacyCompanyEmail,
+      companyEmail,
       stages: pipeline.stages.map((s) => ({
         name: s.name,
         description: s.description || undefined,

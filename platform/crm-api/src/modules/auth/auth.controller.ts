@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import {
   LoginDto,
+  LegacyBridgeDto,
   MfaCodeDto,
   MfaVerifyDto,
   OnboardingUpdateDto,
@@ -19,6 +20,11 @@ export class AuthController {
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.auth.login(dto);
+  }
+
+  @Post('legacy-bridge')
+  legacyBridge(@Body() dto: LegacyBridgeDto) {
+    return this.auth.bridgeWithLegacyToken(dto.legacyToken);
   }
 
   @Post('register')

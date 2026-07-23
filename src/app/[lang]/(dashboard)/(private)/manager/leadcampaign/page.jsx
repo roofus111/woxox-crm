@@ -321,20 +321,24 @@ const Campaign = () => {
 
     try {
       const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/Pipelines/getPipeline`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/pipelines/getpipeline`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       if (response.status === 200) {
-        setPipeline(response.data);
-        console.log(response.data);
+        const list = Array.isArray(response.data) ? response.data : [];
+        setPipeline(list);
+        // If still empty (e.g. company not resolved yet), create a default once.
+        if (!list.length) {
+          await createDefaultPipeline(true);
+        }
       } else {
         toast.error('Unexpected response from the server.');
       }
     } catch (error) {
       if (error.response) {
         const { status, data } = error.response;
-        toast.error(`Error ${status}: ${data?.message || 'Failed to fetch Pipeline.'}`);
+        toast.error(`Error ${status}: ${data?.message || data?.error || 'Failed to fetch Pipeline.'}`);
       } else if (error.request) {
         toast.error('No response received from the server.');
       } else {
@@ -342,6 +346,50 @@ const Campaign = () => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const createDefaultPipeline = async (silent = false) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      if (!silent) toast.error('Authorization token is missing.');
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/pipelines/createpipeline`,
+        {
+          name: 'Sales Pipeline',
+          description: 'Auto-created for lead campaigns',
+          stages: [
+            { name: 'New', property: 'Pending', order: 0 },
+            { name: 'Contacted', property: 'Processing', order: 1 },
+            { name: 'Qualified', property: 'Processing', order: 2 },
+            { name: 'Won', property: 'Won', order: 3 },
+            { name: 'Lost', property: 'Lost', order: 4 },
+          ],
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.status === 201 || response.status === 200) {
+        if (!silent) toast.success('Default pipeline created.');
+        const refetch = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/pipelines/getpipeline`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const list = Array.isArray(refetch.data) ? refetch.data : [];
+        setPipeline(list);
+        const createdId = response.data?._id || list[0]?._id;
+        if (createdId) {
+          setFormData((prev) => ({ ...prev, Pipeline: prev.Pipeline || createdId }));
+        }
+      }
+    } catch (error) {
+      if (!silent) {
+        toast.error(error.response?.data?.error || error.response?.data?.message || 'Failed to create pipeline.');
+      }
     }
   };
 
@@ -602,6 +650,20 @@ const Campaign = () => {
                   <Grid container spacing={1} mt={2} justifyContent={'flex-end'}>
                     <Button onClick={() => { handleClickOpen2(item) }}>Add Leads</Button>
                     <Button onClick={() => router.push(getLocalizedUrl(`/manager/leads/${item._id}`, 'en'))}>View</Button>
+                    {item.Pipeline && (
+                      <Button
+                        onClick={() =>
+                          router.push(
+                            getLocalizedUrl(
+                              `/manager/workflow/${item.Pipeline?._id || item.Pipeline}`,
+                              'en'
+                            )
+                          )
+                        }
+                      >
+                        Pipeline
+                      </Button>
+                    )}
                     <Button
                       onClick={() => handleEdit(item)}
                       style={{
@@ -841,6 +903,12 @@ const Campaign = () => {
             name="Pipeline"
             value={formData.Pipeline}
             onChange={handleChange}
+            disabled={!Pipeline.length}
+            helperText={
+              !Pipeline.length
+                ? 'No pipelines yet — create one below or open Pipelines from the sidebar.'
+                : ' '
+            }
           >
             {Pipeline.map((item) => (
               <MenuItem key={item._id} value={item._id}>
@@ -848,12 +916,25 @@ const Campaign = () => {
               </MenuItem>
             ))}
           </TextField>
+          {!Pipeline.length && (
+            <Box className="p-2" display="flex" gap={1} flexWrap="wrap">
+              <Button variant="contained" color="primary" onClick={createDefaultPipeline}>
+                Create Default Pipeline
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => router.push(getLocalizedUrl('/manager/pipeline', 'en'))}
+              >
+                Open Pipelines
+              </Button>
+            </Box>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose} variant="outlined" color="secondary">
             Cancel
           </Button>
-          <Button onClick={handleSubmit} variant="contained" color="primary">
+          <Button onClick={handleSubmit} variant="contained" color="primary" disabled={!Pipeline.length}>
             Create
           </Button>
         </DialogActions>

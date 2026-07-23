@@ -20,6 +20,7 @@ import {
 } from './dto/billing.dto';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { MailService } from '../../common/mail.service';
+import { LegacyProvisionService } from '../../common/legacy-provision.service';
 import { Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
@@ -36,6 +37,7 @@ export class BillingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mail: MailService,
+    private readonly legacyProvision: LegacyProvisionService,
   ) {}
 
   async ensureDefaultPlans() {
@@ -830,6 +832,17 @@ export class BillingService {
     const loginUrl = process.env.APP_ORIGIN
       ? `${process.env.APP_ORIGIN}/en/login`
       : 'https://app.woxox.com/en/login';
+    const onboardingUrl = process.env.APP_ORIGIN
+      ? `${process.env.APP_ORIGIN}/en/onboarding`
+      : 'https://app.woxox.com/en/onboarding';
+
+    const legacy = await this.legacyProvision.provision({
+      companyName: dto.companyName.trim(),
+      adminEmail: email,
+      adminPassword: dto.adminPassword,
+      adminName: dto.adminName?.trim() || dto.companyName.trim(),
+      enabledModules: plan.enabledModules?.length ? plan.enabledModules : ['crm'],
+    });
 
     if (amount === 0) {
       const periodEnd = trialEndsAt || new Date(Date.now() + trialDays * 86400000);
@@ -844,11 +857,13 @@ export class BillingService {
           trialEndsAt,
         },
       });
-      await this.mail.sendWelcomeEmail({
+      const welcome = await this.sendSignupWelcomeEmail({
+        workspaceId: created.workspace.id,
         to: email,
         companyName: created.workspace.name,
         adminName: created.user.name || undefined,
         loginUrl,
+        onboardingUrl,
         plan: plan.code,
       });
       return {
@@ -857,8 +872,11 @@ export class BillingService {
         workspaceId: created.workspace.id,
         tenantCode: created.workspace.tenantCode,
         loginUrl,
-        onboardingUrl: `${loginUrl.replace('/login', '/onboarding')}`,
+        onboardingUrl,
         plan: plan.code,
+        legacyProvisioned: legacy.ok,
+        welcomeEmailSent: welcome.sent,
+        welcomeEmailReason: welcome.sent ? undefined : welcome.reason,
       };
     }
 
@@ -898,6 +916,7 @@ export class BillingService {
       workspaceId: created.workspace.id,
       tenantCode: created.workspace.tenantCode,
       keyId: process.env.RAZORPAY_KEY_ID,
+      legacyProvisioned: legacy.ok,
       order: {
         id: order.id,
         amount: order.amount,
@@ -972,24 +991,33 @@ export class BillingService {
     const loginUrl = process.env.APP_ORIGIN
       ? `${process.env.APP_ORIGIN}/en/login`
       : 'https://app.woxox.com/en/login';
+    const onboardingUrl = process.env.APP_ORIGIN
+      ? `${process.env.APP_ORIGIN}/en/onboarding`
+      : 'https://app.woxox.com/en/onboarding';
 
+    let welcomeEmailSent = false;
+    let welcomeEmailReason: string | undefined;
     if (membership?.user?.email) {
-      await this.mail.sendWelcomeEmail({
+      const welcome = await this.sendSignupWelcomeEmail({
+        workspaceId: invoice.workspaceId,
         to: membership.user.email,
         companyName: invoice.workspace.name,
         adminName: membership.user.name || undefined,
         loginUrl,
+        onboardingUrl,
         plan: planCode,
       });
+      welcomeEmailSent = welcome.sent;
+      welcomeEmailReason = welcome.sent ? undefined : welcome.reason;
     }
 
     return {
       success: true,
       workspaceId: invoice.workspaceId,
       loginUrl,
-      onboardingUrl: process.env.APP_ORIGIN
-        ? `${process.env.APP_ORIGIN}/en/onboarding`
-        : 'https://app.woxox.com/en/onboarding',
+      onboardingUrl,
+      welcomeEmailSent,
+      welcomeEmailReason,
     };
   }
 
@@ -1144,14 +1172,22 @@ export class BillingService {
     const loginUrl = process.env.APP_ORIGIN
       ? `${process.env.APP_ORIGIN}/en/login`
       : 'https://app.woxox.com/en/login';
+    const onboardingUrl = process.env.APP_ORIGIN
+      ? `${process.env.APP_ORIGIN}/en/onboarding`
+      : 'https://app.woxox.com/en/onboarding';
     if (membership?.user?.email && workspace) {
-      await this.mail.sendWelcomeEmail({
-        to: membership.user.email,
-        companyName: workspace.name,
-        adminName: membership.user.name || undefined,
-        loginUrl,
-        plan: planCode,
-      });
+      const settings = (workspace.settings || {}) as Record<string, unknown>;
+      if (!settings.welcomeEmailSentAt) {
+        await this.sendSignupWelcomeEmail({
+          workspaceId: invoice.workspaceId,
+          to: membership.user.email,
+          companyName: workspace.name,
+          adminName: membership.user.name || undefined,
+          loginUrl,
+          onboardingUrl,
+          plan: planCode,
+        });
+      }
     }
   }
 
@@ -1331,6 +1367,42 @@ export class BillingService {
     if (coupon.percentOff) return Math.round(amount * (1 - coupon.percentOff / 100));
     if (coupon.amountOff) return Math.max(0, amount - coupon.amountOff);
     return amount;
+  }
+
+  private async sendSignupWelcomeEmail(input: {
+    workspaceId: string;
+    to: string;
+    companyName: string;
+    adminName?: string;
+    loginUrl: string;
+    onboardingUrl: string;
+    plan?: string;
+  }) {
+    const welcome = await this.mail.sendWelcomeEmail({
+      to: input.to,
+      companyName: input.companyName,
+      adminName: input.adminName,
+      loginUrl: input.loginUrl,
+      onboardingUrl: input.onboardingUrl,
+      plan: input.plan,
+    });
+    if (welcome.sent) {
+      const workspace = await this.prisma.workspace.findUnique({
+        where: { id: input.workspaceId },
+        select: { settings: true },
+      });
+      const settings = (workspace?.settings || {}) as Record<string, unknown>;
+      await this.prisma.workspace.update({
+        where: { id: input.workspaceId },
+        data: {
+          settings: {
+            ...settings,
+            welcomeEmailSentAt: new Date().toISOString(),
+          },
+        },
+      });
+    }
+    return welcome;
   }
 
   private async writeAudit(

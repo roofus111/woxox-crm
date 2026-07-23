@@ -25,17 +25,39 @@ export class NotesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async ensureDefaultTags(workspaceId: string) {
-    for (const tag of DEFAULT_TAGS) {
-      await this.prisma.noteTag.upsert({
-        where: { workspaceId_name: { workspaceId, name: tag.name } },
-        create: { workspaceId, name: tag.name, color: tag.color },
-        update: {},
-      });
-    }
+    await this.prisma.noteTag.createMany({
+      data: DEFAULT_TAGS.map((tag) => ({
+        workspaceId,
+        name: tag.name,
+        color: tag.color,
+      })),
+      skipDuplicates: true,
+    });
     return this.prisma.noteTag.findMany({
       where: { workspaceId },
       orderBy: { name: 'asc' },
     });
+  }
+
+  private async findOrCreateTag(workspaceId: string, name: string) {
+    const existing = await this.prisma.noteTag.findFirst({
+      where: { workspaceId, name },
+    });
+    if (existing) return existing;
+
+    try {
+      return await this.prisma.noteTag.create({
+        data: { workspaceId, name, color: '#90CAF9' },
+      });
+    } catch (err: any) {
+      if (err?.code === 'P2002') {
+        const tag = await this.prisma.noteTag.findFirst({
+          where: { workspaceId, name },
+        });
+        if (tag) return tag;
+      }
+      throw err;
+    }
   }
 
   private noteInclude() {
@@ -126,11 +148,7 @@ export class NotesService {
     const ids = new Set<string>(tagIds || []);
     if (tagNames?.length) {
       for (const name of tagNames) {
-        const tag = await this.prisma.noteTag.upsert({
-          where: { workspaceId_name: { workspaceId, name } },
-          create: { workspaceId, name, color: '#90CAF9' },
-          update: {},
-        });
+        const tag = await this.findOrCreateTag(workspaceId, name);
         ids.add(tag.id);
       }
     }

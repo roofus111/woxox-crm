@@ -28,8 +28,14 @@ import { useDropzone } from 'react-dropzone'
 import { toast } from 'react-toastify'
 
 import FormLayoutsCollapsible from '@/app/[lang]/(dashboard)/(private)/manager/leads/FormLayoutsCollapsible'
+import { useData } from '@/contexts/DataContext'
+import CustomInput from '@/views/apps/leadView/view/user-left-overview/CustomInput'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
+
+const FollowUpDateInput = React.forwardRef(function FollowUpDateInput(props, ref) {
+    return <CustomInput {...props} ref={ref} label='Date & Time *' />
+})
 
 const LeadActions = ({
     userData,    // object containing { firstName, email, phone, district, createdAt, profile, additionalFields, leadId, etc. }
@@ -46,6 +52,8 @@ const LeadActions = ({
 }) => {
     const theme = useTheme()
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+    const dataContext = useData()
+    const updateData = dataContext?.updateData
 
     // --------------------------------------------
     // 1) CALLER MODE STATE & HANDLERS (with "Add More Information")
@@ -240,6 +248,7 @@ const handleProfileSave = async () => {
     const [isAssignVisible, setIsAssignVisible] = useState(false)
     const [assignTo, setAssignTo] = useState('')
     const [teamMembers, setTeamMembers] = useState([])
+    const [transferLeadOwnership, setTransferLeadOwnership] = useState(true)
     const [loadingFollowupSubmit, setLoadingFollowupSubmit] = useState(false)
     const [errorFollowup, setErrorFollowup] = useState('')
 
@@ -250,7 +259,8 @@ const handleProfileSave = async () => {
                 const resp = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/user-profiles`, {
                     headers: { Authorization: `Bearer ${token}` },
                 })
-                setTeamMembers(resp.data || [])
+                const list = Array.isArray(resp.data) ? resp.data : (resp.data?.data || resp.data?.users || [])
+                setTeamMembers(list)
             } catch (err) {
                 console.error('Failed to fetch team members:', err)
             }
@@ -264,6 +274,7 @@ const handleProfileSave = async () => {
         setFollowupData({ notes: '' })
         setIsAssignVisible(false)
         setAssignTo('')
+        setTransferLeadOwnership(true)
         setDateTime(new Date())
         setErrorFollowup('')
     }
@@ -275,18 +286,34 @@ const handleProfileSave = async () => {
             return
         }
 
+        if (!dateTime || Number.isNaN(new Date(dateTime).getTime())) {
+            setErrorFollowup('Please pick a follow-up date and time')
+            toast.error('Please pick a follow-up date and time', { position: 'bottom-right' })
+            return
+        }
+
+        if (isAssignVisible && !String(assignTo || '').trim()) {
+            setErrorFollowup('Select who should handle this follow-up')
+            toast.error('Select who should handle this follow-up', { position: 'bottom-right' })
+            return
+        }
+
         setErrorFollowup('')
         setLoadingFollowupSubmit(true)
         try {
             const token = localStorage.getItem('token')
-            // Copy payload exactly from UserDetails.jsx
+            const scheduledAt = new Date(dateTime).toISOString()
             const body = {
-                leadId: leadId,
-                followUpDate: Date.now(),
+                leadId: String(leadId),
+                // Scheduled slot drives calendar + reminders
+                followUpDate: scheduledAt,
+                nextFollowUpDate: scheduledAt,
                 status: 'Pending',
-                nextFollowUpDate: dateTime,
-                notes: followupData.notes,
-                assignedTo: assignTo,
+                notes: followupData.notes || '',
+                transferLeadOwnership: Boolean(isAssignVisible && transferLeadOwnership),
+            }
+            if (isAssignVisible && assignTo && String(assignTo).trim()) {
+                body.assignedTo = String(assignTo).trim()
             }
 
             console.log('>>> follow‑up payload:', body)
@@ -299,14 +326,24 @@ const handleProfileSave = async () => {
                 body: JSON.stringify(body),
             })
 
-            const data = await response.json()
+            const data = await response.json().catch(() => ({}))
             if (!response.ok) {
                 console.error('Follow‑up API error:', data)
                 throw new Error(data.message || data.error || 'Failed to create follow up')
             }
 
-            toast.success('New Follow Up added', { position: 'bottom-right' })
+            toast.success(
+                body.assignedTo && body.transferLeadOwnership
+                    ? 'Follow-up scheduled — lead handed to assignee'
+                    : 'New Follow Up added',
+                { position: 'bottom-right' }
+            )
             handleFollowupClose()
+
+            // Refresh UpcomingActivities (watches DataContext data1)
+            if (updateData) {
+                updateData({ refresh: true, at: Date.now() })
+            }
 
             // Notify parent component to refresh data
             if (onDataUpdate) {
@@ -733,19 +770,32 @@ const handleProfileSave = async () => {
                 open={openFollowupModal}
                 onClose={handleFollowupClose}
                 aria-labelledby="followup-title"
+                disableEnforceFocus
+                fullWidth
+                maxWidth="sm"
             >
                 <DialogTitle id="followup-title">Add Follow Up</DialogTitle>
                 <DialogContent>
                     <Grid container spacing={2} mt={1}>
                         <Grid item xs={12}>
+                            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                                Schedule (date & time)
+                            </Typography>
                             <AppReactDatepicker
                                 showTimeSelect
                                 timeFormat="HH:mm"
                                 timeIntervals={15}
                                 selected={dateTime}
+                                id="followup-date-time-picker"
                                 dateFormat="MM/dd/yyyy h:mm aa"
                                 onChange={(date) => setDateTime(date)}
+                                customInput={<FollowUpDateInput />}
+                                portalId="followup-datepicker-portal"
+                                minDate={new Date()}
                             />
+                            <Typography variant="caption" color="text.secondary">
+                                This time appears on Calendar and drives reminders.
+                            </Typography>
                         </Grid>
                         <Grid item xs={12}>
                             <TextField
@@ -753,7 +803,7 @@ const handleProfileSave = async () => {
                                 multiline
                                 minRows={3}
                                 label="Notes"
-                                placeholder="Type follow up notes..."
+                                placeholder="Meeting agenda, GMeet link, talking points…"
                                 value={followupData.notes}
                                 onChange={(e) =>
                                     setFollowupData({ ...followupData, notes: e.target.value })
@@ -765,30 +815,57 @@ const handleProfileSave = async () => {
                                 control={
                                     <Checkbox
                                         checked={isAssignVisible}
-                                        onChange={(e) => setIsAssignVisible(e.target.checked)}
+                                        onChange={(e) => {
+                                            setIsAssignVisible(e.target.checked)
+                                            if (!e.target.checked) {
+                                                setAssignTo('')
+                                            } else {
+                                                setTransferLeadOwnership(true)
+                                            }
+                                        }}
                                     />
                                 }
-                                label="Assign to others"
+                                label="Assign to others (manager / teammate)"
                             />
                         </Grid>
                         {isAssignVisible && (
-                            <Grid item xs={12}>
-                                <Select
-                                    fullWidth
-                                    value={assignTo}
-                                    onChange={(e) => setAssignTo(e.target.value)}
-                                    displayEmpty
-                                >
-                                    <MenuItem value="">
-                                        <em>None</em>
-                                    </MenuItem>
-                                    {teamMembers.map((member) => (
-                                        <MenuItem key={member._id} value={member._id}>
-                                            {member.firstName}
+                            <>
+                                <Grid item xs={12}>
+                                    <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                                        Who should handle this?
+                                    </Typography>
+                                    <Select
+                                        fullWidth
+                                        value={assignTo}
+                                        onChange={(e) => setAssignTo(e.target.value)}
+                                        displayEmpty
+                                    >
+                                        <MenuItem value="">
+                                            <em>Select teammate</em>
                                         </MenuItem>
-                                    ))}
-                                </Select>
-                            </Grid>
+                                        {teamMembers.map((member) => (
+                                            <MenuItem key={member._id} value={member._id}>
+                                                {[member.firstName, member.lastName].filter(Boolean).join(' ') || member.name || member.email}
+                                                {member.role ? ` · ${member.role}` : ''}
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </Grid>
+                                <Grid item xs={12}>
+                                    <FormControlLabel
+                                        control={
+                                            <Checkbox
+                                                checked={transferLeadOwnership}
+                                                onChange={(e) => setTransferLeadOwnership(e.target.checked)}
+                                            />
+                                        }
+                                        label="Hand this lead to the assignee (they become the lead owner)"
+                                    />
+                                    <Typography variant="caption" color="text.secondary" display="block">
+                                        Use this when booking a GMeet or handoff so the manager/authority owns the lead.
+                                    </Typography>
+                                </Grid>
+                            </>
                         )}
                         {errorFollowup && (
                             <Grid item xs={12}>
@@ -798,6 +875,7 @@ const handleProfileSave = async () => {
                             </Grid>
                         )}
                     </Grid>
+                    <div id="followup-datepicker-portal" />
                 </DialogContent>
                 <DialogActions sx={{ pr: 3, pb: 2 }}>
                     <Button

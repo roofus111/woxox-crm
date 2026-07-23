@@ -23,6 +23,7 @@ import Checkbox from '@mui/material/Checkbox'
 import { styled, useTheme } from '@mui/material/styles'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import axios from 'axios'
+import { useParams, useRouter } from 'next/navigation'
 import { useSocket } from '@/hooks/useSocket'
 import { toast } from 'react-toastify'
 import { Tooltip } from '@mui/material'
@@ -33,6 +34,10 @@ import ActivityTab from './ActivityTab'
 import NotesComponent from './NotesComponent'
 import LeadActions from './LeadActions'
 import ActivityHappen from './ActivityHappen'
+import {
+  getPersonalWhatsAppStatus,
+  sendPersonalWhatsAppMessage,
+} from '@/utils/personalWhatsappApi'
 
 // Styled component for the resizable handle
 const ResizeHandle = styled('div')(({ theme }) => ({
@@ -145,6 +150,10 @@ const ResizableDrawer = ({
 
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+  const router = useRouter()
+  const params = useParams()
+  const locale = params?.lang || 'en'
+  const resolvedLeadId = leadId || leadData?._id
 
   const { socket } = useSocket()
 
@@ -178,6 +187,11 @@ const ResizableDrawer = ({
   const assignmentOpen = assignAnchorEl
   const [currentAssignedTo, setCurrentAssignedTo] = useState(leadData?.assignedTo)
   const [leftSidebarTab, setLeftSidebarTab] = useState(0)
+  const [waDialogOpen, setWaDialogOpen] = useState(false)
+  const [waPhone, setWaPhone] = useState('')
+  const [waMessage, setWaMessage] = useState('')
+  const [waSending, setWaSending] = useState(false)
+  const [waConnected, setWaConnected] = useState(false)
 
   const leadStatuses = ['New', 'Contacted', 'Interested', 'Not Interested', 'Converted', 'Duplicate', 'Lost']
 
@@ -298,23 +312,31 @@ const handleStatusChange = async newStatus => {
     setLoadingTags(true)
     try {
       const token = localStorage.getItem('token')
+      if (!token) {
+        setAllTags([])
+        return
+      }
+
       const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/tagmanager/alltags`, {
         headers: { Authorization: `Bearer ${token}` }
       })
 
       if (Array.isArray(response.data)) {
         setAllTags(response.data)
-      } else if (response.data && response.data.success && Array.isArray(response.data.data)) {
+      } else if (response.data?.success && Array.isArray(response.data.data)) {
         setAllTags(response.data.data)
       } else {
-        console.error('Unexpected tags response format:', response.data)
-        toast.error('Unexpected tags format received')
+        setAllTags([])
       }
     } catch (err) {
       console.error('Error fetching tags', err)
-      toast.error('Failed to load tags. Please try again.')
+      setAllTags([])
+      if (err.response?.status !== 401) {
+        toast.error('Failed to load tags. Please try again.')
+      }
+    } finally {
+      setLoadingTags(false)
     }
-    setLoadingTags(false)
   }
 
   const handleMouseDown = e => {
@@ -845,7 +867,19 @@ const handleStatusChange = async newStatus => {
                     status={leadData.status}
                     leadId={leadData._id}
                     onCall={num => (window.location.href = `tel:${num}`)}
-                    onWhatsApp={num => window.open(`https://wa.me/${num}`, '_blank')}
+                    onWhatsApp={async num => {
+                      setWaPhone(num || leadData?.phone || '')
+                      setWaMessage(
+                        `Hi ${leadData?.name || ''}, this is regarding your enquiry.`
+                      )
+                      try {
+                        const status = await getPersonalWhatsAppStatus()
+                        setWaConnected(status.status === 'connected')
+                      } catch {
+                        setWaConnected(false)
+                      }
+                      setWaDialogOpen(true)
+                    }}
                     onStatusChange={newStatus => setStatus(newStatus)}
                     onDataUpdate={onDataUpdate}
                     onActivityUpdate={handleActivityUpdate}
@@ -999,9 +1033,91 @@ const handleStatusChange = async newStatus => {
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, marginBottom: 1, marginTop: 2 }}>
                       <i className='ri-flag-fill' style={{ color: '#6366f1', fontSize: '1.3rem' }}></i>
-                      <h1 className='text-sm font-semibold text-gray-600 ml-1'>
-                        {leadData?.campaignid?.name || 'N/A'}
-                      </h1>
+                      {leadData?.campaignid?._id ? (
+                        <Button
+                          size='small'
+                          sx={{ textTransform: 'none', fontWeight: 600, p: 0, minWidth: 0 }}
+                          onClick={() => router.push(`/${locale}/manager/leads/${leadData.campaignid._id}`)}
+                        >
+                          {leadData.campaignid.name || 'Campaign'}
+                        </Button>
+                      ) : (
+                        <h1 className='text-sm font-semibold text-gray-600 ml-1'>
+                          {leadData?.campaignid?.name || 'N/A'}
+                        </h1>
+                      )}
+                    </Box>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1.5 }}>
+                      {leadData?.campaignid?.Pipeline && (
+                        <Button
+                          size='small'
+                          variant='outlined'
+                          startIcon={<i className='ri-flow-chart' />}
+                          onClick={() =>
+                            router.push(
+                              `/${locale}/manager/workflow/${leadData.campaignid.Pipeline?._id || leadData.campaignid.Pipeline}`
+                            )
+                          }
+                        >
+                          Pipeline
+                        </Button>
+                      )}
+                      {resolvedLeadId && (
+                        <>
+                          <Button
+                            size='small'
+                            variant='outlined'
+                            startIcon={<i className='ri-calendar-check-line' />}
+                            onClick={() => router.push(`/${locale}/manager/followup?leadId=${resolvedLeadId}`)}
+                          >
+                            Follow-ups
+                          </Button>
+                          <Button
+                            size='small'
+                            variant='outlined'
+                            startIcon={<i className='ri-coupon-2-line' />}
+                            onClick={() =>
+                              router.push(`/${locale}/manager/tickets?leadId=${resolvedLeadId}&create=1`)
+                            }
+                          >
+                            Ticket
+                          </Button>
+                          <Button
+                            size='small'
+                            variant='outlined'
+                            startIcon={<i className='ri-history-line' />}
+                            onClick={() =>
+                              router.push(`/${locale}/manager/activitylog?leadId=${resolvedLeadId}`)
+                            }
+                          >
+                            Activity
+                          </Button>
+                          {leadData?.Customer && (
+                            <Button
+                              size='small'
+                              variant='outlined'
+                              startIcon={<i className='ri-contacts-book-line' />}
+                              onClick={() =>
+                                router.push(
+                                  `/${locale}/manager/customer?customerId=${leadData.Customer?._id || leadData.Customer}`
+                                )
+                              }
+                            >
+                              Contact
+                            </Button>
+                          )}
+                          <Button
+                            size='small'
+                            variant='outlined'
+                            startIcon={<i className='ri-money-dollar-circle-line' />}
+                            onClick={() =>
+                              router.push(`/${locale}/manager/saleRequest?leadId=${resolvedLeadId}`)
+                            }
+                          >
+                            Sales
+                          </Button>
+                        </>
+                      )}
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, marginBottom: 1 }}>
                       <i className='ri-map-pin-fill' style={{ color: '#6366f1', fontSize: '1.3rem' }}></i>
@@ -1790,6 +1906,71 @@ const handleStatusChange = async newStatus => {
           </Box>
         </Box>
       </Box>
+
+      <Dialog open={waDialogOpen} onClose={() => setWaDialogOpen(false)} fullWidth maxWidth='xs'>
+        <DialogTitle>Send WhatsApp</DialogTitle>
+        <DialogContent>
+          {waConnected ? (
+            <Typography variant='body2' color='text.secondary' sx={{ mb: 2 }}>
+              Sending from your linked personal WhatsApp.
+            </Typography>
+          ) : (
+            <Typography variant='body2' color='warning.main' sx={{ mb: 2 }}>
+              Your WhatsApp is not linked. Connect it under My WhatsApp, or open the web chat instead.
+            </Typography>
+          )}
+          <TextField
+            fullWidth
+            label='Phone'
+            value={waPhone}
+            onChange={e => setWaPhone(e.target.value)}
+            sx={{ mb: 2, mt: 1 }}
+          />
+          <TextField
+            fullWidth
+            multiline
+            minRows={3}
+            label='Message'
+            value={waMessage}
+            onChange={e => setWaMessage(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setWaDialogOpen(false)}>Cancel</Button>
+          <Button
+            variant='outlined'
+            onClick={() => {
+              const digits = String(waPhone || '').replace(/\D/g, '')
+              window.open(`https://wa.me/${digits}?text=${encodeURIComponent(waMessage || '')}`, '_blank')
+              setWaDialogOpen(false)
+            }}
+          >
+            Open WhatsApp Web
+          </Button>
+          <Button
+            variant='contained'
+            disabled={!waConnected || waSending || !waPhone || !waMessage}
+            onClick={async () => {
+              setWaSending(true)
+              try {
+                await sendPersonalWhatsAppMessage({
+                  phone: waPhone,
+                  message: waMessage,
+                  leadId,
+                })
+                toast.success('WhatsApp message sent')
+                setWaDialogOpen(false)
+              } catch (err) {
+                toast.error(err.message || 'Failed to send')
+              } finally {
+                setWaSending(false)
+              }
+            }}
+          >
+            {waSending ? <CircularProgress size={20} /> : 'Send from my WhatsApp'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Drawer>
   )
 }

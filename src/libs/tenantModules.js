@@ -11,6 +11,9 @@ import {
   getProduct
 } from '@configs/products'
 
+const demoAllProducts = () =>
+  typeof process !== 'undefined' && process.env.NEXT_PUBLIC_DEMO_ALL_PRODUCTS === 'true'
+
 /**
  * Read explicit product list from local/tenant storage (client).
  * @returns {string[]|null}
@@ -28,7 +31,7 @@ export function readStoredEnabledProducts() {
 }
 
 /**
- * Persist enabled products for the tenant (demo / until backend tenantConfig ships).
+ * Persist enabled products for the tenant (client cache — must stay within paid entitlements).
  * @param {string[]} productIds
  */
 export function storeEnabledProducts(productIds) {
@@ -50,17 +53,19 @@ export function hasConfiguredProducts() {
   }
 }
 
-/** Merge newly shipped default products into an older saved list once. */
-function migrateStoredProducts(stored) {
+/** Merge catalog version upgrades without expanding to unpaid demo products. */
+function migrateStoredProducts(stored, entitlements = ['crm']) {
   if (typeof window === 'undefined') return stored
   try {
     const ver = window.localStorage.getItem(PRODUCTS_CATALOG_VERSION_KEY)
-    if (ver === PRODUCTS_CATALOG_VERSION) return stored
-    // Map legacy single "projects" product → Max
     const normalized = stored.map(id => (id === 'projects' ? 'projectsMax' : id))
-    const merged = PRODUCT_ORDER.filter(id => normalized.includes(id) || DEMO_ENABLED_PRODUCTS.includes(id))
-    storeEnabledProducts(merged)
-    return merged
+    const allowed = new Set(entitlements.includes('crm') ? entitlements : ['crm', ...entitlements])
+    const capped = normalized.filter(id => allowed.has(id))
+    const next = capped.includes('crm') ? capped : ['crm', ...capped]
+    if (ver !== PRODUCTS_CATALOG_VERSION) {
+      storeEnabledProducts(next)
+    }
+    return next
   } catch {
     return stored
   }
@@ -92,13 +97,68 @@ export function productsFromPlanAddons(plan) {
   return [...ids]
 }
 
+function normalizeProductIds(ids) {
+  if (!Array.isArray(ids)) return []
+  return PRODUCT_ORDER.filter(id => ids.includes(id) && PRODUCTS[id])
+}
+
+function ensureCrm(ids) {
+  const list = normalizeProductIds(ids)
+  return list.includes('crm') ? list : ['crm', ...list]
+}
+
+/**
+ * Maximum modules included in the tenant's subscription (plan + addons).
+ * Used for module pickers — not necessarily what's active in navigation.
+ */
+export function getPlanEntitlements(session) {
+  if (demoAllProducts()) return [...DEMO_ENABLED_PRODUCTS]
+
+  const plan = session?.user?.plan
+  const company = session?.user?.company
+  const fromPlanModules = session?.user?.planModules
+  const fromPlanDef = plan?.enabledModules
+  const fromCompany =
+    company && typeof company === 'object'
+      ? company.enabledModules || company.enabledProducts
+      : null
+  const fromAddons = productsFromPlanAddons(plan)
+
+  let entitlements = []
+
+  if (Array.isArray(fromPlanModules) && fromPlanModules.length) {
+    entitlements = normalizeProductIds(fromPlanModules)
+  } else if (Array.isArray(fromPlanDef) && fromPlanDef.length) {
+    entitlements = normalizeProductIds(fromPlanDef)
+  } else if (Array.isArray(fromCompany) && fromCompany.length) {
+    entitlements = normalizeProductIds(fromCompany)
+  } else if (fromAddons.length) {
+    entitlements = normalizeProductIds(['crm', ...fromAddons])
+  } else {
+    entitlements = ['crm']
+  }
+
+  for (const id of fromAddons) {
+    if (!entitlements.includes(id)) entitlements.push(id)
+  }
+
+  return ensureCrm(entitlements)
+}
+
+/**
+ * Modules the tenant has paid for / activated on the workspace.
+ * @deprecated Use getPlanEntitlements for pickers and getEnabledProductIds for nav.
+ */
+export function getPaidProductIds(session) {
+  return getPlanEntitlements(session)
+}
+
 /**
  * Role-based product visibility.
  */
 export function filterProductsByRole(productIds, role) {
   if (!role || role === 'admin' || role === 'guest') return productIds
   if (role === 'finance') return productIds.filter(id => id === 'finance' || id === 'crm')
-  // Pipeline operators + standard users get PM products when enabled for the tenant
   if (role === 'pipeline') {
     return productIds.filter(id => ['crm', 'projectsLite', 'projectsMax'].includes(id))
   }
@@ -110,45 +170,36 @@ export function filterProductsByRole(productIds, role) {
 
 /**
  * Resolve products the current tenant may open in the product switcher.
+ * Only paid / selected modules appear — never the full demo catalog.
  */
 export function getEnabledProductIds(session) {
   const role = session?.user?.role
-  const company = session?.user?.company
-  const plan = session?.user?.plan
 
+  if (demoAllProducts()) {
+    return filterProductsByRole(DEMO_ENABLED_PRODUCTS, role)
+  }
+
+  const entitlements = getPlanEntitlements(session)
+
+  const fromWorkspace = session?.user?.enabledModules
   const fromSession = session?.user?.enabledProducts
-  const fromCompany =
-    company && typeof company === 'object' ? company.enabledProducts || company.enabledModules : null
   const storedRaw = typeof window !== 'undefined' ? readStoredEnabledProducts() : null
-  const stored = storedRaw?.length ? migrateStoredProducts(storedRaw) : storedRaw
+  const stored = storedRaw?.length ? migrateStoredProducts(storedRaw, entitlements) : storedRaw
 
-  let ids = []
+  let active = entitlements
 
-  if (Array.isArray(fromSession) && fromSession.length) {
-    ids = PRODUCT_ORDER.filter(id => fromSession.includes(id) || DEMO_ENABLED_PRODUCTS.includes(id))
-  } else if (Array.isArray(fromCompany) && fromCompany.length) {
-    ids = PRODUCT_ORDER.filter(id => fromCompany.includes(id) || DEMO_ENABLED_PRODUCTS.includes(id))
+  // Workspace selection from billing platform is authoritative for navigation.
+  if (Array.isArray(fromWorkspace) && fromWorkspace.length) {
+    active = fromWorkspace.filter(id => entitlements.includes(id) || id === 'crm')
+  } else if (Array.isArray(fromSession) && fromSession.length) {
+    active = fromSession.filter(id => entitlements.includes(id) || id === 'crm')
   } else if (stored?.length) {
-    ids = stored
-  } else {
-    const fromAddons = productsFromPlanAddons(plan)
-    ids = [...new Set([...DEMO_ENABLED_PRODUCTS, ...fromAddons])]
+    active = stored.filter(id => entitlements.includes(id) || id === 'crm')
   }
 
-  if ((company || plan || role === 'admin') && !ids.includes('crm')) {
-    ids = ['crm', ...ids]
-  }
+  active = ensureCrm(active.length ? active : entitlements)
 
-  // Ensure shipped products appear for admin / company tenants
-  if (company || plan || role === 'admin') {
-    for (const id of DEMO_ENABLED_PRODUCTS) {
-      if (!ids.includes(id)) ids.push(id)
-    }
-  }
-
-  ids = PRODUCT_ORDER.filter(id => ids.includes(id))
-
-  return filterProductsByRole(ids, role)
+  return filterProductsByRole(PRODUCT_ORDER.filter(id => active.includes(id)), role)
 }
 
 export function getEnabledProducts(session) {
@@ -159,22 +210,16 @@ export function getEnabledProducts(session) {
 
 /**
  * Whether a product addon (or CRM inner addon) is active on the plan.
- * Core products with no addonId are open when the product itself is enabled.
  */
 export function isAddonActive(session, addonId) {
   if (!addonId) return true
 
-  // Demo: LegalOS open when product enabled even without LOS0825 purchase yet
-  if (addonId === 'LOS0825') {
-    const enabled = getEnabledProductIds(session)
-    if (enabled.includes('legalos')) return true
-  }
+  const enabled = getEnabledProductIds(session)
+  const productId = ADDON_TO_PRODUCT[addonId]
+  if (productId && enabled.includes(productId)) return true
 
   const access = session?.user?.plan?.modules?.[0]?.plans?.[0]?.moduleAccess
-  if (!Array.isArray(access)) {
-    // Without plan data, allow CRM-internal items that map to purchased products loosely
-    return false
-  }
+  if (!Array.isArray(access)) return false
   return !!access.find(item => item.addonId === addonId && item.isActive)
 }
 
@@ -205,6 +250,7 @@ export function filterMenuItems(items, session) {
 export function getProductNavMenu(productId, session) {
   const product = getProduct(productId)
   if (!product) return []
+  if (!getEnabledProductIds(session).includes(productId)) return []
   return filterMenuItems(product.menu, session)
 }
 

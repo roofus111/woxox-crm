@@ -45,7 +45,8 @@ const Teams = () => {
     firstName: '',
     lastName: '',
     email: '',
-    phone: ''
+    phone: '',
+    role: 'user',
   })
 
   const [loading, setLoading] = useState(false)
@@ -59,15 +60,29 @@ const Teams = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (!formData.firstName?.trim() || !formData.lastName?.trim() || !formData.email?.trim()) {
+      setError('First name, last name, and email are required.');
+      return;
+    }
+
     setLoading(true);
 
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        setError('Session expired. Please log in again.');
+        return;
+      }
+
       const sentData = {
         ...formData,
-        name: `${formData.firstName} ${formData.lastName}`,
-        role: `${formData.role}`,
-        password: `${formData.firstName}@CRMpass24`,
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        email: formData.email.trim().toLowerCase(),
+        name: `${formData.firstName.trim()} ${formData.lastName.trim()}`,
+        role: formData.role === 'employee' ? 'user' : formData.role,
+        password: `${formData.firstName.trim()}@CRMpass24`,
       };
 
       let response;
@@ -91,15 +106,20 @@ const Teams = () => {
         });
       }
 
-      const responseData = await response.json();
+      let responseData = {};
+      try {
+        responseData = await response.json();
+      } catch {
+        responseData = {};
+      }
 
       if (response.ok) {
         toast.success(formData._id ? 'Employee updated successfully!' : 'Employee created successfully!');
-        fetchData(); // Refetch data to refresh the table
+        fetchData();
         handleReset();
         setOpen(false);
       } else {
-        setError(responseData.message || 'An error occurred. Please try again.');
+        setError(responseData.message || responseData.error || `Request failed (${response.status})`);
       }
     } catch (error) {
       setError('An error occurred. Please try again.');
@@ -116,7 +136,8 @@ const Teams = () => {
       lastName: '',
       name: '',
       email: '',
-      phone: ''
+      phone: '',
+      role: 'user',
     })
     setError('')
     setSuccess('')
@@ -371,7 +392,7 @@ const Teams = () => {
                     <MenuItem value="admin">Admin</MenuItem>
                     <MenuItem value="manager">Manager</MenuItem>
                     <MenuItem value="user">User</MenuItem>
-                    <MenuItem value="employee">Employee</MenuItem>
+                    <MenuItem value="hr">HR</MenuItem>
                   </TextField>
                 </Grid>
                 {error && (

@@ -53,20 +53,40 @@ import {
 } from "react-icons/ri";
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 
 import { debounce } from "lodash";
 import { Virtuoso } from "react-virtuoso";
 import ResizableDrawer from "../leads/components/ResizableDrawer";
 
 const ITEMS_PER_PAGE = 1000;
-const ACTION_TYPES = ["assigned", "followUp", "converted", "created", "updated", "deleted"];
+const ACTION_TYPES = [
+  "assigned",
+  "followUp",
+  "created",
+  "updated",
+  "deleted",
+  "status_change",
+  "note_added",
+  "ticket_created",
+  "sale_created",
+  "Answered",
+  "NotAnswered",
+  "Busy",
+  "Wrong Number",
+  "Not Reachable",
+  "Callback Requested",
+];
 
 export default function ActivityLogPage() {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const isTablet = useMediaQuery(theme.breakpoints.down('md'));
     const router = useRouter();
+    const params = useParams();
+    const searchParams = useSearchParams();
+    const locale = params?.lang || 'en';
+    const filterLeadId = searchParams.get('leadId');
 
     const [activityData, setActivityData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -116,6 +136,7 @@ export default function ActivityLogPage() {
             if (assignedTo) params.assignedTo = assignedTo;
             if (actionType) params.action = actionType;
             if (searchQuery) params.search = searchQuery;
+            if (filterLeadId) params.leadId = filterLeadId;
             // NEW: Add tag filter parameter if tags are selected.
             if (selectedTags.length > 0) {
                 params.tags = selectedTags.map(tag => tag._id).join(',');
@@ -144,14 +165,21 @@ export default function ActivityLogPage() {
             setActivityData(response.data);
         } catch (err) {
             console.error("Error fetching activity logs:", err);
-            setError("Failed to load activity logs. Please try again later.");
+            if (err.response?.status === 403) {
+                setError("Company profile is missing. Log out and sign in again.");
+            } else if (err.response?.status === 401) {
+                setError("Session expired. Please log in again.");
+            } else {
+                setError(err.response?.data?.message || "Failed to load activity logs. Please try again later.");
+            }
+            setActivityData({ totalActivities: 0, groupedActivities: [] });
         } finally {
             setLoading(false);
             setSearchLoading(false);
         }
     }, [
         page, sortDirection, sortField, startDate, endDate,
-        assignedTo, actionType, searchQuery, selectedTags
+        assignedTo, actionType, searchQuery, selectedTags, filterLeadId
     ]);
 
     // Memoize and optimize data fetching
@@ -241,6 +269,10 @@ export default function ActivityLogPage() {
                 return "warning";
             case "deleted":
                 return "error";
+            case "ticket_created":
+                return "error";
+            case "sale_created":
+                return "success";
             default:
                 return "default";
         }
@@ -326,6 +358,10 @@ export default function ActivityLogPage() {
                 return <RiRefreshLine />;
             case "deleted":
                 return <RiCloseLine />;
+            case "ticket_created":
+                return <i className="ri-coupon-2-line" />;
+            case "sale_created":
+                return <i className="ri-money-dollar-circle-line" />;
             default:
                 return <RiGlobalLine />;
         }
@@ -359,7 +395,7 @@ const renderActivity = useCallback((index, group, activity) => (
             '&:hover': { bgcolor: 'action.hover', cursor: 'pointer' },
             transition: 'background-color 0.2s'
         }}
-        onClick={() => activity.leadId?._id && router.push(`/en/manager/leads/byid/${activity.leadId._id}`)}
+        onClick={() => activity.leadId?._id && router.push(`/${locale}/manager/leads/byid/${activity.leadId._id}`)}
     >
         <Box display="flex" gap={2}>
             <Avatar
@@ -427,6 +463,30 @@ const renderActivity = useCallback((index, group, activity) => (
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
                     {activity.details}
                 </Typography>
+                {activity.action === 'ticket_created' && activity.metadata?.ticketId && (
+                    <Button
+                        size="small"
+                        sx={{ mb: 1, textTransform: 'none' }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/${locale}/manager/tickets/details?ticketId=${activity.metadata.ticketId}`);
+                        }}
+                    >
+                        Open ticket {activity.metadata.ticket_id || ''}
+                    </Button>
+                )}
+                {activity.action === 'sale_created' && (
+                    <Button
+                        size="small"
+                        sx={{ mb: 1, textTransform: 'none' }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/${locale}/manager/saleRequest`);
+                        }}
+                    >
+                        Open sales
+                    </Button>
+                )}
 
                 <Grid container spacing={2} sx={{ color: "text.secondary" }}>
                     <Grid item xs={6} sm={3}>

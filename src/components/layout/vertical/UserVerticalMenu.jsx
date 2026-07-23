@@ -127,6 +127,9 @@ const UserVerticalMenu = ({ dictionary, scrollMenu }) => {
         <MenuItem icon={<i className='ri-coupon-3-line' />} href={`/${locale}/tickets`}>
           Tickets
         </MenuItem>
+        <MenuItem icon={<i className='ri-whatsapp-line' />} href={`/${locale}/manager/my-whatsapp`}>
+          My WhatsApp
+        </MenuItem>
         <MenuItem icon={<i className='ri-user-line' />} href={`/${locale}/userdashboard`}>
           Users
         </MenuItem>

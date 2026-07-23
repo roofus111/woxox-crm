@@ -13,9 +13,12 @@ export class MailService {
     companyName: string;
     adminName?: string;
     loginUrl: string;
+    onboardingUrl?: string;
     plan?: string;
     temporaryPasswordHint?: boolean;
   }) {
+    const onboardingUrl =
+      input.onboardingUrl || input.loginUrl.replace(/\/login\/?$/, '/onboarding');
     const subject = `Welcome to WOXOX — ${input.companyName}`;
     const html = `
       <div style="font-family:Segoe UI,Arial,sans-serif;max-width:560px;margin:0 auto;color:#0f172a">
@@ -25,12 +28,15 @@ export class MailService {
           input.plan ? ` (${input.plan})` : ''
         }.</p>
         <p>
-          <a href="${input.loginUrl}" style="display:inline-block;background:#0f766e;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:700">
-            Sign in to your workspace
+          <a href="${input.loginUrl}" style="display:inline-block;background:#0f766e;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:700;margin-right:8px">
+            Sign in
+          </a>
+          <a href="${onboardingUrl}" style="display:inline-block;background:#0ea5e9;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:700">
+            Start onboarding
           </a>
         </p>
         <p style="color:#64748b;font-size:14px">
-          Next: complete onboarding (company profile, invite your team, pick modules).
+          Complete onboarding to set up your company profile, invite your team, and pick modules.
           ${input.temporaryPasswordHint ? 'Use the temporary password from your Super Admin, then change it.' : ''}
         </p>
         <p style="color:#94a3b8;font-size:12px">— WOXOX Control Center</p>

@@ -52,8 +52,10 @@ const TicketSection = () => {
     const [openDialog, setOpenDialog] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [customers, setCustomers] = useState([]);
+    const linkedLeadId = searchParams.get('leadId') || '';
     const [newTicket, setNewTicket] = useState({
         Customer: "",
+        leadId: "",
         issue_details: {
             subject: "",
             description: "",
@@ -70,7 +72,8 @@ const TicketSection = () => {
             setLoading(true);
             const token = localStorage.getItem('token');
             const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-            const response = await axios.get(`${apiUrl}/api/ticket/gettickets`, {
+            const query = linkedLeadId ? `?leadId=${encodeURIComponent(linkedLeadId)}` : '';
+            const response = await axios.get(`${apiUrl}/api/ticket/gettickets${query}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             setTickets(Array.isArray(response.data) ? response.data : []);
@@ -102,14 +105,17 @@ const TicketSection = () => {
     useEffect(() => {
         fetchTickets();
         fetchCustomers();
-    }, []);
+    }, [linkedLeadId]);
 
     // Open create dialog when landing from menu: /manager/tickets?create=1
     useEffect(() => {
         if (searchParams.get('create') === '1') {
             setOpenDialog(true);
         }
-    }, [searchParams]);
+        if (linkedLeadId) {
+            setNewTicket((prev) => ({ ...prev, leadId: linkedLeadId }));
+        }
+    }, [searchParams, linkedLeadId]);
 
     const handleSort = () => {
         const sortedTickets = [...tickets].sort((a, b) => {
@@ -137,6 +143,7 @@ const TicketSection = () => {
         setOpenDialog(false);
         setNewTicket({
             Customer: "",
+            leadId: linkedLeadId || "",
             issue_details: {
                 subject: "",
                 description: "",
@@ -183,6 +190,9 @@ const TicketSection = () => {
 
         const formData = new FormData();
         formData.append("customerId", newTicket.Customer);
+        if (newTicket.leadId || linkedLeadId) {
+            formData.append("leadId", newTicket.leadId || linkedLeadId);
+        }
         formData.append("subject", newTicket.issue_details.subject.trim());
         formData.append("description", newTicket.issue_details.description.trim());
         formData.append("category", newTicket.issue_details.category);
@@ -255,6 +265,11 @@ const TicketSection = () => {
             >
                 <Typography variant="h5" fontWeight={700}>
                     Support Tickets
+                    {linkedLeadId ? (
+                        <Typography component="span" variant="body2" sx={{ ml: 1, color: 'text.secondary', fontWeight: 500 }}>
+                            (linked to lead)
+                        </Typography>
+                    ) : null}
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
                     <FormControl sx={{ minWidth: 140 }} size="small">
@@ -359,6 +374,13 @@ const TicketSection = () => {
                                             ? `${ticket.customer.firstName || ''} ${ticket.customer.lastName || ''}`.trim()
                                             : 'No customer'}
                                     </Typography>
+                                    {ticket.leadId && (
+                                        <Typography variant="caption" sx={{ color: '#6366f1' }}>
+                                            Lead: {ticket.leadId.name
+                                              || [ticket.leadId.first_name, ticket.leadId.last_name].filter(Boolean).join(' ')
+                                              || 'Linked'}
+                                        </Typography>
+                                    )}
                                 </CardContent>
 
                                 <Box

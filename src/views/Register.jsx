@@ -22,10 +22,10 @@ import Alert from '@mui/material/Alert'
 
 // Third-party Imports
 import classnames from 'classnames'
-import axios from 'axios'
 
 // Component Imports
 import Logo from '@components/layout/shared/Logo'
+import { publicSignup } from '@/libs/crmPlatformApi'
 
 // Hook Imports
 import { useImageVariant } from '@core/hooks/useImageVariant'
@@ -115,41 +115,38 @@ export default function Register({ mode }) {
 
     setLoading(true)
     try {
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/register`,
-        {
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          name: `${firstName.trim()} ${lastName.trim()}`,
-          email: email.trim().toLowerCase(),
-          password: password,
-        }
-      )
-      const targetUrl = `/en/login`
+      const adminName = `${firstName.trim()} ${lastName.trim()}`
+      const data = await publicSignup({
+        companyName: adminName,
+        adminName,
+        adminEmail: email.trim().toLowerCase(),
+        adminPassword: password,
+        plan: 'trial',
+        billingCycle: 'monthly',
+      })
 
-      router.push(targetUrl)
+      if (data.welcomeEmailSent) {
+        showToast({
+          message: 'Account created. Check your email for login and onboarding links.',
+          severity: 'success',
+        })
+      } else {
+        showToast({
+          message:
+            'Account created. Welcome email could not be sent — sign in and continue onboarding.',
+          severity: 'warning',
+        })
+      }
 
+      router.push(getLocalizedUrl('/login', locale))
     } catch (err) {
       console.error('SignUp error:', err)
 
-      if (err.response) {
-        const status = err.response.status
-        const dataMessage = err.response.data?.message || ''
-
-        if (status === 409 || dataMessage.toLowerCase().includes('already registered')) {
-          showToast({ message: 'User already registered. Please login.', severity: 'warning' })
-        }
-        else if (
-          dataMessage.includes('E11000') ||
-          dataMessage.toLowerCase().includes('duplicate key')
-        ) {
-          showToast({ message: 'User already registered. Please login.', severity: 'warning' })
-        }
-        else if (dataMessage) {
-          setError(dataMessage)
-        } else {
-          setError('Something went wrong during sign up.')
-        }
+      const message = err.message || ''
+      if (message.toLowerCase().includes('already registered')) {
+        showToast({ message: 'User already registered. Please login.', severity: 'warning' })
+      } else if (message) {
+        setError(message)
       } else {
         setError('Something went wrong during sign up.')
       }

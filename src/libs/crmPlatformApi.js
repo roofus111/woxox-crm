@@ -97,6 +97,22 @@ export async function loginCrmPlatform(email, password) {
   return data
 }
 
+/** Link an existing legacy session to the platform API (after company-register, etc.). */
+export async function bridgeCrmPlatformWithLegacyToken(legacyToken) {
+  const url = `${getCrmPlatformBase()}/auth/legacy-bridge`
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ legacyToken }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(data.message || `Platform bridge failed (${res.status})`)
+  }
+  if (data.accessToken) setCrmPlatformToken(data.accessToken)
+  return data
+}
+
 export async function verifyCrmPlatformMfa(mfaToken, code) {
   const url = `${getCrmPlatformBase()}/auth/mfa/verify`
   const res = await fetch(url, {
@@ -132,6 +148,33 @@ export async function disableCrmPlatformMfa(code) {
 
 export async function getOnboardingStatus() {
   return platformFetch('/auth/onboarding')
+}
+
+export async function syncTenantModulesFromPlatform(updateSession) {
+  if (!getCrmPlatformToken()) return null
+  try {
+    const data = await getOnboardingStatus()
+    const modules = data.workspace?.enabledModules?.length
+      ? data.workspace.enabledModules
+      : ['crm']
+    const planModules = data.workspace?.planModules?.length
+      ? data.workspace.planModules
+      : modules
+    const { storeEnabledProducts } = await import('@/libs/tenantModules')
+    storeEnabledProducts(modules)
+    if (updateSession) {
+      await updateSession({
+        user: {
+          enabledModules: modules,
+          enabledProducts: modules,
+          planModules,
+        },
+      })
+    }
+    return modules
+  } catch {
+    return null
+  }
 }
 
 export async function updateOnboarding(payload) {
@@ -199,12 +242,176 @@ export async function fetchLeads(params = {}) {
   return platformFetch(`/leads${qs ? `?${qs}` : ''}`)
 }
 
-export async function fetchPipelines() {
-  return platformFetch('/pipelines')
+export async function fetchPipelines(params = {}) {
+  const qs = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')
+  ).toString()
+  return platformFetch(`/pipelines${qs ? `?${qs}` : ''}`)
+}
+
+export async function fetchPipeline(pipelineId) {
+  return platformFetch(`/pipelines/${pipelineId}`)
 }
 
 export async function fetchPipelineBoard(pipelineId) {
   return platformFetch(`/pipelines/${pipelineId}/board`)
+}
+
+export async function createPipeline(payload) {
+  return platformFetch('/pipelines', { method: 'POST', body: JSON.stringify(payload) })
+}
+
+export async function updatePipeline(pipelineId, payload) {
+  return platformFetch(`/pipelines/${pipelineId}`, { method: 'PATCH', body: JSON.stringify(payload) })
+}
+
+export async function deletePipeline(pipelineId) {
+  return platformFetch(`/pipelines/${pipelineId}`, { method: 'DELETE' })
+}
+
+export async function clonePipeline(pipelineId, payload = {}) {
+  return platformFetch(`/pipelines/${pipelineId}/clone`, { method: 'POST', body: JSON.stringify(payload) })
+}
+
+export async function publishPipeline(pipelineId, payload = {}) {
+  return platformFetch(`/pipelines/${pipelineId}/publish`, { method: 'POST', body: JSON.stringify(payload) })
+}
+
+export async function exportPipeline(pipelineId) {
+  return platformFetch(`/pipelines/${pipelineId}/export`)
+}
+
+export async function importPipeline(payload) {
+  return platformFetch('/pipelines/import', { method: 'POST', body: JSON.stringify(payload) })
+}
+
+export async function fetchPipelineTemplates() {
+  return platformFetch('/pipelines/templates')
+}
+
+export async function applyPipelineTemplate(payload) {
+  return platformFetch('/pipelines/templates/apply', { method: 'POST', body: JSON.stringify(payload) })
+}
+
+export async function savePipelineAsTemplate(pipelineId, payload) {
+  return platformFetch(`/pipelines/${pipelineId}/save-template`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function addPipelineStage(pipelineId, payload) {
+  return platformFetch(`/pipelines/${pipelineId}/stages`, { method: 'POST', body: JSON.stringify(payload) })
+}
+
+export async function updatePipelineStage(pipelineId, stageId, payload) {
+  return platformFetch(`/pipelines/${pipelineId}/stages/${stageId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deletePipelineStage(pipelineId, stageId) {
+  return platformFetch(`/pipelines/${pipelineId}/stages/${stageId}`, { method: 'DELETE' })
+}
+
+export async function reorderPipelineStages(pipelineId, stageIds) {
+  return platformFetch(`/pipelines/${pipelineId}/stages/reorder`, {
+    method: 'PUT',
+    body: JSON.stringify({ stageIds }),
+  })
+}
+
+export async function duplicatePipelineStage(pipelineId, stageId) {
+  return platformFetch(`/pipelines/${pipelineId}/stages/${stageId}/duplicate`, { method: 'POST', body: '{}' })
+}
+
+export async function upsertStageField(pipelineId, stageId, payload) {
+  return platformFetch(`/pipelines/${pipelineId}/stages/${stageId}/fields`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteStageField(pipelineId, stageId, fieldId) {
+  return platformFetch(`/pipelines/${pipelineId}/stages/${stageId}/fields/${fieldId}`, { method: 'DELETE' })
+}
+
+export async function upsertStageDocument(pipelineId, stageId, payload) {
+  return platformFetch(`/pipelines/${pipelineId}/stages/${stageId}/documents`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteStageDocument(pipelineId, stageId, docId) {
+  return platformFetch(`/pipelines/${pipelineId}/stages/${stageId}/documents/${docId}`, { method: 'DELETE' })
+}
+
+export async function addStageChecklistItem(pipelineId, stageId, payload) {
+  return platformFetch(`/pipelines/${pipelineId}/stages/${stageId}/checklist`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteStageChecklistItem(pipelineId, stageId, itemId) {
+  return platformFetch(`/pipelines/${pipelineId}/stages/${stageId}/checklist/${itemId}`, { method: 'DELETE' })
+}
+
+export async function addStagePermission(pipelineId, stageId, payload) {
+  return platformFetch(`/pipelines/${pipelineId}/stages/${stageId}/permissions`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteStagePermission(pipelineId, stageId, permId) {
+  return platformFetch(`/pipelines/${pipelineId}/stages/${stageId}/permissions/${permId}`, { method: 'DELETE' })
+}
+
+export async function addStageAutomation(pipelineId, stageId, payload) {
+  return platformFetch(`/pipelines/${pipelineId}/stages/${stageId}/automations`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteStageAutomation(pipelineId, stageId, autoId) {
+  return platformFetch(`/pipelines/${pipelineId}/stages/${stageId}/automations/${autoId}`, { method: 'DELETE' })
+}
+
+export async function upsertTransitionRule(pipelineId, payload) {
+  return platformFetch(`/pipelines/${pipelineId}/transitions`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteTransitionRule(pipelineId, ruleId) {
+  return platformFetch(`/pipelines/${pipelineId}/transitions/${ruleId}`, { method: 'DELETE' })
+}
+
+export async function validatePipelineTransition(pipelineId, payload) {
+  return platformFetch(`/pipelines/${pipelineId}/validate-transition`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function fetchPipelineAudit(pipelineId) {
+  return platformFetch(`/pipelines/${pipelineId}/audit`)
+}
+
+export async function fetchPipelineVersions(pipelineId) {
+  return platformFetch(`/pipelines/${pipelineId}/versions`)
+}
+
+export async function restorePipelineVersion(pipelineId, version) {
+  return platformFetch(`/pipelines/${pipelineId}/versions/${version}/restore`, {
+    method: 'POST',
+    body: '{}',
+  })
 }
 
 export async function getSuperAdminStats() {

@@ -71,11 +71,58 @@ async function main() {
       data: {
         workspaceId: workspace.id,
         name: 'Sales Pipeline',
+        moduleKey: 'crm',
         isDefault: true,
-        stages: { create: DEFAULT_STAGES },
+        stages: {
+          create: [
+            { name: 'Qualification', probability: 10, winProbability: 10, sortOrder: 0 },
+            { name: 'Proposal', probability: 40, winProbability: 40, sortOrder: 1 },
+            { name: 'Negotiation', probability: 70, winProbability: 70, sortOrder: 2 },
+            {
+              name: 'Won',
+              probability: 100,
+              winProbability: 100,
+              sortOrder: 3,
+              isWon: true,
+              isSuccess: true,
+              isClosed: true,
+              stageType: 'success',
+            },
+            {
+              name: 'Lost',
+              probability: 0,
+              winProbability: 0,
+              sortOrder: 4,
+              isLost: true,
+              isClosed: true,
+              stageType: 'lost',
+            },
+          ],
+        },
       },
       include: { stages: { orderBy: { sortOrder: 'asc' } } },
     });
+  }
+
+  // Seed system pipeline templates
+  const { SYSTEM_PIPELINE_TEMPLATES } = await import('../src/modules/pipelines/pipeline-templates.seed');
+  for (const tpl of SYSTEM_PIPELINE_TEMPLATES) {
+    const existing = await prisma.pipelineTemplate.findFirst({
+      where: { isSystem: true, name: tpl.name, moduleKey: tpl.moduleKey, workspaceId: null },
+    });
+    if (!existing) {
+      await prisma.pipelineTemplate.create({
+        data: {
+          name: tpl.name,
+          description: tpl.description,
+          moduleKey: tpl.moduleKey,
+          icon: tpl.icon,
+          color: tpl.color,
+          isSystem: true,
+          stagesJson: tpl.stages,
+        },
+      });
+    }
   }
 
   const qualification = pipeline.stages.find((s) => s.name === 'Qualification')!;

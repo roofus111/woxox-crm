@@ -34,6 +34,10 @@ model Workspace {
   companies             Company[]
   deals                 Deal[]
   pipelines             Pipeline[]
+  pipelineTemplates     PipelineTemplate[]
+  stageTemplates        StageTemplate[]
+  pipelineRecords       PipelineRecord[]
+  pipelineAuditLogs     PipelineAuditLog[]
   activities            Activity[]
   tasks                 Task[]
   auditLogs             AuditLog[]
@@ -208,38 +212,285 @@ model Company {
   @@index([workspaceId, name])
 }
 
-// ─── Deals & pipeline ───────────────────────────────────────────────────────
+// ─── Pipeline Engine (configurable, multi-module) ───────────────────────────
 
 model Pipeline {
-  id          String   @id @default(cuid())
-  workspaceId String
-  name        String
-  isDefault   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String   @id @default(cuid())
+  workspaceId      String
+  name             String
+  description      String?
+  icon             String?
+  color            String?  @default("#0288d1")
+  moduleKey        String   @default("crm") // crm | immigration | recruitment | hrms | legalos | finance | support | projects | academy | custom
+  businessUnit     String?
+  country          String?
+  isDefault        Boolean  @default(false)
+  isActive         Boolean  @default(true)
+  isArchived       Boolean  @default(false)
+  visibility       String   @default("workspace") // private | workspace | public
+  ownerId          String?
+  version          Int      @default(1)
+  publishedVersion Int?
+  legacyMongoId    String?
+  config           Json     @default("{}")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  stages    PipelineStage[]
-  deals     Deal[]
+  workspace   Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  stages      PipelineStage[]
+  deals       Deal[]
+  versions    PipelineVersion[]
+  records     PipelineRecord[]
+  auditLogs   PipelineAuditLog[]
 
   @@index([workspaceId])
+  @@index([workspaceId, moduleKey])
+  @@index([workspaceId, isArchived])
+  @@index([legacyMongoId])
 }
 
 model PipelineStage {
+  id                 String   @id @default(cuid())
+  pipelineId         String
+  name               String
+  description        String?
+  color              String?
+  icon               String?
+  sortOrder          Int      @default(0)
+  stageType          String   @default("open") // open | success | lost | closed | custom
+  isSuccess          Boolean  @default(false)
+  isWon              Boolean  @default(false) // alias of isSuccess for Deal APIs
+  isLost             Boolean  @default(false)
+  isClosed           Boolean  @default(false)
+  /// Kept for Deal.moveStage compatibility (= win probability 0–100)
+  probability        Int      @default(0)
+  winProbability     Int      @default(0)
+  slaHours           Int?
+  estimatedDuration  Int? // hours
+  revenuePercent     Float?
+  requiresApproval   Boolean  @default(false)
+  config             Json     @default("{}")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  pipeline      Pipeline              @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  deals         Deal[]
+  fields        StageField[]
+  documents     StageDocument[]
+  checklist     StageChecklistItem[]
+  permissions   StagePermission[]
+  automations   StageAutomation[]
+  records       PipelineRecord[]
+  transitionsFrom StageTransitionRule[] @relation("TransitionFrom")
+  transitionsTo   StageTransitionRule[] @relation("TransitionTo")
+
+  @@index([pipelineId, sortOrder])
+}
+
+model StageField {
   id          String   @id @default(cuid())
-  pipelineId  String
-  name        String
-  probability Int      @default(0)
+  stageId     String
+  fieldKey    String
+  label       String
+  fieldType   String   @default("text") // text | number | date | select | email | phone | boolean
+  isRequired  Boolean  @default(true)
+  options     Json     @default("[]")
   sortOrder   Int      @default(0)
-  isWon       Boolean  @default(false)
-  isLost      Boolean  @default(false)
+  validation  Json     @default("{}")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  pipeline Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
-  deals    Deal[]
+  stage PipelineStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
 
-  @@index([pipelineId, sortOrder])
+  @@unique([stageId, fieldKey])
+  @@index([stageId, sortOrder])
+}
+
+model StageDocument {
+  id           String   @id @default(cuid())
+  stageId      String
+  docKey       String
+  label        String
+  description  String?
+  isRequired   Boolean  @default(true)
+  acceptedMime String[] @default([])
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  stage PipelineStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@unique([stageId, docKey])
+  @@index([stageId, sortOrder])
+}
+
+model StageChecklistItem {
+  id          String   @id @default(cuid())
+  stageId     String
+  label       String
+  description String?
+  isRequired  Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  stage PipelineStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@index([stageId, sortOrder])
+}
+
+model StageTransitionRule {
+  id               String   @id @default(cuid())
+  pipelineId       String
+  fromStageId      String
+  toStageId        String
+  name             String?
+  conditions       Json     @default("{}")
+  blockUnlessValid Boolean  @default(true)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  fromStage PipelineStage @relation("TransitionFrom", fields: [fromStageId], references: [id], onDelete: Cascade)
+  toStage   PipelineStage @relation("TransitionTo", fields: [toStageId], references: [id], onDelete: Cascade)
+
+  @@unique([fromStageId, toStageId])
+  @@index([pipelineId])
+}
+
+model StagePermission {
+  id          String   @id @default(cuid())
+  stageId     String
+  role        String? // ADMIN | USER | etc — null = any authenticated
+  userId      String?
+  canView     Boolean  @default(true)
+  canEdit     Boolean  @default(false)
+  canDelete   Boolean  @default(false)
+  canMoveFwd  Boolean  @default(true)
+  canMoveBack Boolean  @default(true)
+  canApprove  Boolean  @default(false)
+  canReject   Boolean  @default(false)
+  canSkip     Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  stage PipelineStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@index([stageId])
+}
+
+model StageAutomation {
+  id          String   @id @default(cuid())
+  stageId     String
+  name        String
+  trigger     String // enter | exit | approve | reject | field_change | schedule
+  condition   Json     @default("{}")
+  action      Json     @default("{}") // { type, payload }
+  isEnabled   Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  stage PipelineStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@index([stageId, isEnabled])
+}
+
+model PipelineTemplate {
+  id          String   @id @default(cuid())
+  workspaceId String? // null = system template
+  name        String
+  description String?
+  moduleKey   String   @default("crm")
+  icon        String?
+  color       String?
+  isSystem    Boolean  @default(false)
+  stagesJson  Json // array of stage defs with nested fields/docs/checklist
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([moduleKey, isSystem])
+}
+
+model StageTemplate {
+  id          String   @id @default(cuid())
+  workspaceId String?
+  name        String
+  description String?
+  moduleKey   String   @default("crm")
+  isSystem    Boolean  @default(false)
+  stageJson   Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([moduleKey, isSystem])
+}
+
+model PipelineVersion {
+  id          String   @id @default(cuid())
+  pipelineId  String
+  version     Int
+  snapshot    Json
+  note        String?
+  publishedBy String?
+  createdAt   DateTime @default(now())
+
+  pipeline Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+
+  @@unique([pipelineId, version])
+  @@index([pipelineId, createdAt])
+}
+
+/// Polymorphic card/record for any WOXOX module (Phase 5 consumers)
+model PipelineRecord {
+  id          String   @id @default(cuid())
+  workspaceId String
+  pipelineId  String
+  stageId     String?
+  moduleKey   String
+  externalId  String?
+  title       String?
+  ownerId     String?
+  payload     Json     @default("{}")
+  fieldValues Json     @default("{}")
+  checklist   Json     @default("{}") // { itemId: boolean }
+  documents   Json     @default("{}") // { docKey: { uploaded, url } }
+  deletedAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  pipeline  Pipeline       @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  stage     PipelineStage? @relation(fields: [stageId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, pipelineId, stageId])
+  @@index([workspaceId, moduleKey, externalId])
+}
+
+model PipelineAuditLog {
+  id          String   @id @default(cuid())
+  workspaceId String
+  pipelineId  String?
+  actorId     String?
+  action      String
+  entity      String
+  entityId    String?
+  before      Json?
+  after       Json?
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  pipeline  Pipeline? @relation(fields: [pipelineId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt])
+  @@index([pipelineId, createdAt])
 }
 
 model Deal {

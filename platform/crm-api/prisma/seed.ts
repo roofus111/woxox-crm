@@ -335,7 +335,7 @@ async function main() {
       name: 'Professional',
       amountMonthly: 499900,
       amountYearly: 4999000,
-      enabledModules: ['crm', 'finance', 'hrms'],
+      enabledModules: ['crm', 'finance', 'hrms', 'docsign'],
       sortOrder: 2,
       maxUsers: 25,
     },
@@ -344,7 +344,7 @@ async function main() {
       name: 'Enterprise',
       amountMonthly: 999900,
       amountYearly: 9999000,
-      enabledModules: ['crm', 'finance', 'hrms', 'legalos', 'projectsLite', 'projectsMax', 'academy', 'ecommerce'],
+      enabledModules: ['crm', 'finance', 'hrms', 'legalos', 'docsign', 'projectsLite', 'projectsMax', 'academy', 'ecommerce'],
       sortOrder: 3,
     },
   ] as const;

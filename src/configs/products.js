@@ -40,7 +40,7 @@ export const DEMO_ENABLED_PRODUCTS = [
 ]
 
 /** Bump when default product set changes so older localStorage lists are upgraded. */
-export const PRODUCTS_CATALOG_VERSION = '15'
+export const PRODUCTS_CATALOG_VERSION = '16'
 export const PRODUCTS_CATALOG_VERSION_KEY = 'woxox.productsCatalogVersion'
 
 const localeHref = (path) => (locale) => `/${locale}${path}`

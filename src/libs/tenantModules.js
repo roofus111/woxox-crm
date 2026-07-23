@@ -53,16 +53,20 @@ export function hasConfiguredProducts() {
   }
 }
 
-/** Merge catalog version upgrades without expanding to unpaid demo products. */
+/** Merge catalog version upgrades; add newly entitled catalog products (e.g. docsign). */
 function migrateStoredProducts(stored, entitlements = ['crm']) {
   if (typeof window === 'undefined') return stored
   try {
     const ver = window.localStorage.getItem(PRODUCTS_CATALOG_VERSION_KEY)
     const normalized = stored.map(id => (id === 'projects' ? 'projectsMax' : id))
     const allowed = new Set(entitlements.includes('crm') ? entitlements : ['crm', ...entitlements])
-    const capped = normalized.filter(id => allowed.has(id))
-    const next = capped.includes('crm') ? capped : ['crm', ...capped]
+    let next = normalized.filter(id => allowed.has(id))
+    if (!next.includes('crm')) next = ['crm', ...next]
     if (ver !== PRODUCTS_CATALOG_VERSION) {
+      for (const id of DEMO_ENABLED_PRODUCTS) {
+        if (allowed.has(id) && !next.includes(id)) next.push(id)
+      }
+      next = PRODUCT_ORDER.filter(id => next.includes(id))
       storeEnabledProducts(next)
     }
     return next

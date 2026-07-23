@@ -47,6 +47,7 @@ async function seed() {
         'finance',
         'hrms',
         'legalos',
+        'docsign',
         'academy',
         'ecommerce',
       ],

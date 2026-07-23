@@ -253,9 +253,38 @@ export async function ensureCrmPlatformSession(legacyToken, { force = false } = 
 
 export async function fetchDashboardSummary(legacyToken) {
   // Prefer live Mongo CRM data (legacy API). Platform Postgres is often empty for tenants.
-  const legacy = await fetchLegacyDashboardSummary(legacyToken).catch(() => null)
+  const legacy = await fetchLegacyDashboardSummary(legacyToken).catch((err) => {
+    console.warn('legacy dashboard failed:', err?.message || err)
+    return null
+  })
   if (legacy?.kpis) return legacy
-  return platformFetch('/dashboard/summary')
+
+  try {
+    return await platformFetch('/dashboard/summary')
+  } catch (err) {
+    console.warn('platform dashboard failed:', err?.message || err)
+    // Last resort empty shell so UI still renders
+    return {
+      kpis: {
+        totalLeads: 0,
+        qualifiedLeads: 0,
+        totalContacts: 0,
+        totalCompanies: 0,
+        openDeals: 0,
+        wonDeals: 0,
+        lostDeals: 0,
+        pipelineValue: 0,
+        wonValue: 0,
+        winRate: 0,
+        tasksDueToday: 0,
+        openTasks: 0,
+        activitiesToday: 0,
+      },
+      funnel: [],
+      recentActivities: [],
+      _error: err?.message || 'dashboard unavailable',
+    }
+  }
 }
 
 /** Operating dashboard from crmserver Mongo (leads, sales, follow-ups, activities). */
@@ -272,19 +301,37 @@ export async function fetchLegacyDashboardSummary(legacyToken) {
     err.status = 401
     throw err
   }
-  const res = await fetch(`${base}/api/insights/dashboard/summary`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-  })
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) {
-    const err = new Error(data.message || `Dashboard request failed (${res.status})`)
-    err.status = res.status
-    throw err
+
+  // Express mount is /api/Insights; also try lowercase for proxies.
+  const paths = [
+    `${base}/api/Insights/dashboard/summary`,
+    `${base}/api/insights/dashboard/summary`,
+  ]
+
+  let lastErr
+  for (const url of paths) {
+    try {
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        const err = new Error(data.message || `Dashboard request failed (${res.status})`)
+        err.status = res.status
+        lastErr = err
+        if (res.status === 404) continue
+        throw err
+      }
+      return data
+    } catch (err) {
+      lastErr = err
+      if (err.status && err.status !== 404) throw err
+    }
   }
-  return data
+  throw lastErr || new Error('Dashboard request failed')
 }
 
 export async function fetchLeads(params = {}) {

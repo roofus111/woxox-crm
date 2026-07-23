@@ -183,7 +183,7 @@ export default function CrmPlatformDashboard() {
   const activities = data?.recentActivities || []
   const isMine = legacyRole === 'user' || data?.scope === 'mine'
   const leadsHref = isMine ? `/${locale}/home` : `/${locale}/manager/leads`
-  const followHref = isMine ? `/${locale}/followup` : `/${locale}/manager/followups`
+  const followHref = isMine ? `/${locale}/followup` : `/${locale}/manager/followup`
   const activityHref = isMine ? `/${locale}/home` : `/${locale}/manager/activitylog`
 
   return (
@@ -204,6 +204,11 @@ export default function CrmPlatformDashboard() {
               ? 'Only your assigned leads, follow-ups, and activity — not other team members.'
               : 'Live KPIs from your CRM data (leads, deals, follow-ups, activities).'}
           </Typography>
+          {data?._error ? (
+            <Alert severity='warning' sx={{ mt: 1 }}>
+              Dashboard data may be incomplete: {data._error}
+            </Alert>
+          ) : null}
         </Box>
         <Stack direction='row' spacing={1} flexWrap='wrap' useFlexGap sx={{ mt: { xs: 2, sm: 0 } }}>
           <Button component={Link} href={leadsHref} variant='outlined' size='small'>

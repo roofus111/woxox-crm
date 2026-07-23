@@ -1,9 +1,6 @@
 'use client'
 
-// React Imports
 import { useRef, useState, useEffect, useMemo, useCallback } from 'react'
-
-// MUI Imports
 import IconButton from '@mui/material/IconButton'
 import Badge from '@mui/material/Badge'
 import Popper from '@mui/material/Popper'
@@ -17,37 +14,53 @@ import Divider from '@mui/material/Divider'
 import Avatar from '@mui/material/Avatar'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import Button from '@mui/material/Button'
-
-// Third Party Components
 import classnames from 'classnames'
 import PerfectScrollbar from 'react-perfect-scrollbar'
 import { debounce } from 'lodash'
-
-// Component Imports
 import CustomAvatar from '@core/components/mui/Avatar'
-
-// Config Imports
 import themeConfig from '@configs/themeConfig'
-
-// Hook Imports
 import { useSettings } from '@core/hooks/useSettings'
-
-// Util Imports
 import { getInitials } from '@/utils/getInitials'
-
-// Add useSocket import
 import { useSocket } from '@/hooks/useSocket'
-import { toast } from 'react-toastify'
 
 const ScrollWrapper = ({ children, hidden }) => {
   if (hidden) {
     return <div className='overflow-x-hidden bs-full'>{children}</div>
-  } else {
-    return (
-      <PerfectScrollbar className='bs-full' options={{ wheelPropagation: false, suppressScrollX: true }}>
-        {children}
-      </PerfectScrollbar>
-    )
+  }
+
+  return (
+    <PerfectScrollbar className='bs-full' options={{ wheelPropagation: false, suppressScrollX: true }}>
+      {children}
+    </PerfectScrollbar>
+  )
+}
+
+const iconForType = type => {
+  if (type === 'lead_assigned') return { avatarIcon: 'ri-user-shared-line', avatarColor: 'primary' }
+  if (type === 'follow_up_reminder') return { avatarIcon: 'ri-calendar-check-line', avatarColor: 'warning' }
+  if (String(type || '').includes('ticket')) return { avatarIcon: 'ri-coupon-3-line', avatarColor: 'info' }
+  return { avatarIcon: 'ri-notification-2-line', avatarColor: 'secondary' }
+}
+
+const formatTime = value => {
+  if (!value) return ''
+  try {
+    return new Date(value).toLocaleString()
+  } catch {
+    return String(value)
+  }
+}
+
+const mapApiNotification = n => {
+  const icons = iconForType(n.type)
+  return {
+    id: n._id,
+    title: n.title || 'Notification',
+    subtitle: n.message || '',
+    time: formatTime(n.createdAt || n.timestamp),
+    read: n.status ? n.status !== 'unread' : Boolean(n.read),
+    type: n.type,
+    ...icons
   }
 }
 
@@ -56,77 +69,145 @@ const getAvatar = params => {
 
   if (avatarImage) {
     return <Avatar src={avatarImage} />
-  } else if (avatarIcon) {
+  }
+  if (avatarIcon) {
     return (
       <CustomAvatar color={avatarColor} skin={avatarSkin || 'light-static'}>
         <i className={avatarIcon} />
       </CustomAvatar>
     )
-  } else {
-    return (
-      <CustomAvatar color={avatarColor} skin={avatarSkin || 'light-static'}>
-        {avatarText || getInitials(title)}
-      </CustomAvatar>
-    )
   }
+  return (
+    <CustomAvatar color={avatarColor} skin={avatarSkin || 'light-static'}>
+      {avatarText || getInitials(title)}
+    </CustomAvatar>
+  )
 }
 
-const NotificationDropdown = ({ notifications }) => {
-  // States
+const NotificationDropdown = ({ notifications = [] }) => {
   const [open, setOpen] = useState(false)
-  const [notificationsState, setNotificationsState] = useState(notifications)
+  const [notificationsState, setNotificationsState] = useState(() =>
+    (notifications || []).map(n => (n.id || n._id ? mapApiNotification(n) : n))
+  )
+  const [loading, setLoading] = useState(false)
 
-  // Memoize filtered notifications count
-  const notificationCount = useMemo(() =>
-    notificationsState.filter(notification => !notification.read).length,
+  const notificationCount = useMemo(
+    () => notificationsState.filter(notification => !notification.read).length,
     [notificationsState]
   )
 
-  // Memoize readAll status
-  const readAll = useMemo(() =>
-    notificationsState.every(notification => notification.read),
+  const readAll = useMemo(
+    () => notificationsState.length > 0 && notificationsState.every(notification => notification.read),
     [notificationsState]
   )
 
-  // Refs
   const anchorRef = useRef(null)
   const ref = useRef(null)
-
-  // Hooks
   const { notificationData } = useSocket()
   const hidden = useMediaQuery(theme => theme.breakpoints.down('lg'))
   const isSmallScreen = useMediaQuery(theme => theme.breakpoints.down('sm'))
   const { settings } = useSettings()
 
-  // Handlers
-  const handleReadNotification = useCallback((event, value, index) => {
-    event.stopPropagation()
-    setNotificationsState(prev => {
-      const newNotifications = [...prev]
-      newNotifications[index].read = value
-      return newNotifications
-    })
+  const fetchNotifications = useCallback(async () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    if (!token || !process.env.NEXT_PUBLIC_API_URL) return
+
+    setLoading(true)
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/notification/getall?limit=30`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (!res.ok) {
+        setNotificationsState([])
+        return
+      }
+      const data = await res.json()
+      const list = Array.isArray(data.notifications) ? data.notifications : Array.isArray(data) ? data : []
+      setNotificationsState(list.map(mapApiNotification))
+    } catch (err) {
+      console.error('Failed to load notifications', err)
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
-  const handleRemoveNotification = useCallback((event, index) => {
-    event.stopPropagation()
-    setNotificationsState(prev => {
-      const newNotifications = [...prev]
-      newNotifications.splice(index, 1)
-      return newNotifications
-    })
-  }, [])
+  useEffect(() => {
+    fetchNotifications()
+  }, [fetchNotifications])
 
-  const readAllNotifications = useCallback(() => {
-    setNotificationsState(prev =>
-      prev.map(notification => ({
-        ...notification,
-        read: !readAll
-      }))
-    )
+  useEffect(() => {
+    if (!notificationData) return
+    const mapped = mapApiNotification({
+      ...notificationData,
+      status: notificationData.status || 'unread',
+      createdAt: notificationData.createdAt || notificationData.timestamp || new Date()
+    })
+    setNotificationsState(prev => {
+      if (mapped.id && prev.some(n => String(n.id) === String(mapped.id))) return prev
+      return [mapped, ...prev]
+    })
+  }, [notificationData])
+
+  const handleReadNotification = useCallback(async (event, value, index) => {
+    event.stopPropagation()
+    const item = notificationsState[index]
+    setNotificationsState(prev => {
+      const next = [...prev]
+      next[index] = { ...next[index], read: value }
+      return next
+    })
+
+    if (!item?.id) return
+    const token = localStorage.getItem('token')
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/notification/update/${item.id}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status: value ? 'read' : 'unread' })
+      })
+    } catch (err) {
+      console.error('Failed to update notification', err)
+    }
+  }, [notificationsState])
+
+  const handleRemoveNotification = useCallback(async (event, index) => {
+    event.stopPropagation()
+    const item = notificationsState[index]
+    setNotificationsState(prev => {
+      const next = [...prev]
+      next.splice(index, 1)
+      return next
+    })
+    if (!item?.id) return
+    const token = localStorage.getItem('token')
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/notification/delete/${item.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+    } catch (err) {
+      console.error('Failed to delete notification', err)
+    }
+  }, [notificationsState])
+
+  const readAllNotifications = useCallback(async () => {
+    const markRead = !readAll
+    setNotificationsState(prev => prev.map(n => ({ ...n, read: markRead })))
+    if (!markRead) return
+    const token = localStorage.getItem('token')
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/notification/mark-all-read`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+    } catch (err) {
+      console.error('Failed to mark all read', err)
+    }
   }, [readAll])
 
-  // Handle resize effect
   useEffect(() => {
     const adjustPopoverHeight = () => {
       if (ref.current) {
@@ -135,9 +216,8 @@ const NotificationDropdown = ({ notifications }) => {
       }
     }
 
-    adjustPopoverHeight() // Call initially
-    const debouncedAdjust = debounce(adjustPopoverHeight, 250) // Debounce resize handler
-
+    adjustPopoverHeight()
+    const debouncedAdjust = debounce(adjustPopoverHeight, 250)
     window.addEventListener('resize', debouncedAdjust)
     return () => {
       window.removeEventListener('resize', debouncedAdjust)
@@ -145,27 +225,10 @@ const NotificationDropdown = ({ notifications }) => {
     }
   }, [])
 
-  // Handle socket notifications
-  useEffect(() => {
-    const handleNewNotification = (notification) => {
-      setNotificationsState(prev => [{
-        title: notification?.title || 'New Notification',
-        subtitle: notification?.message || notification?.subtitle,
-        time: new Date().toLocaleTimeString(),
-        read: false,
-        avatarIcon: notification?.icon || 'ri-notification-2-line',
-        avatarColor: notification?.color || 'primary'
-      }, ...prev])
-    }
-    handleNewNotification(notificationData)
-  }, [notificationData])
-
-  const handleClose = () => {
-    setOpen(false)
-  }
-
+  const handleClose = () => setOpen(false)
   const handleToggle = () => {
-    setOpen(prevOpen => !prevOpen)
+    setOpen(prev => !prev)
+    if (!open) fetchNotifications()
   }
 
   return (
@@ -191,16 +254,14 @@ const NotificationDropdown = ({ notifications }) => {
         anchorEl={anchorRef.current}
         {...(isSmallScreen
           ? {
-            className: 'is-full !mbs-4 z-[1] max-bs-[550px] bs-[550px]',
-            modifiers: [
-              {
-                name: 'preventOverflow',
-                options: {
-                  padding: themeConfig.layoutPadding
+              className: 'is-full !mbs-4 z-[1] max-bs-[550px] bs-[550px]',
+              modifiers: [
+                {
+                  name: 'preventOverflow',
+                  options: { padding: themeConfig.layoutPadding }
                 }
-              }
-            ]
-          }
+              ]
+            }
           : { className: 'is-96 !mbs-4 z-[1] max-bs-[550px] bs-[550px]' })}
       >
         {({ TransitionProps, placement }) => (
@@ -218,28 +279,26 @@ const NotificationDropdown = ({ notifications }) => {
                     <Tooltip
                       title={readAll ? 'Mark all as unread' : 'Mark all as read'}
                       placement={placement === 'bottom-end' ? 'left' : 'right'}
-                      slotProps={{
-                        popper: {
-                          sx: {
-                            '& .MuiTooltip-tooltip': {
-                              transformOrigin:
-                                placement === 'bottom-end' ? 'right center !important' : 'right center !important'
-                            }
-                          }
-                        }
-                      }}
                     >
                       {notificationsState.length > 0 ? (
                         <IconButton size='small' onClick={() => readAllNotifications()} className='text-textPrimary'>
                           <i className={classnames(readAll ? 'ri-mail-line' : 'ri-mail-open-line', 'text-xl')} />
                         </IconButton>
-                      ) : (
-                        <></>
-                      )}
+                      ) : null}
                     </Tooltip>
                   </div>
                   <Divider />
                   <ScrollWrapper hidden={hidden}>
+                    {loading && notificationsState.length === 0 ? (
+                      <Typography className='pli-4 plb-6' color='text.secondary'>
+                        Loading…
+                      </Typography>
+                    ) : null}
+                    {!loading && notificationsState.length === 0 ? (
+                      <Typography className='pli-4 plb-6' color='text.secondary'>
+                        No notifications yet
+                      </Typography>
+                    ) : null}
                     {notificationsState.map((notification, index) => {
                       const {
                         title,
@@ -250,12 +309,13 @@ const NotificationDropdown = ({ notifications }) => {
                         avatarIcon,
                         avatarText,
                         avatarColor,
-                        avatarSkin
+                        avatarSkin,
+                        id
                       } = notification
 
                       return (
                         <div
-                          key={index}
+                          key={id || index}
                           className={classnames('flex plb-3 pli-4 gap-3 cursor-pointer hover:bg-actionHover group', {
                             'border-be': index !== notificationsState.length - 1
                           })}
@@ -293,8 +353,8 @@ const NotificationDropdown = ({ notifications }) => {
                   </ScrollWrapper>
                   <Divider />
                   <div className='p-4'>
-                    <Button fullWidth variant='contained' size='small'>
-                      View All Notifications
+                    <Button fullWidth variant='contained' size='small' onClick={fetchNotifications}>
+                      Refresh
                     </Button>
                   </div>
                 </div>

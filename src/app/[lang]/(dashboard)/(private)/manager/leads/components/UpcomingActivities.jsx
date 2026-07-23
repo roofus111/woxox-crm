@@ -33,15 +33,21 @@ const UpcomingActivities = ({ id, onActivityUpdate }) => {
             })
             .then(response => {
                 if (isMounted) {
-                    setData(response.data)
-                    console.log(response.data)
+                    setData(Array.isArray(response.data) ? response.data : [])
+                    setError(null)
                     setLoading(false)
                 }
             })
             .catch(error => {
                 console.error('Failed to fetch data:', error)
                 if (isMounted) {
-                    setError('Failed to fetch data.')
+                    // Empty follow-ups used to return 404 — treat as empty list
+                    if (error.response?.status === 404) {
+                        setData([])
+                        setError(null)
+                    } else {
+                        setError('Failed to fetch data.')
+                    }
                     setLoading(false)
                 }
             })

@@ -68,52 +68,7 @@ const shortcuts = [
   }
 ]
 
-const notifications = [
-  {
-    avatarImage: '/images/avatars/1.png',
-    title: 'Welcome to the Woxox CRM Beta Program🎉',
-    subtitle: 'To improve the system, report issues - Admin',
-    time: '1h ago',
-    read: false
-  },
-  {
-    title: 'New Patches',
-    subtitle: 'Coming Sonn',
-    time: '1m ago',
-    read: false
-  },
-  {
-    avatarImage: '/images/avatars/3.png',
-    title: 'Bernard Woods',
-    subtitle: 'You have new message from Bernard Woods',
-    time: 'May 18, 8:26 AM',
-    read: true
-  },
-  {
-    avatarIcon: 'ri-bar-chart-line',
-    avatarColor: 'info',
-    title: 'Monthly report generated',
-    subtitle: 'July month financial report is generated',
-    time: 'Apr 24, 10:30 AM',
-    read: true
-  },
-  {
-    avatarText: 'MG',
-    avatarColor: 'success',
-    title: 'Application has been approved 🚀',
-    subtitle: 'Your Meta Gadgets project application has been approved.',
-    time: 'Feb 17, 12:17 PM',
-    read: true
-  },
-  {
-    avatarIcon: 'ri-mail-line',
-    avatarColor: 'error',
-    title: 'New message from Harry',
-    subtitle: 'You have new message from Harry',
-    time: 'Jan 6, 1:48 PM',
-    read: true
-  }
-]
+const notifications = []
 
 const NavbarContent = () => {
   const router = useRouter()

@@ -1,12 +1,18 @@
 import { useState } from 'react';
 import axios from 'axios';
-import { Box, Grid, Typography, TextField, Button, Paper, Avatar } from '@mui/material';
+import { Box, Grid, Typography, TextField, Button, Paper, Avatar, Divider } from '@mui/material';
 import { useSession } from 'next-auth/react';
+import EntityNotesPanel from '@/components/notes/EntityNotesPanel';
 
 const ConnectionsTab = ({ props }) => {
   const [notes, setNotes] = useState(props.viewItem?.notes || []);
   const [newNote, setNewNote] = useState('');
   const { data: session } = useSession();
+  const leadId = props.viewItem?._id || props.viewItem?.id;
+  const leadLabel =
+    props.viewItem?.name ||
+    [props.viewItem?.firstName, props.viewItem?.lastName].filter(Boolean).join(' ') ||
+    'Lead';
 
   const formatTimestamp = (timestamp) => {
     const date = new Date(timestamp);
@@ -62,10 +68,14 @@ const ConnectionsTab = ({ props }) => {
   return (
     <Box p={2}>
       <Grid container spacing={3}>
+        <Grid item xs={12}>
+          <EntityNotesPanel entityType='Lead' entityId={String(leadId || '')} entityLabel={leadLabel} />
+          <Divider sx={{ my: 3 }} />
+        </Grid>
         {/* Notes Display Section */}
         <Grid item xs={12}>
           <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold' }}>
-            Notes
+            Quick lead notes
           </Typography>
           {notes.length > 0 ? (
             <Box display="flex" flexDirection="column" gap={2} mt={5}>

@@ -45,6 +45,9 @@ model Workspace {
   impersonationSessions ImpersonationSession[]
   subscriptions         Subscription[]
   invoices              Invoice[]
+  notes                 Note[]
+  noteTags              NoteTag[]
+  stickyNotes           StickyNote[]
 
   @@index([status])
   @@index([plan])
@@ -788,4 +791,192 @@ model RazorpayEvent {
   payload     Json     @default("{}")
 
   @@index([type, processedAt])
+}
+
+// ─── Notes & Sticky Notes ───────────────────────────────────────────────────
+
+model Note {
+  id          String    @id @default(cuid())
+  workspaceId String
+  title       String    @default("Untitled")
+  contentHtml String    @default("") @db.Text
+  contentJson Json      @default("{}")
+  color       String    @default("#FFF59D")
+  isPinned    Boolean   @default(false)
+  isFavorite  Boolean   @default(false)
+  isArchived  Boolean   @default(false)
+  trashedAt   DateTime?
+  reminderAt  DateTime?
+  visibility  String    @default("private") // private | shared | public
+  createdById String
+  updatedById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  workspace   Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tags        NoteTagOnNote[]
+  links       NoteLink[]
+  comments    NoteComment[]
+  attachments NoteAttachment[]
+  shares      NoteShare[]
+  reminders   NoteReminder[]
+  activityLogs NoteActivityLog[]
+
+  @@index([workspaceId, updatedAt])
+  @@index([workspaceId, isPinned])
+  @@index([workspaceId, isFavorite])
+  @@index([workspaceId, isArchived])
+  @@index([workspaceId, trashedAt])
+  @@index([createdById])
+  @@index([reminderAt])
+}
+
+model NoteTag {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String
+  color       String   @default("#90CAF9")
+  createdAt   DateTime @default(now())
+
+  workspace Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  notes     NoteTagOnNote[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+}
+
+model NoteTagOnNote {
+  noteId String
+  tagId  String
+
+  note Note    @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  tag  NoteTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([noteId, tagId])
+}
+
+model NoteLink {
+  id         String   @id @default(cuid())
+  noteId     String
+  entityType String // Lead | Contact | Deal | Company | Project | Task | Ticket | Invoice | Employee | Vendor | Campaign | Pipeline
+  entityId   String
+  label      String?
+  createdAt  DateTime @default(now())
+
+  note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@unique([noteId, entityType, entityId])
+  @@index([entityType, entityId])
+  @@index([noteId])
+}
+
+model StickyNote {
+  id           String    @id @default(cuid())
+  workspaceId  String
+  title        String    @default("Sticky")
+  content      String    @default("") @db.Text
+  checklist    Json      @default("[]")
+  color        String    @default("#FFF59D")
+  isPinned     Boolean   @default(false)
+  isFavorite   Boolean   @default(false)
+  isArchived   Boolean   @default(false)
+  reminderAt   DateTime?
+  recurrence   String? // daily | weekly | monthly | custom | null
+  createdById  String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  workspace Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  positions StickyPosition[]
+
+  @@index([workspaceId, createdById])
+  @@index([workspaceId, isArchived])
+  @@index([reminderAt])
+}
+
+model StickyPosition {
+  id           String   @id @default(cuid())
+  stickyNoteId String
+  userId       String
+  pageKey      String   @default("dashboard")
+  x            Float    @default(80)
+  y            Float    @default(80)
+  width        Float    @default(240)
+  height       Float    @default(200)
+  zIndex       Int      @default(1)
+  updatedAt    DateTime @updatedAt
+
+  sticky StickyNote @relation(fields: [stickyNoteId], references: [id], onDelete: Cascade)
+
+  @@unique([stickyNoteId, userId, pageKey])
+  @@index([userId, pageKey])
+}
+
+model NoteComment {
+  id        String   @id @default(cuid())
+  noteId    String
+  userId    String
+  body      String
+  mentions  String[] @default([])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@index([noteId, createdAt])
+}
+
+model NoteAttachment {
+  id        String   @id @default(cuid())
+  noteId    String
+  fileName  String
+  fileUrl   String
+  mimeType  String?
+  fileSize  Int?
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@index([noteId])
+}
+
+model NoteShare {
+  id         String   @id @default(cuid())
+  noteId     String
+  userId     String
+  permission String   @default("view") // view | comment | edit | owner
+  createdAt  DateTime @default(now())
+
+  note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@unique([noteId, userId])
+  @@index([userId])
+}
+
+model NoteReminder {
+  id        String    @id @default(cuid())
+  noteId    String
+  remindAt  DateTime
+  channel   String    @default("in_app") // in_app | browser | email
+  sentAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@index([remindAt, sentAt])
+  @@index([noteId])
+}
+
+model NoteActivityLog {
+  id        String   @id @default(cuid())
+  noteId    String
+  userId    String?
+  action    String
+  details   String?
+  createdAt DateTime @default(now())
+
+  note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@index([noteId, createdAt])
 }

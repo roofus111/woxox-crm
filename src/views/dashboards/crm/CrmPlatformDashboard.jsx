@@ -34,6 +34,7 @@ import {
   YAxis,
 } from 'recharts'
 import { fetchDashboardSummary, isCrmPlatformEnabled } from '@/libs/crmPlatformApi'
+import { useSession } from 'next-auth/react'
 
 const COLORS = ['#0288d1', '#00897b', '#ef6c00', '#7b1fa2', '#c62828', '#455a64', '#2e7d32']
 
@@ -80,12 +81,14 @@ const KPI = ({ label, value, sub, color = '#0288d1', icon }) => (
 export default function CrmPlatformDashboard() {
   const params = useParams()
   const locale = params?.lang || 'en'
+  const { data: session } = useSession()
+  const legacyRole = session?.user?.role
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (!isCrmPlatformEnabled()) {
+    if (!isCrmPlatformEnabled() || legacyRole === 'user') {
       setLoading(false)
       return undefined
     }
@@ -99,9 +102,12 @@ export default function CrmPlatformDashboard() {
         if (!cancelled) setData(summary)
       } catch (e) {
         if (!cancelled) {
+          const noToken = !e.status && /missing bearer token/i.test(e.message || '')
           setError(
             e.status === 401
-              ? 'Platform session expired — log out and sign in again.'
+              ? noToken
+                ? 'Could not connect to the CRM platform. Log out and sign in again to refresh your session.'
+                : 'Platform session expired — log out and sign in again.'
               : e.message || 'Could not load CRM dashboard. Is the platform API running on port 4001?'
           )
         }
@@ -114,9 +120,9 @@ export default function CrmPlatformDashboard() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [legacyRole])
 
-  if (!isCrmPlatformEnabled()) {
+  if (!isCrmPlatformEnabled() || legacyRole === 'user') {
     return null
   }
 
@@ -164,6 +170,9 @@ export default function CrmPlatformDashboard() {
           </Button>
           <Button component={Link} href={`/${locale}/manager/pipeline`} variant='outlined' size='small'>
             Pipelines
+          </Button>
+          <Button component={Link} href={`/${locale}/manager/notes`} variant='outlined' size='small'>
+            Notes
           </Button>
           <Button component={Link} href={`/${locale}/apps/projects/max`} variant='outlined' size='small'>
             PM Max

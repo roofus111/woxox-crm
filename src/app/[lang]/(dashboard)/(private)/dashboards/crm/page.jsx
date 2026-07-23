@@ -45,6 +45,7 @@ import {
 import LeadsDashboard from "../leads/page";
 import CampaignsDashboard from "../campaigns/page";
 import { isCrmPlatformEnabled } from "@/libs/crmPlatformApi";
+import StickyNotesOverlay, { MyStickyNotesWidget } from "@/components/notes/StickyNotesOverlay";
 
 const CrmPlatformDashboard = dynamic(
   () => import("@/views/dashboards/crm/CrmPlatformDashboard"),
@@ -176,13 +177,13 @@ export default function CRMDashboard() {
 
   if (platformMode) {
     return (
-      <>
-        <Box sx={{ flexGrow: 1, p: 3 }}>
-          <CrmPlatformDashboard />
+      <Box sx={{ flexGrow: 1, p: 3 }}>
+        <CrmPlatformDashboard />
+        <Box sx={{ mt: 3, maxWidth: 420 }}>
+          <MyStickyNotesWidget />
         </Box>
-        <LeadsDashboard />
-        <CampaignsDashboard />
-      </>
+        <StickyNotesOverlay pageKey='dashboard' />
+      </Box>
     );
   }
 

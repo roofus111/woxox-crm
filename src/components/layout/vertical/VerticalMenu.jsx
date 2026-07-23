@@ -246,6 +246,9 @@ const VerticalMenu = ({ dictionary, scrollMenu }) => {
             <MenuItem icon={<i className='ri-file-copy-2-line' />} href={`/${locale}/manager/doctemplate`}>
               Templates
             </MenuItem>
+            <MenuItem icon={<i className='ri-sticky-note-line' />} href={`/${locale}/manager/notes`}>
+              Notes
+            </MenuItem>
           </MenuSection>
           {/* Finance & HRMS are separate WOXOX products — see Product switcher */}
 

@@ -615,3 +615,85 @@ export async function updatePlatformStaff(membershipId, payload) {
     body: JSON.stringify(payload),
   })
 }
+
+// ── Notes & Stickies ────────────────────────────────────────────────────────
+
+export async function fetchNotes(params = {}) {
+  const qs = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')
+  ).toString()
+  return platformFetch(`/notes${qs ? `?${qs}` : ''}`)
+}
+
+export async function fetchNoteTags() {
+  return platformFetch('/notes/tags')
+}
+
+export async function fetchNote(id) {
+  return platformFetch(`/notes/${id}`)
+}
+
+export async function createNote(payload) {
+  return platformFetch('/notes', { method: 'POST', body: JSON.stringify(payload) })
+}
+
+export async function updateNote(id, payload) {
+  return platformFetch(`/notes/${id}`, { method: 'PATCH', body: JSON.stringify(payload) })
+}
+
+export async function trashNote(id) {
+  return platformFetch(`/notes/${id}/trash`, { method: 'POST', body: JSON.stringify({}) })
+}
+
+export async function restoreNote(id) {
+  return platformFetch(`/notes/${id}/restore`, { method: 'POST', body: JSON.stringify({}) })
+}
+
+export async function deleteNote(id) {
+  return platformFetch(`/notes/${id}`, { method: 'DELETE' })
+}
+
+export async function addNoteLink(id, payload) {
+  return platformFetch(`/notes/${id}/links`, { method: 'POST', body: JSON.stringify(payload) })
+}
+
+export async function addNoteComment(id, payload) {
+  return platformFetch(`/notes/${id}/comments`, { method: 'POST', body: JSON.stringify(payload) })
+}
+
+export async function fetchStickies(pageKey = 'dashboard') {
+  return platformFetch(`/notes/stickies?pageKey=${encodeURIComponent(pageKey)}`)
+}
+
+export async function createSticky(payload) {
+  return platformFetch('/notes/stickies', { method: 'POST', body: JSON.stringify(payload) })
+}
+
+export async function updateSticky(id, payload) {
+  return platformFetch(`/notes/stickies/${id}`, { method: 'PATCH', body: JSON.stringify(payload) })
+}
+
+export async function upsertStickyPosition(id, payload) {
+  return platformFetch(`/notes/stickies/${id}/position`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteSticky(id) {
+  return platformFetch(`/notes/stickies/${id}`, { method: 'DELETE' })
+}
+
+export async function duplicateSticky(id) {
+  return platformFetch(`/notes/stickies/${id}/duplicate`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  })
+}
+
+export async function convertStickyToNote(id) {
+  return platformFetch(`/notes/stickies/${id}/convert-to-note`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  })
+}

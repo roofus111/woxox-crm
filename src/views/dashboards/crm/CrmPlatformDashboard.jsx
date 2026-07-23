@@ -33,7 +33,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { fetchDashboardSummary, isCrmPlatformEnabled } from '@/libs/crmPlatformApi'
+import { fetchDashboardSummary, isCrmPlatformEnabled, ensureCrmPlatformSession, clearCrmPlatformToken } from '@/libs/crmPlatformApi'
 import { useSession } from 'next-auth/react'
 
 const COLORS = ['#0288d1', '#00897b', '#ef6c00', '#7b1fa2', '#c62828', '#455a64', '#2e7d32']
@@ -98,7 +98,23 @@ export default function CrmPlatformDashboard() {
       setLoading(true)
       setError('')
       try {
-        const summary = await fetchDashboardSummary()
+        const legacy =
+          session?.accessToken ||
+          (typeof window !== 'undefined' ? localStorage.getItem('token') : null)
+        if (legacy) await ensureCrmPlatformSession(legacy)
+
+        let summary
+        try {
+          summary = await fetchDashboardSummary()
+        } catch (e) {
+          if (e.status === 401 && legacy) {
+            clearCrmPlatformToken()
+            await ensureCrmPlatformSession(legacy, { force: true })
+            summary = await fetchDashboardSummary()
+          } else {
+            throw e
+          }
+        }
         if (!cancelled) setData(summary)
       } catch (e) {
         if (!cancelled) {
@@ -120,7 +136,7 @@ export default function CrmPlatformDashboard() {
     return () => {
       cancelled = true
     }
-  }, [legacyRole])
+  }, [legacyRole, session?.accessToken])
 
   if (!isCrmPlatformEnabled() || legacyRole === 'user') {
     return null

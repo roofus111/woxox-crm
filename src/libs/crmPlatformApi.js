@@ -221,6 +221,9 @@ async function platformFetch(path, options = {}) {
   })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
+    if (res.status === 401) {
+      clearCrmPlatformToken()
+    }
     const message = Array.isArray(data.message)
       ? data.message.join(', ')
       : data.message || `Request failed (${res.status})`
@@ -229,6 +232,22 @@ async function platformFetch(path, options = {}) {
     throw err
   }
   return data
+}
+
+/**
+ * Ensure we have a valid platform JWT. Re-bridges from legacy/NextAuth token when missing or forced.
+ */
+export async function ensureCrmPlatformSession(legacyToken, { force = false } = {}) {
+  if (!legacyToken) return null
+  if (!force && getCrmPlatformToken()) return getCrmPlatformToken()
+  if (force) clearCrmPlatformToken()
+  try {
+    const data = await bridgeCrmPlatformWithLegacyToken(legacyToken)
+    return data?.accessToken || getCrmPlatformToken()
+  } catch {
+    clearCrmPlatformToken()
+    return null
+  }
 }
 
 export async function fetchDashboardSummary() {

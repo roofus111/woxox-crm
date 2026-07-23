@@ -22,7 +22,7 @@ import MuiAlert from '@mui/material/Alert'
 
 // Third-party Imports
 import { signIn, useSession } from 'next-auth/react'
-import { isCrmPlatformEnabled, loginCrmPlatform } from '@/libs/crmPlatformApi'
+import { isCrmPlatformEnabled, loginCrmPlatform, bridgeCrmPlatformWithLegacyToken, getCrmPlatformToken, syncTenantModulesFromPlatform, ensureCrmPlatformSession } from '@/libs/crmPlatformApi'
 import { Controller, useForm } from 'react-hook-form'
 import { valibotResolver } from '@hookform/resolvers/valibot'
 import { object, minLength, string, email, pipe, nonEmpty } from 'valibot'
@@ -52,9 +52,23 @@ const schema = object({
   )
 })
 
+function getDefaultRedirectForRole(role) {
+  switch (role) {
+    case 'user':
+      return '/home'
+    case 'finance':
+      return '/finance'
+    case 'pipeline':
+      return '/pipeline'
+    default:
+      return '/dashboards/crm'
+  }
+}
+
 const Login = ({ mode }) => {
   // States
   const session = useSession()
+  const { update: updateSession } = session
   const [isPasswordShown, setIsPasswordShown] = useState(false)
   const [errorState, setErrorState] = useState(null)
   const [snackbarOpen, setSnackbarOpen] = useState(false)
@@ -136,6 +150,7 @@ const Login = ({ mode }) => {
       if (isCrmPlatformEnabled()) {
         try {
           await loginCrmPlatform(data.email, data.password)
+          await syncTenantModulesFromPlatform(updateSession)
         } catch (platformErr) {
           console.warn('CRM platform login skipped:', platformErr.message)
         }
@@ -159,14 +174,30 @@ const Login = ({ mode }) => {
     if (session.status !== 'authenticated' || !session.data?.user) return
     if (hasRedirected.current) return
 
-    if (session.data.accessToken) {
-      localStorage.setItem('token', session.data.accessToken)
+    const finishLogin = async () => {
+      if (session.data.accessToken) {
+        localStorage.setItem('token', session.data.accessToken)
+      }
+
+      if (isCrmPlatformEnabled() && session.data.accessToken) {
+        try {
+          // Always refresh platform JWT on login (avoids stale tokens after secret/env changes)
+          await ensureCrmPlatformSession(session.data.accessToken, { force: true })
+          await syncTenantModulesFromPlatform(updateSession)
+        } catch (platformErr) {
+          console.warn('CRM platform bridge skipped:', platformErr.message)
+        }
+      }
+
+      hasRedirected.current = true
+      const role = session.data.user.role
+      const defaultPath = getDefaultRedirectForRole(role)
+      const redirectURL = searchParams.get('redirectTo') ?? defaultPath
+      router.replace(getLocalizedUrl(redirectURL, locale))
     }
 
-    hasRedirected.current = true
-    const redirectURL = searchParams.get('redirectTo') ?? '/dashboards/crm'
-    router.replace(getLocalizedUrl(redirectURL, locale))
-  }, [session.status, session.data, locale, searchParams, router])
+    finishLogin()
+  }, [session.status, session.data, locale, searchParams, router, updateSession])
 
    const [offset, setOffset] = useState({ x: 0, y: 0 })
     const [swingOffset, setSwingOffset] = useState({ x: 0, y: 0 })

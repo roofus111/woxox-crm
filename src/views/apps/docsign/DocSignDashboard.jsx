@@ -3,9 +3,11 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
+import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
+import MenuItem from '@mui/material/MenuItem'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Table from '@mui/material/Table'
@@ -15,8 +17,7 @@ import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import MenuItem from '@mui/material/MenuItem'
-import { listEnvelopes, STATUS_COLOR } from './api'
+import { getMailStatus, listEnvelopes, STATUS_COLOR } from './api'
 
 export default function DocSignDashboard() {
   const { lang } = useParams()
@@ -26,13 +27,18 @@ export default function DocSignDashboard() {
   const [q, setQ] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [mail, setMail] = useState(null)
 
   const load = async () => {
     setLoading(true)
     setError('')
     try {
-      const data = await listEnvelopes({ status: status || undefined, q: q || undefined })
+      const [data, mailStatus] = await Promise.all([
+        listEnvelopes({ status: status || undefined, q: q || undefined }),
+        getMailStatus().catch(() => null)
+      ])
       setItems(data.items || [])
+      setMail(mailStatus)
     } catch (err) {
       setError(err?.response?.data?.message || err.message || 'Failed to load envelopes')
     } finally {
@@ -59,7 +65,7 @@ export default function DocSignDashboard() {
             Doc Sign
           </Typography>
           <Typography color='text.secondary'>
-            Send PDFs for e-signature with multi-signer envelopes, field placement, and audit trail.
+            Multi-signer envelopes, field placement, email invites, and audit trail.
           </Typography>
         </Box>
         <Button
@@ -71,6 +77,21 @@ export default function DocSignDashboard() {
           New envelope
         </Button>
       </Stack>
+
+      {mail && !mail.ready && (
+        <Alert severity='warning' sx={{ mb: 2 }}>
+          Email is not connected for Doc Sign. Connect a mailbox under{' '}
+          <strong>Email → SMTP Settings</strong> so invites can be sent. You can still copy signing
+          links after sending.
+        </Alert>
+      )}
+      {mail?.ready && (
+        <Alert severity='success' sx={{ mb: 2 }}>
+          Mail ready — sending as {mail.fromName ? `${mail.fromName} ` : ''}
+          &lt;{mail.fromEmail}&gt;
+          {mail.isVirtual ? ' (platform SMTP)' : ''}.
+        </Alert>
+      )}
 
       <Paper variant='outlined' sx={{ p: 2, mb: 2 }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
@@ -128,7 +149,10 @@ export default function DocSignDashboard() {
             )}
             {!loading && !items.length && (
               <TableRow>
-                <TableCell colSpan={5}>No envelopes yet. Create one to get started.</TableCell>
+                <TableCell colSpan={5}>
+                  No envelopes yet.{' '}
+                  <Link href={`/${locale}/apps/docsign/new`}>Create your first envelope</Link>.
+                </TableCell>
               </TableRow>
             )}
             {items.map(item => (
@@ -144,11 +168,7 @@ export default function DocSignDashboard() {
                   {item.updatedAt ? new Date(item.updatedAt).toLocaleString() : '—'}
                 </TableCell>
                 <TableCell align='right'>
-                  <Button
-                    size='small'
-                    component={Link}
-                    href={`/${locale}/apps/docsign/${item._id}`}
-                  >
+                  <Button size='small' component={Link} href={`/${locale}/apps/docsign/${item._id}`}>
                     Open
                   </Button>
                 </TableCell>

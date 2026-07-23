@@ -133,7 +133,8 @@ export const PRODUCTS = {
         icon: 'ri-handshake-line',
         children: [
           { label: 'Sales Requests', href: localeHref('/manager/saleRequest') },
-          { label: 'Invoices', href: localeHref('/manager/saleRequest/invoice') }
+          { label: 'Invoices', href: localeHref('/manager/saleRequest/invoice') },
+          { label: 'Generate Agreements', href: localeHref('/manager/doctemplate') }
         ]
       },
       {
@@ -230,14 +231,14 @@ export const PRODUCTS = {
     icon: 'ri-pen-nib-line',
     color: '#0f766e',
     homePath: '/apps/docsign',
-    pathPrefixes: ['/apps/docsign', '/sign'],
+    pathPrefixes: ['/apps/docsign', '/sign', '/manager/email'],
     isCore: false,
     addonId: 'DSG0825',
     demoDefault: true,
     menu: [
       { label: 'Envelopes', icon: 'ri-mail-send-line', href: localeHref('/apps/docsign') },
       { label: 'New envelope', icon: 'ri-add-circle-line', href: localeHref('/apps/docsign/new') },
-      { label: 'Settings', icon: 'ri-settings-3-line', href: localeHref('/manager/subscription') }
+      { label: 'Email SMTP', icon: 'ri-mail-settings-line', href: localeHref('/manager/email/smtp') }
     ]
   },
 

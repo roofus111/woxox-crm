@@ -2,21 +2,23 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
+import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Dialog from '@mui/material/Dialog'
+import DialogActions from '@mui/material/DialogActions'
+import DialogContent from '@mui/material/DialogContent'
+import DialogTitle from '@mui/material/DialogTitle'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import Alert from '@mui/material/Alert'
-import Dialog from '@mui/material/Dialog'
-import DialogTitle from '@mui/material/DialogTitle'
-import DialogContent from '@mui/material/DialogContent'
-import DialogActions from '@mui/material/DialogActions'
 import SignaturePad from './SignaturePad'
 import {
+  absoluteApiUrl,
   declinePublicEnvelope,
   getPublicEnvelope,
+  loadPdfBlobUrl,
   markPublicViewed,
   signPublicEnvelope
 } from './api'
@@ -27,6 +29,7 @@ export default function GuestSignPage() {
   const [page, setPage] = useState(1)
   const [pageImage, setPageImage] = useState('')
   const [pageCount, setPageCount] = useState(1)
+  const [pdfBlobUrl, setPdfBlobUrl] = useState('')
   const [values, setValues] = useState({})
   const [activeField, setActiveField] = useState(null)
   const [sigData, setSigData] = useState(null)
@@ -35,17 +38,25 @@ export default function GuestSignPage() {
   const [busy, setBusy] = useState(false)
   const [declineOpen, setDeclineOpen] = useState(false)
   const [declineReason, setDeclineReason] = useState('')
+  const [pdfError, setPdfError] = useState('')
 
   useEffect(() => {
     let cancelled = false
     async function boot() {
       try {
-        await markPublicViewed(token)
         const data = await getPublicEnvelope(token)
         if (cancelled) return
         setSession(data)
         setPageCount(data.document?.pageCount || 1)
         if (data.signer?.status === 'signed' || data.status === 'completed') setDone(true)
+        if (data.status === 'sent' && !['signed', 'declined'].includes(data.signer?.status)) {
+          try {
+            const viewed = await markPublicViewed(token)
+            if (!cancelled) setSession(viewed)
+          } catch {
+            /* ignore view errors on finished envelopes */
+          }
+        }
       } catch (err) {
         if (!cancelled) setError(err?.response?.data?.message || err.message || 'Link invalid')
       }
@@ -57,13 +68,34 @@ export default function GuestSignPage() {
   }, [token])
 
   useEffect(() => {
+    let revoked = false
+    let objectUrl = ''
+    async function loadPdf() {
+      if (!token) return
+      try {
+        setPdfError('')
+        objectUrl = await loadPdfBlobUrl(`/api/docsign/public/${token}/file`)
+        if (!revoked) setPdfBlobUrl(objectUrl)
+      } catch (err) {
+        console.error(err)
+        if (!revoked) setPdfError('Could not load the PDF. Ask the sender to resend the link.')
+      }
+    }
+    loadPdf()
+    return () => {
+      revoked = true
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [token])
+
+  useEffect(() => {
     let cancelled = false
     async function renderPage() {
-      if (!session?.document?.fileUrl) return
+      if (!pdfBlobUrl) return
       try {
         const pdfjs = await import('pdfjs-dist/build/pdf')
         pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`
-        const pdf = await pdfjs.getDocument(session.document.fileUrl).promise
+        const pdf = await pdfjs.getDocument(pdfBlobUrl).promise
         if (!cancelled) setPageCount(pdf.numPages)
         const pdfPage = await pdf.getPage(page)
         const viewport = pdfPage.getViewport({ scale: 1.25 })
@@ -74,16 +106,21 @@ export default function GuestSignPage() {
         if (!cancelled) setPageImage(canvas.toDataURL('image/png'))
       } catch (err) {
         console.error(err)
+        if (!cancelled) setPdfError('Could not render this PDF page.')
       }
     }
     renderPage()
     return () => {
       cancelled = true
     }
-  }, [session?.document?.fileUrl, page])
+  }, [pdfBlobUrl, page])
 
   const pageFields = useMemo(
     () => (session?.fields || []).filter(f => Number(f.page) === Number(page)),
+    [session, page]
+  )
+  const pageOverlays = useMemo(
+    () => (session?.overlayFields || []).filter(f => Number(f.page) === Number(page)),
     [session, page]
   )
 
@@ -165,6 +202,8 @@ export default function GuestSignPage() {
     )
   }
 
+  const signedDownload = absoluteApiUrl(session.signedDocumentUrl)
+
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#f1f5f9', py: 3, px: 2 }}>
       <Box sx={{ maxWidth: 900, mx: 'auto' }}>
@@ -178,12 +217,10 @@ export default function GuestSignPage() {
           <Typography color='text.secondary' sx={{ mt: 1 }}>
             Signing as <strong>{session.signer?.name}</strong> ({session.signer?.email})
           </Typography>
-          {session.message && (
-            <Typography sx={{ mt: 2 }}>{session.message}</Typography>
-          )}
+          {session.message && <Typography sx={{ mt: 2 }}>{session.message}</Typography>}
           {!session.canSign && !done && (
             <Alert severity='info' sx={{ mt: 2 }}>
-              Waiting for a previous signer, or this link is no longer active.
+              {session.waitingReason || 'This link is not open for signing right now.'}
             </Alert>
           )}
           {done && (
@@ -191,10 +228,10 @@ export default function GuestSignPage() {
               {session.signer?.status === 'declined'
                 ? 'You declined this document.'
                 : 'Thanks — your signature was recorded.'}
-              {session.signedDocumentUrl && (
+              {signedDownload && (
                 <>
                   {' '}
-                  <a href={session.signedDocumentUrl} target='_blank' rel='noreferrer'>
+                  <a href={signedDownload} target='_blank' rel='noreferrer'>
                     Download signed PDF
                   </a>
                 </>
@@ -204,6 +241,11 @@ export default function GuestSignPage() {
           {error && (
             <Alert severity='error' sx={{ mt: 2 }}>
               {error}
+            </Alert>
+          )}
+          {pdfError && (
+            <Alert severity='error' sx={{ mt: 2 }}>
+              {pdfError}
             </Alert>
           )}
         </Paper>
@@ -218,11 +260,7 @@ export default function GuestSignPage() {
               <Typography variant='body2'>
                 Page {page}/{pageCount}
               </Typography>
-              <Button
-                size='small'
-                disabled={page >= pageCount}
-                onClick={() => setPage(p => p + 1)}
-              >
+              <Button size='small' disabled={page >= pageCount} onClick={() => setPage(p => p + 1)}>
                 Next
               </Button>
             </Stack>
@@ -232,8 +270,34 @@ export default function GuestSignPage() {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={pageImage} alt={`Page ${page}`} style={{ width: '100%', display: 'block' }} />
             ) : (
-              <Box sx={{ p: 6, textAlign: 'center' }}>Rendering…</Box>
+              <Box sx={{ p: 6, textAlign: 'center' }}>{pdfError || 'Rendering…'}</Box>
             )}
+            {pageOverlays.map(f => (
+              <Box
+                key={`ov-${f.fieldId}`}
+                sx={{
+                  position: 'absolute',
+                  left: `${f.x}%`,
+                  top: `${f.y}%`,
+                  width: `${f.width}%`,
+                  height: `${f.height}%`,
+                  border: '1px solid #94a3b8',
+                  bgcolor: 'rgba(148,163,184,0.12)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  pointerEvents: 'none'
+                }}
+              >
+                {f.type === 'signature' || f.type === 'initials' ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={f.value} alt='' style={{ maxWidth: '100%', maxHeight: '100%' }} />
+                ) : (
+                  <Typography variant='caption'>{f.value}</Typography>
+                )}
+              </Box>
+            ))}
             {pageFields.map(f => (
               <Box
                 key={f.fieldId}

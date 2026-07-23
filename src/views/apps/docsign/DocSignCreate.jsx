@@ -7,13 +7,15 @@ import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
+import MenuItem from '@mui/material/MenuItem'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { createEnvelope } from './api'
 
-const emptySigner = () => ({ name: '', email: '', role: 'signer', order: 1 })
+const emptyRecipient = (role = 'signer') => ({ name: '', email: '', role, order: 1 })
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export default function DocSignCreate() {
   const { lang } = useParams()
@@ -22,9 +24,11 @@ export default function DocSignCreate() {
   const [title, setTitle] = useState('')
   const [message, setMessage] = useState('')
   const [file, setFile] = useState(null)
-  const [signers, setSigners] = useState([{ ...emptySigner(), order: 1 }])
+  const [signers, setSigners] = useState([{ ...emptyRecipient('signer'), order: 1 }])
+  const [ccs, setCcs] = useState([])
   const [signingOrder, setSigningOrder] = useState(true)
   const [reminderEnabled, setReminderEnabled] = useState(true)
+  const [expiresAt, setExpiresAt] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -32,31 +36,34 @@ export default function DocSignCreate() {
     setSigners(prev => prev.map((s, i) => (i === idx ? { ...s, ...patch } : s)))
   }
 
-  const addSigner = () => {
-    setSigners(prev => [...prev, { ...emptySigner(), order: prev.length + 1 }])
-  }
-
-  const removeSigner = idx => {
-    setSigners(prev =>
-      prev.filter((_, i) => i !== idx).map((s, i) => ({ ...s, order: i + 1 }))
-    )
+  const updateCc = (idx, patch) => {
+    setCcs(prev => prev.map((s, i) => (i === idx ? { ...s, ...patch } : s)))
   }
 
   const submit = async () => {
     setError('')
-    if (!file) return setError('Choose a PDF to send for signature')
-    if (!signers.length || signers.some(s => !s.name.trim() || !s.email.trim())) {
-      return setError('Each signer needs a name and email')
+    if (!file) return setError('Choose a PDF to send for signature (max 25 MB)')
+    if (file.size > 25 * 1024 * 1024) return setError('PDF must be 25 MB or smaller')
+    if (!signers.length || signers.some(s => !s.name.trim() || !EMAIL_RE.test(s.email.trim()))) {
+      return setError('Each signer needs a valid name and email')
+    }
+    if (ccs.some(s => !s.name.trim() || !EMAIL_RE.test(s.email.trim()))) {
+      return setError('Each CC recipient needs a valid name and email')
     }
     setSaving(true)
     try {
+      const recipients = [
+        ...signers.map((s, i) => ({ ...s, role: 'signer', order: i + 1 })),
+        ...ccs.map((s, i) => ({ ...s, role: 'cc', order: signers.length + i + 1 }))
+      ]
       const envelope = await createEnvelope({
         file,
         title: title || file.name,
         message,
-        signers,
+        signers: recipients,
         signingOrder,
-        reminder: { enabled: reminderEnabled, intervalDays: 3, maxReminders: 5 }
+        reminder: { enabled: reminderEnabled, intervalDays: 3, maxReminders: 5 },
+        expiresAt: expiresAt || undefined
       })
       router.push(`/${locale}/apps/docsign/${envelope._id}`)
     } catch (err) {
@@ -72,13 +79,13 @@ export default function DocSignCreate() {
         New envelope
       </Typography>
       <Typography color='text.secondary' sx={{ mb: 3 }}>
-        Upload a PDF, add signers, then place signature fields on the next screen.
+        Upload a PDF, add signers (and optional CC), then place fields on the next screen.
       </Typography>
 
       <Paper variant='outlined' sx={{ p: 3 }}>
         <Stack spacing={2}>
           <Button variant='outlined' component='label'>
-            {file ? file.name : 'Upload PDF'}
+            {file ? `${file.name} (${Math.round(file.size / 1024)} KB)` : 'Upload PDF (max 25 MB)'}
             <input
               hidden
               type='file'
@@ -99,6 +106,14 @@ export default function DocSignCreate() {
             onChange={e => setMessage(e.target.value)}
             multiline
             minRows={3}
+            fullWidth
+          />
+          <TextField
+            label='Expires on (optional)'
+            type='date'
+            value={expiresAt}
+            onChange={e => setExpiresAt(e.target.value)}
+            InputLabelProps={{ shrink: true }}
             fullWidth
           />
 
@@ -123,14 +138,56 @@ export default function DocSignCreate() {
               <IconButton
                 aria-label='Remove signer'
                 disabled={signers.length === 1}
-                onClick={() => removeSigner(idx)}
+                onClick={() =>
+                  setSigners(prev =>
+                    prev.filter((_, i) => i !== idx).map((row, i) => ({ ...row, order: i + 1 }))
+                  )
+                }
               >
                 <i className='ri-delete-bin-line' />
               </IconButton>
             </Stack>
           ))}
-          <Button onClick={addSigner} startIcon={<i className='ri-user-add-line' />}>
+          <Button
+            onClick={() => setSigners(prev => [...prev, { ...emptyRecipient('signer'), order: prev.length + 1 }])}
+            startIcon={<i className='ri-user-add-line' />}
+          >
             Add signer
+          </Button>
+
+          <Typography fontWeight={600} sx={{ pt: 1 }}>
+            CC (notified when complete)
+          </Typography>
+          {ccs.map((s, idx) => (
+            <Stack key={idx} direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems='center'>
+              <TextField
+                size='small'
+                label='Name'
+                value={s.name}
+                onChange={e => updateCc(idx, { name: e.target.value })}
+                fullWidth
+              />
+              <TextField
+                size='small'
+                label='Email'
+                type='email'
+                value={s.email}
+                onChange={e => updateCc(idx, { email: e.target.value })}
+                fullWidth
+              />
+              <IconButton
+                aria-label='Remove CC'
+                onClick={() => setCcs(prev => prev.filter((_, i) => i !== idx))}
+              >
+                <i className='ri-delete-bin-line' />
+              </IconButton>
+            </Stack>
+          ))}
+          <Button
+            onClick={() => setCcs(prev => [...prev, emptyRecipient('cc')])}
+            startIcon={<i className='ri-mail-add-line' />}
+          >
+            Add CC
           </Button>
 
           <FormControlLabel
